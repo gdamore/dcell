@@ -304,8 +304,6 @@ class Terminfo
         char[] output;
         parameter[byte] saved;
         parameter[] stack;
-        bool cond;
-        bool met;
         Skip skip;
 
         input = s.dup;
