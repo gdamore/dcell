@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Garrett D'Amore"
+	],
+	"copyright": "Copyright 2022 Garrett D'Amore",
+	"description": "Terminal Cells for D.",
+	"license": "MIT",
+	"name": "dcell"
+}
