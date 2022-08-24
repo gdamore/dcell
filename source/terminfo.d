@@ -1,45 +1,48 @@
-// Copyright 2022 Garrett D'Amore
+/// Copyright: 2022 Garrett D'Amore
+/// License: MIT
+module github.gdamore.dcell.terminfo;
 
-import core.sync.mutex, std.outbuffer, std.conv, std.stdio;
+import std.conv;
+import std.stdio;
 import core.thread;
-import core.time : seconds;
-import core.vararg;
 import std.string;
 
-// Terminfo represents the terminal strings and capabilities for a
-// TTY based terminal.  The list of possible entries is not complete,
-// as we only provide entries we have a meaningful use for.
+/**
+Terminfo represents the terminal strings and capabilities for a
+TTY based terminal.  The list of possible entries is not complete,
+as we only provide entries we have a meaningful use for.
+*/
 class Terminfo
 {
-    string name;
-    string[] aliases;
-    int columns; // cols
-    int lines; // lines
-    int colors; // colors
-    string bell; // bell
-    string clear; // clear
-    string enterCA; // smcup
-    string exitCA; // rmcup
-    string showCursor; // cnorm
-    string hideCursor; // civis
-    string attrOff; // sgr0
-    string underline; // smul
-    string bold; // bold
-    string blink; // blink
-    string reverse; // rev
-    string dim; // dim
-    string italic; // sitm
-    string enterKeypad; // smkx
-    string exitKeypad; // rmkx
-    string setFg; // setaf
-    string setBg; // setab
-    string resetColors; // op
-    string setCursor; // cup
-    string cursorBack1; // cub1
-    string cursorUp1; // cuu1
-    string padChar; // pad
-    string insertChar; // ich1
-    string keyBackspace; // kbs
+    string name; /// primary name for terminal, e.g. "xterm"
+    string[] aliases; /// alternate names for terminal
+    int columns; /// `cols`, the number of columns present
+    int lines; /// `lines`, the number lines (rows) present
+    int colors; // `colors`, the number of colors supported
+    string bell; /// `bell`, the sequence to ring a bell
+    string clear; /// `clear`, the sequence to clear the screen
+    string enterCA; /// `smcup`, sequence to enter cursor addressing mode
+    string exitCA; /// `rmcup`, sequence to exit cursor addressing mode
+    string showCursor; /// `cnorm`, should display the normal cursor
+    string hideCursor; /// `civis`, mark the cursor invisible
+    string attrOff; /// `sgr0`, turn off all text attributes and colors
+    string underline; /// `smul`, starts underlining
+    string bold; /// `bold`, starts bold (maybe intense or double-strike)
+    string blink; /// `blink`, starts blinking text
+    string reverse; /// `rev`, inverts the foreground and background colors
+    string dim; /// `dim`, reduces the intensity of text
+    string italic; /// `sitm`, starts italics mode (not widely supported)
+    string enterKeypad; /// `smkx`, enables keypad mode
+    string exitKeypad; /// `rmkx`, leaves keypad mode
+    string setFg; /// `setaf`, sets foreground text color (indexed)
+    string setBg; /// `setab`, sets background text color (indexed)
+    string resetColors; /// `op`, sets foreground and background to default
+    string setCursor; /// `cup`, sets cursor location to row and column
+    string cursorBack1; /// `cub1`, move cursor backwards one
+    string cursorUp1; /// `cuu1`, mover cursor up one line
+    string padChar; /// `pad`, padding character, if non-empty enables padding delays
+    string insertChar; /// `ich1`, insert a character, used for inserting at bottom right for automargin terminals
+    string keyBackspace; /// `kbs`, backspace key
     string keyF1; // kf1
     string keyF2; // kf2
     string keyF3; // kf3
@@ -120,25 +123,25 @@ class Terminfo
     string keyClear; // kclr
     string keyPrint; // kprt
     string keyCancel; // kcan
-    string mouse; // kmouse
-    string altChars; // acsc
-    string enterACS; // smacs
-    string exitACS; // rmacs
-    string enableACS; // enacs
+    string mouse; /// `kmouse`, indicates support for mouse mode - XTerm style sequences are assumed
+    string altChars; /// `acsc`, alternate characters, used for non-ASCII characters with certain legacy terminals
+    string enterACS; /// `smacs`, sequence to switch to alternate character set
+    string exitACS; /// `rmacs`, sequence to return to normal character set
+    string enableACS; /// `enacs`, sequence to enable alternate character set support
     string keyShfRight; // kRIT
     string keyShfLeft; // kLFT
     string keyShfHome; // kHOM
     string keyShfEnd; // kEND
     string keyShfInsert; // kIC
     string keyShfDelete; // kDC
-    bool automargin; // am
+    bool automargin; /// `am`, if true cursor wraps and advances to next row after last column
 
     // Non-standard additions to terminfo.  YMMV.
     string strikethrough; // smxx
-    string setFgBg;
-    string setFgBgRGB;
-    string setFgRGB;
-    string setBgRGB;
+    string setFgBg; /// sequence to set both foreground and background together, using indexed colors
+    string setFgBgRGB; /// sequence to set both foreground and background together, using RGB colors
+    string setFgRGB; /// sequence to set foreground color to RGB value
+    string setBgRGB; /// sequence to set background color RGB value
     string keyShfUp;
     string keyShfDown;
     string keyShfPgUp;
@@ -179,33 +182,43 @@ class Terminfo
     string keyAltShfEnd;
     string keyMetaShfHome;
     string keyMetaShfEnd;
-    string enablePaste;
-    string disablePaste;
-    string pasteStart;
-    string pasteEnd;
-    bool likeXTerm; // true if this simulates XTerm
-    bool truecolor;
-    string cursorDefault;
-    string cursorBlinkingBlock;
-    string cursorSteadyBlock;
-    string cursorBlinkingUnderline;
-    string cursorSteadyUnderline;
-    string cursorBlinkingBar;
-    string cussorSteadyBar;
-    string enterURL;
-    string exitURL;
-    string setWindowSize;
+    string enablePaste; /// sequence to enable delimited paste mode
+    string disablePaste; /// sequence to disable delimited paste mode
+    string pasteStart; /// sequence sent by terminal to indicate start of a paste buffer
+    string pasteEnd; /// sequence sent by terminal to indicated end of a paste buffer
+    bool likeXTerm; /// true if this simulates XTerm, enables extra features
+    bool truecolor; /// true if this terminal supports 24-bit (RGB) color
+    string cursorDefault; /// sequence to reset the cursor shape to deafult
+    string cursorBlinkingBlock; /// sequence to change the cursor to a blinking block
+    string cursorSteadyBlock; /// sequence to change the cursor to a solid block
+    string cursorBlinkingUnderline; /// sequence to change the cursor to a blinking underscore
+    string cursorSteadyUnderline; /// sequence to change the cursor to a steady underscore
+    string cursorBlinkingBar; /// sequence to change the cursor to a blinking vertical bar
+    string cussorSteadyBar; /// sequence to change the cursor to a steady vertical bar
+    string enterURL; /// sequence to start making text a clickable link
+    string exitURL; /// sequence to stop making text clickable link
+    string setWindowSize; /// sequence to resize the window (rarely supported)
 
     private struct Parameter
     {
         int i;
         string s;
-        bool b;
     }
 
-    // tputs emits the string, but expands inline padding escapes
-    // of the form <$[delay]> where [delay] is msec.  all output from
-    // terminfo should be emitted using this function.
+    /**
+    Emits the string, evaluating any inline padding escapes and applying
+    delays.  These escapes are of the form $<delay> where delay is a number
+    of milliseconds (decimal fractions are permitted).  All output from
+    terminfo should be emitted using this function to ensure any embedded
+    delays are applied.  (Note that most modern terminals do not need delays.)
+    This implementation injects delays using the clock, rather that using
+    padding characters, but a padding character must be supplied or the
+    delay wil be ignored.
+
+    Params:
+        s = string to emit (possibly with delay escapes)
+        f = file to write write it to
+    */
     void tPuts(string s, File f)
     {
         while (s.length > 0)
@@ -226,7 +239,7 @@ class Terminfo
                 return;
             }
             auto val = s[2 .. end];
-            s = s[end+1..$];
+            s = s[end + 1 .. $];
             int usec = 0;
             int mult = 1000; // 1 ms
             bool dot = false;
@@ -273,6 +286,7 @@ class Terminfo
     unittest
     {
         import std.datetime : Clock;
+        import core.time : seconds;
 
         auto ti = new Terminfo;
         auto tmp = std.stdio.File.tmpfile();
@@ -294,6 +308,16 @@ class Terminfo
         ti.tPuts("GHI$<123JKL", tmp); // unterminated delay
     }
 
+    /**
+    Evalutes a terminal capability string and expands it, using the supplied string paramters.
+
+    Params:
+        s    = A terminal capability string.  The actual string, not the name of the capability.
+        strs = A list of string parameters for the capability.
+
+    Returns:
+        The evaluated capability with parameters applied.
+    */
     string tParmString(string s, string[] strs...)
     {
         Parameter[] params;
@@ -306,6 +330,16 @@ class Terminfo
         return tParmInner(s, params);
     }
 
+    /++
+        Evaluates a terminal capability string and expands it, using the supplied integer parameters.
+
+        Params: 
+            s    = A terminal capability string.  The actual string, not the name of the capability.
+            ints = A list of integer parameters for the capability.
+
+        Returns:
+            The evaluated capability with parameters applied.
+     +/
     string tParm(string s, int[] ints...)
     {
         Parameter[] params;
@@ -381,7 +415,7 @@ class Terminfo
             return (ch);
         }
 
-        // Note that we do not currently support the printf style formats.
+        // We do not currently support the printf style formats.
         // We are not aware of any use by such formats in any real-world
         // terminfo descriptions.
 
@@ -390,7 +424,7 @@ class Terminfo
             Parameter p;
             int i1, i2;
 
-            // Note that in some cases we need to pop both parameters
+            // In some cases we need to pop both parameters
             // into local variables before evaluating.  This is required
             // to ensure both pops are evaluated in a specific order.
             // In some cases the order of a binary operation is not important
@@ -712,4 +746,62 @@ class Terminfo
         assert(ti.tParm("%p1%p2%<%p2%p3%<%!%A%d", 1, 3, 2) == "1"); // NOT (and)
         assert(ti.tParm("%p1%p2%<%p1%p2%=%O%d", 1, 1) == "1"); // OR
     }
+}
+
+/**
+    Represents a database of terminal entries, indexed by their name.
+*/
+synchronized class Database
+{
+    private static Terminfo[string] terms;
+
+    /**
+    Adds an entry to the database.
+    This should be called by terminal descriptions.
+
+    Params:
+        ti = terminal entry to add
+    */
+    static void add(const(Terminfo) ti)
+    {
+        terms[ti.name] = cast(Terminfo) ti;
+        foreach (name; ti.aliases)
+        {
+            terms[name] = cast(Terminfo) ti;
+        }
+    }
+
+    /**
+    Looks up an entry in the database.
+    The name is most likely to be taken from the $TERM environment variable.
+
+    Params:
+        name = name of the terminal (typically from $TERM)
+
+    Returns:
+        terminal entry if known, `null` if not.
+    */
+    static const(Terminfo) lookup(string name)
+    {
+        if (name in terms)
+        {
+            return terms[name];
+        }
+        return null;
+    }
+}
+
+unittest
+{
+    auto ti = new Terminfo;
+    ti.name = "mytest";
+    ti.aliases ~= "mytest-1";
+    ti.aliases ~= "mytest-2";
+
+    Database.add(ti);
+
+    assert(Database.lookup("nosuch") is null);
+    assert(Database.lookup("mytest") == ti);
+    assert(Database.lookup("mytest-1") == ti);
+    assert(Database.lookup("mytest-2") == ti);
 }
