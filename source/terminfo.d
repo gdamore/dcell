@@ -2,12 +2,13 @@
 
 import core.sync.mutex, std.outbuffer, std.conv, std.stdio;
 import core.thread;
+import core.time : seconds;
 import core.vararg;
 import std.string;
 
 // Terminfo represents the terminal strings and capabilities for a
 // TTY based terminal.  The list of possible entries is not complete,
-// as we only provide entries we have a meaningful usef for.
+// as we only provide entries we have a meaningful use for.
 class Terminfo
 {
     string name;
@@ -195,7 +196,7 @@ class Terminfo
     string exitURL;
     string setWindowSize;
 
-    private struct parameter
+    private struct Parameter
     {
         int i;
         string s;
@@ -215,16 +216,17 @@ class Terminfo
                 f.write(s);
                 return;
             }
-            s = s[beg + 2 .. $];
+            f.write(s[0 .. beg]); // write the part *before* the time
+            s = s[beg .. $];
             auto end = indexOf(s, ">");
             if (end < 0)
             {
                 // unterminated escape, emit it as is
-                f.write("$<");
                 f.write(s);
                 return;
             }
-            auto val = s[0 .. end];
+            auto val = s[2 .. end];
+            s = s[end+1..$];
             int usec = 0;
             int mult = 1000; // 1 ms
             bool dot = false;
@@ -258,21 +260,46 @@ class Terminfo
                     valid = false;
                     break;
                 }
+                val = val[1 .. $];
             }
 
-            if (padChar.length > 0)
+            if (padChar.length > 0 && valid)
             {
-                Thread.sleep(usec.usecs);
+                Thread.sleep(usec.usecs * mult);
             }
         }
     }
 
+    unittest
+    {
+        import std.datetime : Clock;
+
+        auto ti = new Terminfo;
+        auto tmp = std.stdio.File.tmpfile();
+        ti.padChar = " ";
+        auto now = Clock.currTime();
+        ti.tPuts("AB$<1000>C", tmp);
+        ti.tPuts("DEF$<100.5>\n", tmp);
+        auto end = Clock.currTime();
+        assert(end > now);
+        assert(now + seconds(1) <= end);
+        assert(now + seconds(2) > end);
+
+        tmp.rewind();
+        auto content = tmp.readln();
+        assert(content == "ABCDEF\n");
+        // negative tests -- we don't care what's in the file (UB), but it must not panic
+        ti.tPuts("Z$<123..0123>", tmp); // malformed dots 
+        ti.tPuts("LMN$<12X>", tmp); // invalid number
+        ti.tPuts("GHI$<123JKL", tmp); // unterminated delay
+    }
+
     string tParmString(string s, string[] strs...)
     {
-        parameter[] params;
+        Parameter[] params;
         foreach (string v; strs)
         {
-            parameter p;
+            Parameter p;
             p.s = v;
             params ~= p;
         }
@@ -281,17 +308,17 @@ class Terminfo
 
     string tParm(string s, int[] ints...)
     {
-        parameter[] params;
+        Parameter[] params;
         foreach (int i; ints)
         {
-            parameter p;
+            Parameter p;
             p.i = i;
             params ~= p;
         }
         return tParmInner(s, params);
     }
 
-    private string tParmInner(string s, parameter[] params)
+    private string tParmInner(string s, Parameter[] params)
     {
         enum Skip
         {
@@ -302,54 +329,45 @@ class Terminfo
 
         char[] input;
         char[] output;
-        parameter[byte] saved;
-        parameter[] stack;
+        Parameter[byte] saved;
+        Parameter[] stack;
         Skip skip;
 
         input = s.dup;
 
-        void push(parameter p)
+        void push(Parameter p)
         {
             stack ~= p;
         }
 
         void pushInt(int i)
         {
-            parameter p;
+            Parameter p;
             p.i = i;
             push(p);
         }
 
-        void pushStr(string s)
-        {
-            parameter p;
-            p.s = s;
-            push(p);
-        }
-
         // pop a parameter from the stack.
-        // If the stack is empty, returns a zero value parameter.
-        parameter pop()
+        // If the stack is empty, returns a zero value Parameter.
+        Parameter pop()
         {
-            parameter p;
+            Parameter p;
             if (stack.length > 0)
             {
-                p = stack[0];
-                stack = stack[1 .. $];
+                p = stack[$ - 1];
+                stack = stack[0 .. $ - 1];
             }
             return p;
         }
 
         int popInt()
         {
-            parameter p = pop();
-            return p.i;
+            return pop().i;
         }
 
         string popStr()
         {
-            parameter p = pop();
-            return p.s;
+            return pop().s;
         }
 
         char nextCh()
@@ -369,14 +387,17 @@ class Terminfo
 
         while (input.length > 0)
         {
-            parameter p;
+            Parameter p;
             int i1, i2;
 
             // Note that in some cases we need to pop both parameters
             // into local variables before evaluating.  This is required
             // to ensure both pops are evaluated in a specific order.
             // In some cases the order of a binary operation is not important
-            // and then we can write it as push(pop op pop).
+            // and then we can write it as push(pop op pop).  Also, it turns out
+            // that the right most parameter is pushed first, and the left most last.
+            // So for example, the divisor is pushed before the numerator.  This
+            // seems somewhat counterintuitive, but it is the current behavior of ncurses.
 
             auto ch = nextCh();
 
@@ -417,12 +438,16 @@ class Terminfo
             case 'i': // increment both parameters (ANSI cup support)
                 if (params.length >= 2)
                 {
-                    pushInt(params[0].i+1);
-                    pushInt(params[1].i+1);
+                    params[0].i++;
+                    params[1].i++;
                 }
                 break;
 
-            case 'c', 's': // character or string
+            case 'c': // integer as character
+                output ~= cast(byte) popInt();
+                break;
+
+            case 's': // character or string
                 output ~= popStr();
                 break;
 
@@ -432,7 +457,7 @@ class Terminfo
 
             case 'p': // push i'th parameter (could be string or integer)
                 ch = nextCh();
-                if (ch >= '1' && (ch - 1) < params.length)
+                if (ch >= '1' && (ch - '1') < params.length)
                 {
                     push(params[ch - '1']);
                 }
@@ -462,9 +487,9 @@ class Terminfo
                 }
                 break;
 
-            case '\\': // push a character (will be of form %'c')
+            case '\'': // push a character (will be of form %'c')
                 ch = nextCh();
-                pushStr(to!string(ch));
+                pushInt(cast(byte) ch);
                 nextCh(); // consume the closing '
                 break;
 
@@ -491,7 +516,7 @@ class Terminfo
             case '-':
                 i1 = popInt();
                 i2 = popInt();
-                pushInt(i1 - i2);
+                pushInt(i2 - i1);
                 break;
 
             case '*':
@@ -501,9 +526,9 @@ class Terminfo
             case '/':
                 i1 = popInt();
                 i2 = popInt();
-                if (i2 != 0)
+                if (i1 != 0)
                 {
-                    pushInt(i1 / i2);
+                    pushInt(i2 / i1);
                 }
                 else
                 {
@@ -514,9 +539,9 @@ class Terminfo
             case 'm': // modulo
                 i1 = popInt();
                 i2 = popInt();
-                if (i2 != 0)
+                if (i1 != 0)
                 {
-                    pushInt(i1 % i2);
+                    pushInt(i2 % i1);
                 }
                 else
                 {
@@ -563,13 +588,13 @@ class Terminfo
             case '<':
                 i1 = popInt();
                 i2 = popInt();
-                pushInt(i1 < i2);
+                pushInt(i2 < i1);
                 break;
 
             case '>':
                 i1 = popInt();
                 i2 = popInt();
-                pushInt(i1 > i2);
+                pushInt(i2 > i1);
                 break;
 
             case '?': // start of conditional
@@ -586,23 +611,16 @@ class Terminfo
                 break;
 
             case 'e':
-                if (skip == Skip.emit)
-                {
-                    // We've already processed the true branch of the conditional.
-                    // We won't process anything more for the rest of the conditional,
-                    // including any other branches.
-                    skip = Skip.toEnd;
-                }
-                else if (skip == Skip.toElse)
-                {
-                    // We didn't process the true banch, so we need to process this
-                    // branch.  It may itself contain further nested conditionals.
-                    skip = Skip.emit;
-                }
+                // We've already processed the true branch of the conditional.
+                // We won't process anything more for the rest of the conditional,
+                // including any other branches.
+                skip = Skip.toEnd;
                 break;
 
             default:
-                // Unrecognized sequence, so just eat it.
+                // Unrecognized sequence, so just emit it.
+                output ~= '%';
+                output ~= ch;
                 break;
             }
         }
@@ -643,10 +661,55 @@ class Terminfo
 
     unittest
     {
+        // these are taken from xterm, mostly
         Terminfo ti = new Terminfo;
         ti.setCursor = "\x1b[%i%p1%d;%p2%dH";
-        writeln(`Here is my string: `, ti.tGoto(3, 4));
-
+        ti.colors = 256;
+        ti.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
+        ti.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
+        ti.enterURL = "\x1b]8;;%p1%s\x1b\\";
+        assert(ti.tParm(ti.setCursor, 3, 4) == "\x1b[4;5H");
         assert(ti.tGoto(3, 4) == "\x1b[5;4H");
+        // this does not use combined foreground and background, only separate strings
+        assert(ti.tColor(2, 3) == "\x1b[32m\x1b[43m");
+        // covers the else clause handling
+        assert(ti.tColor(2, 13) == "\x1b[32m\x1b[105m");
+        ti.colors = 8;
+        assert(ti.tColor(10, 11) == "\x1b[32m\x1b[43m"); // intense colors with just 8 colors
+        assert(ti.tParmString(ti.enterURL, "https://www.example.com") == "\x1b]8;;https://www.example.com\x1b\\");
+        // tests of operators
+        ti.setCursor = "\x1b%p1%p2%+%d;";
+        assert(ti.tParm(ti.setCursor, 3, 4) == "\x1b7;");
+        ti.setCursor = "\x1b%p1%p2%-%d;";
+        assert(ti.tParm(ti.setCursor, 4, 3) == "\x1b1;");
+        assert(ti.tParm("%{50}%{3}%-%d") == "47"); // subtraction
+        assert(ti.tParm("%{50}%{5}%/%d") == "10"); // division
+        assert(ti.tParm("%p1%p2%/%d", 50, 3) == "16"); // division with truncation
+        assert(ti.tParm("%p1%p2%/%d", 5, 0) == "0"); // division by zero
+        assert(ti.tParm("%{50}%{3}%m%d") == "2"); // modulo
+        assert(ti.tParm("%p1%p2%m%d", 5, 0) == "0"); // modulo (division by zero)
+        assert(ti.tParm("%{4}%{25}%*%d") == "100"); // multiplication
+        assert(ti.tParmString("%p1%l%d", "four") == "4"); // strlen
+        assert(ti.tParm("%p1%p2%=%d", 2, 2) == "1"); // equal
+        assert(ti.tParm("%p1%p2%=%d", 2, 3) == "0"); // equal (false)
+        assert(ti.tParm("%?%p1%p2%<%ttrue%efalse%;", 7, 8) == "true"); // NB: push/pop reverses order
+        assert(ti.tParm("%?%p1%p2%>%ttrue%efalse%;", 7, 8) == "false"); // NB: push/pop reverses order
+        assert(ti.tParm("x%p1%cx", 65) == "xAx"); // emit using %c, 'A' == 65 (ASCII)
+        assert(ti.tParm("x%'a'%p1%+%cx", 1) == "xbx"); // literal character encodes ASCII value
+        assert(ti.tParm("x%%x") == "x%x"); // literal % character
+        assert(ti.tParm("%_") == "%_"); // unrecognized sequence
+        assert(ti.tParm("%p2%d") == "0"); // invalid parameter, evaluates to zero (undefined behavior)
+        assert(ti.tParm("%p1%Pgx%gg%gg%dx%c", 65) == "x65xA"); // saved variables (dynamic)
+        assert(ti.tParm("%p1%PZx%gZ%d%gZ%dx", 789) == "x789789x"); // saved variables (static)
+        assert(ti.tParm("%gB%d") == "0"); // saved values are zero if not changed
+        assert(ti.tParm("%p1%Ph%p2%gh%+%Ph%p3%gh%*%d", 1, 2, 5) == "15"); // overwrite saved values
+        assert(ti.tParm("%p1%p2%&%d", 3, 10) == "2");
+        assert(ti.tParm("%p1%p2%|%d", 3, 10) == "11");
+        assert(ti.tParm("%p1%p2%^%d", 3, 10) == "9");
+        assert(ti.tParm("%p1%~%p2%&%d", 2, 0xff) == "253"); // bit complement, but mask it down
+        assert(ti.tParm("%p1%p2%<%p2%p3%<%A%d", 1, 2, 3) == "1"); // AND
+        assert(ti.tParm("%p1%p2%<%p2%p3%<%A%d", 1, 3, 2) == "0"); // AND false
+        assert(ti.tParm("%p1%p2%<%p2%p3%<%!%A%d", 1, 3, 2) == "1"); // NOT (and)
+        assert(ti.tParm("%p1%p2%<%p1%p2%=%O%d", 1, 1) == "1"); // OR
     }
 }
