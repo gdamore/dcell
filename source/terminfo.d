@@ -2,17 +2,18 @@
 /// License: MIT
 module github.gdamore.dcell.terminfo;
 
-import std.conv;
-import std.stdio;
 import core.thread;
+import std.algorithm;
+import std.conv;
+import std.process : environment;
+import std.stdio;
 import std.string;
 
-/**
-Terminfo represents the terminal strings and capabilities for a
-TTY based terminal.  The list of possible entries is not complete,
-as we only provide entries we have a meaningful use for.
-*/
-class Terminfo
+/** 
+ * Represents the actual capabilities - this is an entry in a terminfo
+ * database.
+ */
+struct Termcap
 {
     string name; /// primary name for terminal, e.g. "xterm"
     string[] aliases; /// alternate names for terminal
@@ -198,7 +199,16 @@ class Terminfo
     string enterURL; /// sequence to start making text a clickable link
     string exitURL; /// sequence to stop making text clickable link
     string setWindowSize; /// sequence to resize the window (rarely supported)
+}
 
+/**
+Terminfo represents the terminal strings and capabilities for a
+TTY based terminal.  The list of possible entries is not complete,
+as we only provide entries we have a meaningful use for.
+*/
+class Terminfo
+{
+    Termcap caps;
     private struct Parameter
     {
         int i;
@@ -276,7 +286,7 @@ class Terminfo
                 val = val[1 .. $];
             }
 
-            if (padChar.length > 0 && valid)
+            if (caps.padChar.length > 0 && valid)
             {
                 Thread.sleep(usec.usecs * mult);
             }
@@ -290,7 +300,7 @@ class Terminfo
 
         auto ti = new Terminfo;
         auto tmp = std.stdio.File.tmpfile();
-        ti.padChar = " ";
+        ti.caps.padChar = " ";
         auto now = Clock.currTime();
         ti.tPuts("AB$<1000>C", tmp);
         ti.tPuts("DEF$<100.5>\n", tmp);
@@ -306,6 +316,31 @@ class Terminfo
         ti.tPuts("Z$<123..0123>", tmp); // malformed dots 
         ti.tPuts("LMN$<12X>", tmp); // invalid number
         ti.tPuts("GHI$<123JKL", tmp); // unterminated delay
+    }
+
+    /** 
+     * Create an empty Terminfo.  This is mostly useless until the caps
+     * member is set.
+     */
+    this()
+    {
+    }
+
+    /** 
+     * Construct a Terminfo using the given capabilities.
+     *
+     * Params: 
+     *   tc = 
+     * Returns: 
+     */
+    this(const(Termcap) *tc)
+    {
+        caps = *cast(Termcap *)tc;
+    }
+
+    this(Terminfo src)
+    {
+        caps = src.caps;
     }
 
     /**
@@ -664,13 +699,13 @@ class Terminfo
 
     string tGoto(int col, int row)
     {
-        return tParm(setCursor, row, col);
+        return tParm(caps.setCursor, row, col);
     }
 
     string tColor(int fg, int bg)
     {
         string rv = "";
-        if (colors == 8)
+        if (caps.colors == 8)
         {
             // map 16 colors (4 bits) to 8 (3 bits), colors lose intensity
             if (fg > 7 && fg < 16)
@@ -682,13 +717,13 @@ class Terminfo
                 bg -= 8;
             }
         }
-        if (colors > fg && fg >= 0)
+        if (caps.colors > fg && fg >= 0)
         {
-            rv ~= tParm(setFg, fg);
+            rv ~= tParm(caps.setFg, fg);
         }
-        if (colors > bg && bg >= 0)
+        if (caps.colors > bg && bg >= 0)
         {
-            rv ~= tParm(setBg, bg);
+            rv ~= tParm(caps.setBg, bg);
         }
         return rv;
     }
@@ -697,25 +732,25 @@ class Terminfo
     {
         // these are taken from xterm, mostly
         Terminfo ti = new Terminfo;
-        ti.setCursor = "\x1b[%i%p1%d;%p2%dH";
-        ti.colors = 256;
-        ti.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
-        ti.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
-        ti.enterURL = "\x1b]8;;%p1%s\x1b\\";
-        assert(ti.tParm(ti.setCursor, 3, 4) == "\x1b[4;5H");
+        ti.caps.setCursor = "\x1b[%i%p1%d;%p2%dH";
+        ti.caps.colors = 256;
+        ti.caps.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
+        ti.caps.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
+        ti.caps.enterURL = "\x1b]8;;%p1%s\x1b\\";
+        assert(ti.tParm(ti.caps.setCursor, 3, 4) == "\x1b[4;5H");
         assert(ti.tGoto(3, 4) == "\x1b[5;4H");
         // this does not use combined foreground and background, only separate strings
         assert(ti.tColor(2, 3) == "\x1b[32m\x1b[43m");
         // covers the else clause handling
         assert(ti.tColor(2, 13) == "\x1b[32m\x1b[105m");
-        ti.colors = 8;
+        ti.caps.colors = 8;
         assert(ti.tColor(10, 11) == "\x1b[32m\x1b[43m"); // intense colors with just 8 colors
-        assert(ti.tParmString(ti.enterURL, "https://www.example.com") == "\x1b]8;;https://www.example.com\x1b\\");
+        assert(ti.tParmString(ti.caps.enterURL, "https://www.example.com") == "\x1b]8;;https://www.example.com\x1b\\");
         // tests of operators
-        ti.setCursor = "\x1b%p1%p2%+%d;";
-        assert(ti.tParm(ti.setCursor, 3, 4) == "\x1b7;");
-        ti.setCursor = "\x1b%p1%p2%-%d;";
-        assert(ti.tParm(ti.setCursor, 4, 3) == "\x1b1;");
+        ti.caps.setCursor = "\x1b%p1%p2%+%d;";
+        assert(ti.tParm(ti.caps.setCursor, 3, 4) == "\x1b7;");
+        ti.caps.setCursor = "\x1b%p1%p2%-%d;";
+        assert(ti.tParm(ti.caps.setCursor, 4, 3) == "\x1b1;");
         assert(ti.tParm("%{50}%{3}%-%d") == "47"); // subtraction
         assert(ti.tParm("%{50}%{5}%/%d") == "10"); // division
         assert(ti.tParm("%p1%p2%/%d", 50, 3) == "16"); // division with truncation
@@ -753,21 +788,21 @@ class Terminfo
 */
 synchronized class Database
 {
-    private static Terminfo[string] terms;
+    private static Termcap[string] terms;
 
     /**
     Adds an entry to the database.
     This should be called by terminal descriptions.
 
     Params:
-        ti = terminal entry to add
+        ti = terminal capabilities to add
     */
-    static void add(const(Terminfo) ti)
+    static void add(Termcap tc)
     {
-        terms[ti.name] = cast(Terminfo) ti;
-        foreach (name; ti.aliases)
+        terms[tc.name] = tc;
+        foreach (name; tc.aliases)
         {
-            terms[name] = cast(Terminfo) ti;
+            terms[name] = tc;
         }
     }
 
@@ -781,27 +816,107 @@ synchronized class Database
     Returns:
         terminal entry if known, `null` if not.
     */
-    static const(Terminfo) lookup(string name)
+    static Terminfo lookup(string name)
     {
+        auto addTrueColor = false;
+        auto add256Color = false;
+        auto valid = false;
+        immutable string[] exts = ["-256color", "-88color", "-color", ""];
+        string base = "";
+        Termcap tc;
+
+        auto colorTerm = environment.get("COLORTERM");
+        if (canFind(colorTerm, "truecolor") ||
+            canFind(colorTerm, "24bit") || canFind(colorTerm, "24-bit"))
+        {
+            addTrueColor = true;
+        }
         if (name in terms)
         {
-            return terms[name];
+            valid = true;
+            tc = terms[name];
+            if (tc.truecolor)
+            {
+                addTrueColor = true;
+            }
         }
-        return null;
+        else if (endsWith(name, "-truecolor"))
+        {
+            base = name[0 .. $ - "-truecolor".length];
+            addTrueColor = true;
+            add256Color = true;
+        }
+        else if (endsWith(name, "256color"))
+        {
+            base = name[0 .. $ - "-256color".length];
+            add256Color = true;
+        }
+        if (!valid && base != "")
+        {
+            foreach (suffix; exts)
+            {
+                auto ext = name ~ suffix;
+                if (ext in terms)
+                {
+                    tc = terms[ext];
+                    valid = true;
+                    break;
+                }
+            }
+        }
+
+        if (!valid)
+        {
+            return null;
+        }
+
+        // NB: tcell has TCELL_TRUECOLOR, but we defer to the value
+        // of COLORTERM.  The TCELL_TRUECOLOR thing was created before
+        // COLORTERM was widely adopted.
+
+        if (addTrueColor && tc.setFgBgRGB == "" && tc.setFgRGB == "" && tc.setBgRGB == "")
+        {
+            // vanilla ISO 8613-6:1994 24-bit color (ala xterm)
+            tc.setFgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%dm";
+            tc.setBgRGB = "\x1b[48;2;%p1%d;%p2%d;%p3%dm";
+            tc.setFgBgRGB = "\x1b[38;2;%p1%d;%p2%d;%p3%d;48;2;%p4%d;%p5%d;%p6%dm";
+            if (tc.resetColors == "")
+            {
+                tc.resetColors = "\x1b[39;49m;";
+            }
+            // assume we can also add 256 color
+            if (tc.colors < 256)
+            {
+                add256Color = true;
+            }
+        }
+
+        if (add256Color)
+        {
+            tc.colors = 256;
+            tc.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
+            tc.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
+            tc.setFgBg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;;" ~
+                "%?%p2%{8}%<%t4%p2%d%e%p2%{16}%<%t10%p2%{8}%-%d%e48;5;%p2%d%;m";
+            tc.resetColors = "\x1b[39;49m";
+        }
+
+        return new Terminfo(&tc);
     }
 }
 
 unittest
 {
-    auto ti = new Terminfo;
-    ti.name = "mytest";
-    ti.aliases ~= "mytest-1";
-    ti.aliases ~= "mytest-2";
+    Termcap caps;
+    caps.name = "mytest";
+    caps.aliases = ["mytest-1", "mytest-2"];
 
-    Database.add(ti);
+    Database.add(caps);
 
     assert(Database.lookup("nosuch") is null);
-    assert(Database.lookup("mytest") == ti);
-    assert(Database.lookup("mytest-1") == ti);
-    assert(Database.lookup("mytest-2") == ti);
+    auto ti = Database.lookup("mytest");
+    assert(!(ti is null) && ti.caps.name == "mytest");
+    // assert(Database.lookup("mytest") == ti);
+    // assert(Database.lookup("mytest-1") == ti);
+    // assert(Database.lookup("mytest-2") == ti);
 }
