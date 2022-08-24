@@ -333,9 +333,9 @@ class Terminfo
      *   tc = 
      * Returns: 
      */
-    this(const(Termcap) *tc)
+    this(const(Termcap)* tc)
     {
-        caps = *cast(Termcap *)tc;
+        caps = *cast(Termcap*) tc;
     }
 
     this(Terminfo src)
@@ -825,7 +825,7 @@ synchronized class Database
         string base = "";
         Termcap tc;
 
-        auto colorTerm = environment.get("COLORTERM");
+        auto colorTerm = environment["COLORTERM"];
         if (canFind(colorTerm, "truecolor") ||
             canFind(colorTerm, "24bit") || canFind(colorTerm, "24-bit"))
         {
@@ -855,7 +855,7 @@ synchronized class Database
         {
             foreach (suffix; exts)
             {
-                auto ext = name ~ suffix;
+                auto ext = base ~ suffix;
                 if (ext in terms)
                 {
                     tc = terms[ext];
@@ -915,8 +915,43 @@ unittest
 
     assert(Database.lookup("nosuch") is null);
     auto ti = Database.lookup("mytest");
-    assert(!(ti is null) && ti.caps.name == "mytest");
+    assert((ti !is null) && ti.caps.name == "mytest");
     // assert(Database.lookup("mytest") == ti);
     // assert(Database.lookup("mytest-1") == ti);
     // assert(Database.lookup("mytest-2") == ti);
+
+    environment["COLORTERM"] = "truecolor";
+    ti = Database.lookup("mytest-truecolor");
+    assert(ti !is null);
+    assert(ti.caps.colors == 256);
+    assert(ti.caps.setFgBgRGB != "");
+    assert(ti.caps.setFg != "");
+    assert(ti.caps.resetColors != "");
+
+    environment["COLORTERM"] = "";
+    ti = Database.lookup("mytest-256color");
+    assert(ti !is null);
+    assert(ti.caps.colors == 256);
+    assert(ti.caps.setFgBgRGB == "");
+    assert(ti.caps.setFgBg != "");
+    assert(ti.caps.setFg != "");
+    assert(ti.caps.resetColors != "");
+
+    caps.truecolor = true;
+    caps.aliases = [];
+    caps.name = "ctest";
+    Database.add(caps);
+    ti = Database.lookup("ctest");
+    assert(ti !is null);
+    assert(ti.caps.colors == 256);
+    assert(ti.caps.setFgBgRGB != "");
+    assert(ti.caps.setFg != "");
+    assert(ti.caps.resetColors != "");
+
+    ti = new Terminfo(ti);
+    assert(ti !is null);
+    assert(ti.caps.colors == 256);
+    assert(ti.caps.setFgBgRGB != "");
+    assert(ti.caps.setFg != "");
+    assert(ti.caps.resetColors != "");
 }
