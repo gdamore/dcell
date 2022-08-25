@@ -1,5 +1,6 @@
-dcell
-=====
+# dcell
+
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
 This is a very vestigal effort to "rewrite" my well-known tcell (for Go)
 project into D.
