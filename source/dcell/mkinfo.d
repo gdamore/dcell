@@ -53,7 +53,7 @@ private struct Caps
 * sequences such as \n, but also octal sequences.  A lone \0 is understood
 * to represent a special form of NULL.  See terminfo(5) for more information.
 */
-string unescape(string s)
+private string unescape(string s)
 {
     enum escape
     {
@@ -518,19 +518,16 @@ unittest
 
 OutBuffer mkTermSource(Termcap* tc, string modname)
 {
-    string varname = tc.name;
     auto ob = new OutBuffer;
-    varname=replace(varname, "-", "_");
-    varname=replace(varname, "+", "_plus_");
 
     ob.writefln("// Generated automatically.  DO NOT HAND-EDIT.");
     ob.writefln("");
-    ob.writefln("module %s", modname);
+    ob.writefln("module %s;", modname);
     ob.writefln("");
-    ob.writefln("import gdamore.dcell.terminfo;");
+    ob.writefln("import dcell.terminfo.database;");
     ob.writefln("");
     ob.writefln("// %s", tc.name);
-    ob.writefln("static Termcap %s = {", varname);
+    ob.writefln("static immutable Termcap term = {");
 
     void addInt(string n, int i)
     {
@@ -595,6 +592,11 @@ OutBuffer mkTermSource(Termcap* tc, string modname)
     }
 
     ob.writefln("};");
+    ob.writefln("");
+    ob.writefln("static this()");
+    ob.writefln("{");
+    ob.writefln("    Database.add(&term);");
+    ob.writefln("}");
     return ob;
 }
 
@@ -603,6 +605,6 @@ unittest
     assert(getTermcap("nosuch") is null);
     auto tc = getTermcap("xterm-256color");
     assert(tc !is null);
-    auto ob = mkTermSource(tc, "gdamore.dcell.term.xterm256color");
+    auto ob = mkTermSource(tc, "gdamore.dcell.terminfo.xterm256color");
     writefln("HERE IT IS\n%s\n", ob.toString());
 }
