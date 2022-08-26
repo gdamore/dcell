@@ -22,7 +22,7 @@ import dcell.terminfo.termcap;
 * Caps represents a "parsed" terminfo entry, before it is converted into
 * a Termcap structure.
 */
-struct Caps
+private struct Caps
 {
     string name;
     string desc;

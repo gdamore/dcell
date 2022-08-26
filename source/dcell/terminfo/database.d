@@ -17,7 +17,10 @@ import dcell.terminfo.terminal;
 */
 synchronized class Database
 {
+    private alias iterm = const Termcap*;
     private static Termcap[string] terms;
+    //private static Termcap*[string] entries;
+    private static const(Termcap)*[string] entries;
 
     /**
     Adds an entry to the database.
@@ -26,82 +29,67 @@ synchronized class Database
     Params:
         ti = terminal capabilities to add
     */
-    static void add(Termcap tc)
+    static void put(const(Termcap)* tc)
     {
-        terms[tc.name] = tc;
+        entries[tc.name] = tc;
         foreach (name; tc.aliases)
         {
-            terms[name] = tc;
+            entries[name] = tc;
         }
     }
 
     /**
     Looks up an entry in the database.
     The name is most likely to be taken from the $TERM environment variable.
+    Some massaging of the entry is done to amend with capabilities and support
+    reasonable fallbacks.
 
     Params:
         name = name of the terminal (typically from $TERM)
 
     Returns:
-        terminal entry if known, `null` if not.
+        terminal capabilities if known, `null` if not.
     */
-    static Terminfo lookup(string name)
+    static const(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false)
     {
-        auto addTrueColor = false;
-        auto add256Color = false;
-        auto valid = false;
-        immutable string[] exts = ["-256color", "-88color", "-color", ""];
-        string base = "";
-        Termcap tc;
+        if (name !in entries)
+        {
+            // this handles fallbacks for each possible color terminal
+            // note that going from "-color" to non-color will wind up
+            // falling back to b&w.  we could possibly have a method to
+            // add 16 and 8 color fallbacks.
+            if (endsWith(name, "-truecolor"))
+            {
+                return get(name[0 .. $ - "-truecolor".length]~"-256color", true, true);
+            }
+            if (endsWith(name, "-256color"))
+            {
+                return get(name[0 .. $ - "-256color".length]~"-88color", addTrueColor, true);
+            }
+            if (endsWith(name, "-88color"))
+            {
+                return get(name[0..$-"-88color".length]~"-color", addTrueColor, add256Color);
+            }
+            if (endsWith(name, "-color"))
+            {
+                return get(name[0..$-"-color".length], addTrueColor, add256Color);
+            }
+            return null;
+        }
 
         auto colorTerm = environment["COLORTERM"];
-        if (canFind(colorTerm, "truecolor") ||
+        auto tc = new Termcap;
+
+        // poor mans copy, but we have to bypass the const,
+        // although we're not going to change actual values.
+        // we promise not to modify the aliases array.
+        *tc = *(cast(Termcap *)(entries[name]));
+
+        if (tc.truecolor || canFind(colorTerm, "truecolor") ||
             canFind(colorTerm, "24bit") || canFind(colorTerm, "24-bit"))
         {
             addTrueColor = true;
         }
-        if (name in terms)
-        {
-            valid = true;
-            tc = terms[name];
-            if (tc.truecolor)
-            {
-                addTrueColor = true;
-            }
-        }
-        else if (endsWith(name, "-truecolor"))
-        {
-            base = name[0 .. $ - "-truecolor".length];
-            addTrueColor = true;
-            add256Color = true;
-        }
-        else if (endsWith(name, "256color"))
-        {
-            base = name[0 .. $ - "-256color".length];
-            add256Color = true;
-        }
-        if (!valid && base != "")
-        {
-            foreach (suffix; exts)
-            {
-                auto ext = base ~ suffix;
-                if (ext in terms)
-                {
-                    tc = terms[ext];
-                    valid = true;
-                    break;
-                }
-            }
-        }
-
-        if (!valid)
-        {
-            return null;
-        }
-
-        // NB: tcell has TCELL_TRUECOLOR, but we defer to the value
-        // of COLORTERM.  The TCELL_TRUECOLOR thing was created before
-        // COLORTERM was widely adopted.
 
         if (addTrueColor && tc.setFgBgRGB == "" && tc.setFgRGB == "" && tc.setBgRGB == "")
         {
@@ -130,7 +118,7 @@ synchronized class Database
             tc.resetColors = "\x1b[39;49m";
         }
 
-        return new Terminfo(&tc);
+        return tc;
     }
 }
 
@@ -140,44 +128,43 @@ unittest
     caps.name = "mytest";
     caps.aliases = ["mytest-1", "mytest-2"];
 
-    Database.add(caps);
+    Database.put(&caps);
 
-    assert(Database.lookup("nosuch") is null);
-    auto ti = Database.lookup("mytest");
-    assert((ti !is null) && ti.caps.name == "mytest");
-    // assert(Database.lookup("mytest") == ti);
-    // assert(Database.lookup("mytest-1") == ti);
-    // assert(Database.lookup("mytest-2") == ti);
+    assert(Database.get("nosuch") is null);
+    auto tc = Database.get("mytest");
+    assert((tc !is null) && tc.name == "mytest");
+    assert(Database.get("mytest-1") !is null);
+    assert(Database.get("mytest-2") !is null);
 
     environment["COLORTERM"] = "truecolor";
-    ti = Database.lookup("mytest-truecolor");
-    assert(ti !is null);
-    assert(ti.caps.colors == 256);
-    assert(ti.caps.setFgBgRGB != "");
-    assert(ti.caps.setFg != "");
-    assert(ti.caps.resetColors != "");
+    tc = Database.get("mytest-truecolor");
+    assert(tc !is null);
+    assert(tc.colors == 256);
+    assert(tc.setFgBgRGB != "");
+    assert(tc.setFg != "");
+    assert(tc.resetColors != "");
 
     environment["COLORTERM"] = "";
-    ti = Database.lookup("mytest-256color");
-    assert(ti !is null);
-    assert(ti.caps.colors == 256);
-    assert(ti.caps.setFgBgRGB == "");
-    assert(ti.caps.setFgBg != "");
-    assert(ti.caps.setFg != "");
-    assert(ti.caps.resetColors != "");
+    tc = Database.get("mytest-256color");
+    assert(tc !is null);
+    assert(tc.colors == 256);
+    assert(tc.setFgBgRGB == "");
+    assert(tc.setFgBg != "");
+    assert(tc.setFg != "");
+    assert(tc.resetColors != "");
 
     caps.truecolor = true;
     caps.aliases = [];
     caps.name = "ctest";
-    Database.add(caps);
-    ti = Database.lookup("ctest");
-    assert(ti !is null);
-    assert(ti.caps.colors == 256);
-    assert(ti.caps.setFgBgRGB != "");
-    assert(ti.caps.setFg != "");
-    assert(ti.caps.resetColors != "");
+    Database.put(&caps);
+    tc = Database.get("ctest");
+    assert(tc !is null);
+    assert(tc.colors == 256);
+    assert(tc.setFgBgRGB != "");
+    assert(tc.setFg != "");
+    assert(tc.resetColors != "");
 
-    ti = new Terminfo(ti);
+    auto ti = new Terminfo(tc);
     assert(ti !is null);
     assert(ti.caps.colors == 256);
     assert(ti.caps.setFgBgRGB != "");
