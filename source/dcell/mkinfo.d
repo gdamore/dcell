@@ -4,7 +4,7 @@
  * This module implements a command to extra terminfo data from the system,
  * and build a database of Termcap data for use by this library.
  */
-module mkinfo;
+module dcell.mkinfo;
 
 import std.algorithm : findSplit;
 import std.stdio;
@@ -15,7 +15,8 @@ import std.outbuffer;
 import std.traits;
 import std.conv;
 
-import github.gdamore.dcell.terminfo : Termcap;
+import dcell.terminfo;
+import dcell.terminfo.termcap;
 
 /**
 * Caps represents a "parsed" terminfo entry, before it is converted into
