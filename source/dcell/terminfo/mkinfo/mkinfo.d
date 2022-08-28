@@ -4,7 +4,7 @@
  * This module implements a command to extra terminfo data from the system,
  * and build a database of Termcap data for use by this library.
  */
-module dcell.mkinfo;
+module mkinfo;
 
 import std.algorithm : findSplit;
 import std.stdio;
@@ -291,6 +291,11 @@ Termcap* getTermcap(string name)
     {
         return null;
     }
+    return convertCaps(caps);
+}
+
+private Termcap* convertCaps(Caps* caps)
+{
     auto tc = new Termcap;
     tc.name = caps.name;
     tc.aliases = caps.aliases;
@@ -558,8 +563,10 @@ OutBuffer mkTermSource(Termcap* tc, string modname)
         if (a.length > 0)
         {
             ob.writef("    %s: [", n);
-            foreach(i, string s; a) {
-                if (i > 0) {
+            foreach (i, string s; a)
+            {
+                if (i > 0)
+                {
                     ob.writef(", ");
                 }
                 ob.writef(`"%s"`, escape(s));
@@ -607,4 +614,16 @@ unittest
     assert(tc !is null);
     auto ob = mkTermSource(tc, "gdamore.dcell.terminfo.xterm256color");
     writefln("HERE IT IS\n%s\n", ob.toString());
+}
+
+version (unittest)
+{
+
+}
+else
+{
+    void main()
+    {
+        // blah blah
+    }
 }

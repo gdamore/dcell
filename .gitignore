@@ -1,0 +1,4 @@
+*.lst
+*.o
+*.a
+*-test-library
