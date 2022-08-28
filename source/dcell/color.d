@@ -674,8 +674,11 @@ shared static this()
     palValues[0xEEEEEE] = cast(Color) 255;
 }
 
-/// Return the hex code value, i.e. R << 16 | G << 8 | B.
-/// If we cannot determine it, -1 is returned.
+/// Obtain the numeric value of the RGB for the color.
+///
+/// Params:
+///  c = a Color
+/// Returns: Numeric RGB value for color, or -1 if it cannot be represented.
 int toHex(Color c)
 {
     if ((c & Color.isRGB) != 0)
@@ -689,6 +692,11 @@ int toHex(Color c)
     return (-1);
 }
 
+/// Create a color from RGB values.
+/// 
+/// Params:
+///   rgb = hex value, red << 16 | green << 8 | blue
+/// Returns: The associated Color, or Color.invalid if a bad value for rgb was supplied.
 Color fromHex(int rgb)
 {
     if (rgb < 1 << 24)
@@ -698,6 +706,14 @@ Color fromHex(int rgb)
     return Color.invalid;
 }
 
+/// Convert a color to RGB form.  This is useful to convert
+/// palette based colors to their full RGB values, which will provide
+/// fidelity when the terminal supports it, but consequently does not
+/// honor terminal preferences for color palettes.
+///
+/// Params:
+///   c = a valid Color   
+/// Returns: An RGB format Color, Color.invalid if it cannot be determined.
 Color toRGB(Color c)
 {
     if ((c & Color.isRGB) != 0)
@@ -711,11 +727,25 @@ Color toRGB(Color c)
     return Color.invalid;
 }
 
+/// Is the color in RGB format? RGB format colors will try to be accurate
+/// on the terminal, and will not honor user preferences.
+/// Params:
+///   c = a valid color
+/// Returns: true if the color is an RGB format color
 bool isRGB(Color c)
 {
     return (c & Color.isRGB) != 0;
 }
 
+/// Given a color, try to find an associated palette entry for it.
+/// This will try to find the lowest numbered palette entry.
+/// The palette entry might be a higher numbered color than the
+/// terminal can support, if it does not support a 256 color palette.
+/// This performs exact color matches only.
+/// 
+/// Params:
+///   c = a valid Color
+/// Returns: the palette Color matching c, if one is found, or Color.invalid if not found
 Color toPalette(Color c)
 {
     if (c in rgbValues)
