@@ -1,5 +1,8 @@
-/// Copyright: 2022 Garrett D'Amore
-/// License: MIT
+// Copyright 2022 Garrett D'Amore
+//
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+
 module dcell.terminfo.terminal;
 
 import core.thread;
@@ -13,9 +16,9 @@ import dcell.terminfo.termcap;
 import dcell.terminfo.database;
 
 /**
-Terminfo represents the terminal strings and capabilities for a
-TTY based terminal.  The list of possible entries is not complete,
-as we only provide entries we have a meaningful use for.
+ * Terminfo represents the terminal strings and capabilities for a
+ * TTY based terminal.  The list of possible entries is not complete,
+ * as we only provide entries we have a meaningful use for.
 */
 class Terminfo
 {
@@ -27,19 +30,19 @@ class Terminfo
     }
 
     /**
-    Emits the string, evaluating any inline padding escapes and applying
-    delays.  These escapes are of the form $<delay> where delay is a number
-    of milliseconds (decimal fractions are permitted).  All output from
-    terminfo should be emitted using this function to ensure any embedded
-    delays are applied.  (Note that most modern terminals do not need delays.)
-    This implementation injects delays using the clock, rather that using
-    padding characters, but a padding character must be supplied or the
-    delay wil be ignored.
-
-    Params:
-        s = string to emit (possibly with delay escapes)
-        f = file to write write it to
-    */
+     * Emits the string, evaluating any inline padding escapes and applying
+     * delays.  These escapes are of the form $<delay> where delay is a number
+     * of milliseconds (decimal fractions are permitted).  All output from
+     * terminfo should be emitted using this function to ensure any embedded
+     * delays are applied.  (Note that most modern terminals do not need delays.)
+     * This implementation injects delays using the clock, rather that using
+     * padding characters, but a padding character must be supplied or the
+     * delay wil be ignored.
+     *
+     * Params:
+     *   s = string to emit (possibly with delay escapes)
+     *   f = file to write write it to
+     */
     void tPuts(string s, File f)
     {
         while (s.length > 0)
@@ -142,8 +145,7 @@ class Terminfo
      * Construct a Terminfo using the given capabilities.
      *
      * Params: 
-     *   tc = 
-     * Returns: 
+     *   tc = capabilities for this terminal
      */
     this(const(Termcap)* tc)
     {

@@ -1,5 +1,8 @@
-/// Copyright: 2022 Garrett D'Amore
-/// License: MIT
+// Copyright 2022 Garrett D'Amore
+//
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+
 module dcell.terminfo.database;
 
 import core.thread;
@@ -13,8 +16,8 @@ public import dcell.terminfo.termcap;
 import dcell.terminfo.terminal;
 
 /**
-    Represents a database of terminal entries, indexed by their name.
-*/
+ * Represents a database of terminal entries, indexed by their name.
+ */
 synchronized class Database
 {
     private alias iterm = const Termcap*;
@@ -23,12 +26,12 @@ synchronized class Database
     private static const(Termcap)*[string] entries;
 
     /**
-    Adds an entry to the database.
-    This should be called by terminal descriptions.
-
-    Params:
-        ti = terminal capabilities to add
-    */
+     * Adds an entry to the database.
+     * This should be called by terminal descriptions.
+     *
+     * Params:
+     *   ti = terminal capabilities to add
+     */
     static void put(const(Termcap)* tc)
     {
         entries[tc.name] = tc;
@@ -39,17 +42,17 @@ synchronized class Database
     }
 
     /**
-    Looks up an entry in the database.
-    The name is most likely to be taken from the $TERM environment variable.
-    Some massaging of the entry is done to amend with capabilities and support
-    reasonable fallbacks.
-
-    Params:
-        name = name of the terminal (typically from $TERM)
-
-    Returns:
-        terminal capabilities if known, `null` if not.
-    */
+     * Looks up an entry in the database.
+     * The name is most likely to be taken from the $TERM environment variable.
+     * Some massaging of the entry is done to amend with capabilities and support
+     * reasonable fallbacks.
+     *
+     * Params:
+     *   name = name of the terminal (typically from $TERM)
+     *
+     * Returns:
+     *   terminal capabilities if known, `null` if not.
+     */
     static const(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false)
     {
         if (name !in entries)

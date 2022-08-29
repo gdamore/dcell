@@ -1,6 +1,9 @@
-/** 
- * Copyright: 2022 Garrett D'Amore
- *
+// Copyright 2022 Garrett D'Amore
+//
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+
+/**
  * This module implements a command to extra terminfo data from the system,
  * and build a database of Termcap data for use by this library.
  */
@@ -19,9 +22,9 @@ import dcell.terminfo;
 import dcell.terminfo.termcap;
 
 /**
-* Caps represents a "parsed" terminfo entry, before it is converted into
-* a Termcap structure.
-*/
+ * Caps represents a "parsed" terminfo entry, before it is converted into
+ * a Termcap structure.
+ */
 private struct Caps
 {
     string name;
@@ -618,7 +621,7 @@ unittest
 
 version (unittest)
 {
-
+    // when unittest with dub, we don't want a main program
 }
 else
 {
