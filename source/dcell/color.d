@@ -12,7 +12,7 @@ module dcell.color;
 /// set, then the lower 24 bits are a 24-bit direct color (RGB).
 enum Color : uint
 {
-    none = 1 << 24, /// color is a special tag and not actually a color
+    none = 1 << 24, /// no color change
     reset = none + 1, /// reset color to terminal defaults
     invalid = none + 2, /// generically an invalid color
     isRGB = 1 << 31, /// indicates that the low 24-bits are red, green blue
