@@ -15,6 +15,10 @@ enum Key : short
 {
     none = 0,
 
+    // control keys are assigned their ASCII values
+    // these definitions should not be used by apps, but instead
+    // by using key rune, the character, and a modifier.
+    // TODO: consider just removing these.
     ctrlSpace = 0,
     ctrlA,
     ctrlB,
@@ -48,7 +52,7 @@ enum Key : short
     ctrlCarat,
     ctrlUnderscore,
 
-    rune = 256, // start of defined keys -- values less than this are identity mapped to their ASCII value
+    rune = 256, // start of defined keys, numbered high to avoid conflicts
     up,
     down,
     right,
@@ -62,8 +66,8 @@ enum Key : short
     pgDn,
     home,
     end,
-    ins,
-    del,
+    insert,
+    del2, // secondary delete button, apart from DEL
     help,
     exit,
     clear,
@@ -143,9 +147,13 @@ enum Key : short
     tab = 9,
     esc = 27,
     enter = 13,
-    delete_ = 127,
+    del = 127, // Note del2 has a different value
 }
 
+/** 
+ * Modifiers are special keys that when combined with other keys
+ * change their meaning.
+ */
 enum Modifiers : short
 {
     none = 0,
@@ -156,12 +164,12 @@ enum Modifiers : short
 }
 
 /**
- * KeyEvent represents a single pressed key, possibly with modifiers.
+ * This represents a single pressed key, possibly with modifiers.
  */
 struct KeyEvent
 {
-    Key key; /// key press
-    char ch; /// set if key == rune
-    Modifiers mod; /// any modifiers?
-    MonoTime when; /// when the event fired
+    Key key; /// Key pressed.
+    char ch; /// Set if key == rune.
+    Modifiers mod; /// Any modifiers pressed together.
+    MonoTime when; /// When the event fired.
 }
