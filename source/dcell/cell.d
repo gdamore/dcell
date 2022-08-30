@@ -34,18 +34,18 @@ struct Cell
  */
 class CellBuffer
 {
-    private Coord size;
+    private Coord size_;
     private Cell[] cells; // current content - linear for performance
     private Cell[] prev; // previous content - linear for performance
 
     private int index(Coord pos)
     {
-        return (pos.y * size.x + pos.x);
+        return (pos.y * size_.x + pos.x);
     }
 
     private bool isLegal(Coord pos)
     {
-        return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size.x) && (pos.y < size.y));
+        return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
 
     this(const int cols, const int rows)
@@ -53,9 +53,9 @@ class CellBuffer
         this(Coord(cols, rows));
     }
 
-    this(Coord sz)
+    this(Coord size)
     {
-        size = sz;
+        size_ = size;
         cells = new Cell[size.x * size.y];
         prev = new Cell[size.x * size.y];
         for (int i = 0; i < cells.length; i++)
@@ -63,21 +63,6 @@ class CellBuffer
             cells[i].width = 1;
             cells[i].text = " ";
         }
-    }
-
-    /**
-     * Is a cell dirty?  Dirty means that the cell has some content
-     * or style change that has not been written to the terminal yet.
-     * Writes of identical content to what was last displayed do not
-     * cause a cell to become dirty -- only *different* content does.
-     *
-     * Params:
-     *   x = column (0 is left most)
-     *   y = row (0 is top)
-     */
-    bool dirty(int x, int y)
-    {
-        return dirty(Coord(x, y));
     }
 
     /**
@@ -112,7 +97,7 @@ class CellBuffer
      */
     void setDirty(Coord pos, bool b)
     {
-        if ((pos.x >= 0) && (pos.x < size.x) && (pos.y >= 0) && (pos.y < size.y))
+        if (isLegal(pos))
         {
             auto ix = index(pos);
             if (b)
@@ -280,13 +265,13 @@ class CellBuffer
      * content.  The entire set of contents are marked dirty, because
      * presumably everything needs to be redrawn when this happens.
      */
-    void resize(Coord newSz)
+    void resize(Coord size)
     {
-        if (size == newSz)
+        if (size_ == size)
         {
             return;
         }
-        auto newCells = new Cell[newSz.x * newSz.y];
+        auto newCells = new Cell[size.x * size.y];
         for (int i = 0; i < newCells.length; i++)
         {
             // prefill with whitespace
@@ -294,17 +279,17 @@ class CellBuffer
             newCells[i].width = 1;
         }
         // maximum dimensions to copy (minimum of dimensions)
-        int lx = min(newSz.x, size.x);
-        int ly = min(newSz.y, size.y);
+        int lx = min(size.x, size_.x);
+        int ly = min(size.y, size_.y);
 
         for (int y = 0; y < ly; y++)
         {
             for (int x = 0; x < lx; x++)
             {
-                newCells[y * newSz.x + x] = cells[y * size.x + x];
+                newCells[y * size.x + x] = cells[y * size_.x + x];
             }
         }
-        size = newSz;
+        size_ = size;
         cells = newCells;
         prev = new Cell[size.x * size.y];
     }
@@ -314,12 +299,16 @@ class CellBuffer
         resize(Coord(cols, rows));
     }
 
+    Coord size() {
+        return size_;
+    }
+
     unittest
     {
         auto cb = new CellBuffer(80, 24);
         assert(cb.cells.length == 24 * 80);
         assert(cb.prev.length == 24 * 80);
-        assert(cb.size == Coord(80, 24));
+        assert(cb.size_ == Coord(80, 24));
 
         cb[Coord(2, 5)] = "b";
         assert(cb[2, 5].text == "b");
@@ -328,7 +317,7 @@ class CellBuffer
         assert(c.width == 1);
         assert(c.text == "b");
         assert(c.style == st);
-        assert(cb.cells[5 * cb.size.x + 2].text == "b");
+        assert(cb.cells[5 * cb.size_.x + 2].text == "b");
 
         st.bg = Color.white;
         st.fg = Color.blue;
@@ -371,7 +360,7 @@ class CellBuffer
         cb[2, 0] = c;
         c = cb[2, 0];
         assert(c.text == "@");
-        assert(cb.dirty(2, 0));
+        assert(cb.dirty(Coord(2, 0)));
 
         cb[-1, 10] = c;
         c = cb[-1, 10];
@@ -379,7 +368,7 @@ class CellBuffer
         assert(c.style.bg == Color.none);
         assert(c.style.fg == Color.none);
         assert(c.style.attr == Attr.none);
-        assert(!cb.dirty(-1, 10));
+        assert(!cb.dirty(Coord(-1, 10)));
 
         cb[Coord(1, -10)] = c; // invalid
         c = cb[Coord(1, -10)];
@@ -403,14 +392,14 @@ class CellBuffer
         cb[1, 1] = st;
         assert(cb[1, 1].style == st);
         assert(cb[1, 1].text == "U");
-        assert(cb.dirty(1, 1));
-        assert(!cb.dirty(2, 1));
+        assert(cb.dirty(Coord(1, 1)));
+        assert(!cb.dirty(Coord(2, 1)));
 
         assert(cb.prev[0] == cb.cells[0]);
 
         cb.setDirty(Coord(2, 1), true);
-        assert(cb.dirty(2, 1));
-        assert(!cb.dirty(3, 1));
+        assert(cb.dirty(Coord(2, 1)));
+        assert(!cb.dirty(Coord(3, 1)));
 
         cb.setDirty(Coord(3, 1), false);
         assert(!cb.dirty(Coord(3, 1)));
@@ -425,12 +414,12 @@ class CellBuffer
         assert(cb[1, 23].text == "A");
         assert(cb[79, 23].text == "A");
         cb.resize(132, 50);
-        assert(cb.size == Coord(132, 50));
+        assert(cb.size() == Coord(132, 50));
         assert(cb[79, 23].text == "A");
         assert(cb[80, 23].text == " ");
         assert(cb[79, 24].text == " ");
         cb.resize(132, 50); // this should be a no-op
-        assert(cb.size == Coord(132, 50));
+        assert(cb.size() == Coord(132, 50));
         assert(cb[79, 23].text == "A");
         assert(cb[80, 23].text == " ");
         assert(cb[79, 24].text == " ");
