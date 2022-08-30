@@ -102,6 +102,7 @@ class Terminfo
 
             if (caps.padChar.length > 0 && valid)
             {
+                f.flush(); // have to flush this out
                 Thread.sleep(usec.usecs * mult);
             }
         }
