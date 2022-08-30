@@ -5,6 +5,8 @@
 
 module dcell.tty;
 
+import std.stdio : File;
+
 /**
  * A common interface for TTY style devices, such as serial ports or
  * terminal line disciplines used by terminal emulators.
@@ -55,4 +57,9 @@ interface Tty {
      * Write some bytes to the tty.
     */
     void write(byte[]);
+
+    /**
+     * Get the underlying file.
+     */
+    ref File file();
 }
