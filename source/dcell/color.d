@@ -5,6 +5,8 @@
 
 module dcell.color;
 
+import std.typecons;
+
 /// Color is a what you think, almost.
 /// However, the upper bits of the color are used to indicate special behaviors.
 /// If the value upper 24-bits are clear, then the value is an index into a
@@ -768,15 +770,24 @@ Color toPalette(Color c)
     return Color.invalid;
 }
 
+/**
+ * decompose a color into red, green, and blue values.
+ */
+auto decompose(Color c)
+{
+    c = toRGB(c);
+    return Tuple!(int, int, int)((c & 0xff0000) >> 16, ((c & 0xff00) >> 8), (c & 0xff));
+}
+
 unittest
 {
     assert(toPalette(Color.red) == Color.red);
     assert(toPalette(cast(Color) 300) == Color.invalid);
     assert(toPalette(cast(Color) 0x00FF00 | Color.isRGB) == Color.lime);
     assert(toHex(Color.invalid) == -1);
-    assert(toRGB(cast(Color)512) == Color.invalid);
+    assert(toRGB(cast(Color) 512) == Color.invalid);
     assert(toRGB(Color.reset) == Color.invalid);
-    assert(fromHex(cast(int)Color.reset) == Color.invalid);
+    assert(fromHex(cast(int) Color.reset) == Color.invalid);
     for (int i = 0; i < 256; i++)
     {
         auto r = toHex(cast(Color) i);
@@ -799,7 +810,14 @@ unittest
             }
         }
     }
-    for (Color c = Color.black; c <= Color.white; c++) {
+    for (Color c = Color.black; c <= Color.white; c++)
+    {
         assert(toPalette(toRGB(c)) == c);
     }
+    assert(decompose(Color.yellowGreen)[0] == 0x9a);
+    assert(decompose(Color.yellowGreen)[1] == 0xcd);
+    assert(decompose(Color.yellowGreen)[2] == 0x32);
+    assert(decompose(Color.red)[0] == 0xff);
+    assert(decompose(Color.red)[1] == 0);
+    assert(decompose(Color.red)[2] == 0);
 }
