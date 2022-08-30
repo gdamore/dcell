@@ -5,16 +5,15 @@
 
 module dcell.devtty;
 
-import std.exception;
+version (Posix)  : import std.exception;
 import std.stdio;
 import core.sys.posix.fcntl;
 import core.sys.posix.unistd;
 import core.sys.posix.termios;
 import core.sys.posix.sys.ioctl;
+import core.stdc.errno;
 
 import dcell.tty;
-
-version(POSIX):
 
 /**
  * A tty implemented on top of the /dev/tty device found on common
@@ -43,7 +42,7 @@ class DevTty : Tty
         raw.c_cflag |= CS8;
         raw.c_cc[VMIN] = 1; // at least one character
         raw.c_cc[VTIME] = 0; // but block forever
-        enforce(tcsetattr(fd, TCSANOW, &raw), "failed to set termios");
+        enforce(tcsetattr(fd, TCSANOW, &raw) >= 0, "failed to set termios");
     }
 
     private void restore()
@@ -55,7 +54,10 @@ class DevTty : Tty
     {
         f = File(path, "r+b");
         fd = f.fileno();
-        enforce(isatty(fd), "file must be a tty");
+        if (!isatty(fd))
+        {
+            throw new ErrnoException("not a tty", ENOTTY);
+        }
 
         makeraw();
         // setup signal notification? or let that be done via elsewhere?
@@ -76,11 +78,11 @@ class DevTty : Tty
     void drain()
     {
         termios tio;
-        enforce(tcgetattr(fd, &tio));
+        enforce(tcgetattr(fd, &tio) >= 0);
         // set this to non-blocking
         tio.c_cc[VMIN] = 0;
         tio.c_cc[VTIME] = 0;
-        enforce(tcsetattr(fd, TCSANOW, &tio));
+        enforce(tcsetattr(fd, TCSANOW, &tio) >= 0);
     }
 
     void windowSize(ref int width, ref int height)
@@ -145,5 +147,39 @@ class DevTty : Tty
     {
         auto b = new byte[128];
         return f.rawRead(b);
+    }
+}
+
+unittest
+{
+    auto dt = new DevTty("/etc/this-file-does-not-exist");
+    assertThrown!ErrnoException(dt.start(),
+        `should have failed to open a non-existant file`);
+}
+
+unittest
+{
+    auto dt = new DevTty("/dev/null");
+    assertThrown!ErrnoException(dt.start(),
+        `should have failed to open non-tty device`);
+}
+
+unittest
+{
+    DevTty dt;
+    import std.stdio;
+    import std.exception;
+
+    if (isatty(stdin.fileno()))
+    {
+        int rows, cols;
+        dt = new DevTty();
+        dt.start();
+        dt.windowSize(cols, rows);
+        dt.write(cast(byte[])"Here is some text.\r\n");
+        dt.drain();
+        auto b = dt.read();
+        dt.stop();
+        writefln("Terminal size %dx%d", cols, rows);
     }
 }
