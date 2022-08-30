@@ -5,7 +5,6 @@
 
 module dcell.ttyscreen;
 
-version(ignored):
 import dcell.cell;
 import dcell.coord;
 import dcell.terminfo;
@@ -209,6 +208,28 @@ private:
     // sendCursor sends the current cursor location
     void sendCursor()
     {
+        if (!cells.isLegal(cursor_))
+        {
+            if (ti.caps.hideCursor != "")
+            {
+                puts(ti.caps.hideCursor);
+            }
+            else
+            {
+                // go to last cell (lower right)
+                // this is the best we can do to move the cursor
+                // out of the way.
+                auto size = cells.size();
+                goTo(Coord(size.x - 1, size.y - 1));
+            }
+            return;
+        }
+        goTo(cursor_);
+        puts(ti.caps.showCursor);
+        // TODO: cursor style
+
+        // update our location
+        pos_ = cursor_;
     }
 
     // drawCell draws one cell.  It returns the width drawn (1 or 2).

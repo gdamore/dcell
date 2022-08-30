@@ -43,7 +43,7 @@ class CellBuffer
         return (pos.y * size_.x + pos.x);
     }
 
-    private bool isLegal(Coord pos)
+    bool isLegal(Coord pos)
     {
         return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
