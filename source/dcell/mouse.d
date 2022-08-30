@@ -36,6 +36,23 @@ enum Buttons : short
 
 /**
  * MouseEvent represents a single pressed key, possibly with modifiers.
+ * It is sent on either mouse up or mouse down events.  It is also sent on
+ * mouse motion events - if the terminal supports it.
+ *
+ * We make every effort to ensure that mouse release events are delivered.
+ * Hence, click drag can be identified by a motion event with the mouse down,
+ * without any intervening button release.  On some terminals only the initiating
+ * press and terminating release event will be delivered.
+ *
+ * Mouse wheel events, when reported, may appear on their own as individual
+ * impulses; that is, there will normally not be a release event delivered
+ * for mouse wheel movements.
+ *
+ * Most terminals cannot report the state of more than one button at a time --
+ * and some cannot report motion events unless a button is pressed.
+ *
+ * Applications can inspect the time between events to resolve double or triple
+ * clicks.
  */
 struct MouseEvent
 {
