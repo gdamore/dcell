@@ -6,8 +6,9 @@
 module dcell.cell;
 
 import std.algorithm;
-import dcell.coord;
-import dcell.style;
+
+public import dcell.coord;
+public import dcell.style;
 
 /** 
  * Cell represents the contents of a single character cell on screen,

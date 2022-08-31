@@ -87,7 +87,7 @@ version (Posix)
             enforce(tcsetattr(fd, TCSANOW, &tio) >= 0);
         }
 
-        void windowSize(ref int width, ref int height)
+        Coord windowSize()
         {
             // If cores.sys.posix.sys.ioctl had more complete and accurate data...
             // this structure is fairly consistent amongst all POSIX variants
@@ -136,8 +136,7 @@ version (Posix)
 
             winSz wsz;
             enforce(ioctl(fd, TIOCGWINSZ, &wsz) >= 0);
-            width = wsz.ws_col;
-            height = wsz.ws_row;
+            return Coord(wsz.ws_col, wsz.ws_row);
         }
 
         void write(byte[] b)
@@ -183,12 +182,12 @@ version (Posix)
             dt = new DevTty();
             dt.start();
             assert(dt.file().fileno() >= 0);
-            dt.windowSize(cols, rows);
+            auto wsz = dt.windowSize();
             dt.write(cast(byte[]) "Here is some text.\r\n");
             dt.drain();
             auto b = dt.read();
             dt.stop();
-            writefln("Terminal size %dx%d", cols, rows);
+            writefln("Terminal size %dx%d", wsz.x, wsz.y);
         }
     }
 }

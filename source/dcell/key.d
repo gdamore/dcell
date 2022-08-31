@@ -11,7 +11,7 @@ import core.time;
  * Key represents a single, unmodified key stroke.  Modifier keys are
  * not considered as Keys.
  */
-enum Key : short
+enum Key
 {
     none = 0,
 
@@ -154,7 +154,7 @@ enum Key : short
  * Modifiers are special keys that when combined with other keys
  * change their meaning.
  */
-enum Modifiers : short
+enum Modifiers
 {
     none = 0,
     shift = 1 << 0,

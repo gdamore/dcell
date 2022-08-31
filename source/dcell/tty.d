@@ -6,6 +6,7 @@
 module dcell.tty;
 
 import std.stdio : File;
+public import dcell.coord;
 
 /**
  * A common interface for TTY style devices, such as serial ports or
@@ -46,7 +47,7 @@ interface Tty {
     /** 
      * Return the window size (width, then height).
      */
-    void windowSize(ref int width, ref int height);
+    Coord windowSize();
 
     /**
      * Read some data (bytes) from the tty.

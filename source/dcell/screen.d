@@ -5,7 +5,7 @@
 
 module dcell.screen;
 
-import dcell.cell;
+public import dcell.cell;
 
 abstract class Screen
 {
@@ -19,22 +19,20 @@ abstract class Screen
     abstract Cell get(int x, int y);
 
     abstract void hideCursor();
-    abstract void showCursor();
+    abstract void showCursor(Coord);
+
     // TODO: setCursorStyle();
-    abstract void size(ref int w, ref int h);
+
+    abstract Coord size();
 
     int width()
     {
-        int w, h;
-        size(w, h);
-        return w;
+        return size().x;
     }
 
     int height()
     {
-        int w, h;
-        size(w, h);
-        return h;
+        return size().y;
     }
 
     // TODO: event posting, and polling (for keyboard)
