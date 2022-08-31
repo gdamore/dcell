@@ -190,15 +190,13 @@ struct Termcap
     string disablePaste; /// sequence to disable delimited paste mode
     string pasteStart; /// sequence sent by terminal to indicate start of a paste buffer
     string pasteEnd; /// sequence sent by terminal to indicated end of a paste buffer
-    bool likeXTerm; /// true if this simulates XTerm, enables extra features
-    bool truecolor; /// true if this terminal supports 24-bit (RGB) color
-    string cursorDefault; /// sequence to reset the cursor shape to deafult
+    string cursorReset; /// sequence to reset the cursor shape to default
+    string cursorBlock; /// sequence to change the cursor to a solid block
+    string cursorUnderline; /// sequence to change the cursor to a steady underscore
+    string cursorBar; /// sequence to change the cursor to a steady vertical bar
     string cursorBlinkingBlock; /// sequence to change the cursor to a blinking block
-    string cursorSteadyBlock; /// sequence to change the cursor to a solid block
     string cursorBlinkingUnderline; /// sequence to change the cursor to a blinking underscore
-    string cursorSteadyUnderline; /// sequence to change the cursor to a steady underscore
     string cursorBlinkingBar; /// sequence to change the cursor to a blinking vertical bar
-    string cussorSteadyBar; /// sequence to change the cursor to a steady vertical bar
     string enterURL; /// sequence to start making text a clickable link
     string exitURL; /// sequence to stop making text clickable link
     string setWindowSize; /// sequence to resize the window (rarely supported)

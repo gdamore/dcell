@@ -63,32 +63,36 @@ synchronized class Database
             // add 16 and 8 color fallbacks.
             if (endsWith(name, "-truecolor"))
             {
-                return get(name[0 .. $ - "-truecolor".length]~"-256color", true, true);
+                return get(name[0 .. $ - "-truecolor".length] ~ "-256color", true, true);
             }
             if (endsWith(name, "-256color"))
             {
-                return get(name[0 .. $ - "-256color".length]~"-88color", addTrueColor, true);
+                return get(name[0 .. $ - "-256color".length] ~ "-88color", addTrueColor, true);
             }
             if (endsWith(name, "-88color"))
             {
-                return get(name[0..$-"-88color".length]~"-color", addTrueColor, add256Color);
+                return get(name[0 .. $ - "-88color".length] ~ "-color", addTrueColor, add256Color);
             }
             if (endsWith(name, "-color"))
             {
-                return get(name[0..$-"-color".length], addTrueColor, add256Color);
+                return get(name[0 .. $ - "-color".length], addTrueColor, add256Color);
             }
             return null;
         }
 
-        auto colorTerm = environment["COLORTERM"];
+        string colorTerm;
+        if ("COLORTERM" in environment)
+        {
+            colorTerm = environment["COLORTERM"];
+        }
         auto tc = new Termcap;
 
         // poor mans copy, but we have to bypass the const,
         // although we're not going to change actual values.
         // we promise not to modify the aliases array.
-        *tc = *(cast(Termcap *)(entries[name]));
+        *tc = *(cast(Termcap*)(entries[name]));
 
-        if (tc.truecolor || canFind(colorTerm, "truecolor") ||
+        if (tc.colors > 256 || canFind(colorTerm, "truecolor") ||
             canFind(colorTerm, "24bit") || canFind(colorTerm, "24-bit"))
         {
             addTrueColor = true;
@@ -105,15 +109,13 @@ synchronized class Database
                 tc.resetColors = "\x1b[39;49m;";
             }
             // assume we can also add 256 color
-            if (tc.colors < 256)
-            {
-                add256Color = true;
-            }
+            tc.colors = 1 << 24;
         }
 
-        if (add256Color)
+        if (add256Color || (tc.colors >= 256 && tc.setFg == ""))
         {
-            tc.colors = 256;
+            if (tc.colors < 256)
+                tc.colors = 256;
             tc.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
             tc.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
             tc.setFgBg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;;" ~
@@ -121,6 +123,65 @@ synchronized class Database
             tc.resetColors = "\x1b[39;49m";
         }
 
+        // if we have mouse support, we can try to assume that we
+        // can safely/reasonably add some other features, if they
+        // are not provided for explicitly in the database.
+        if (tc.mouse != "")
+        {
+            // changeable cursor shapes
+            if (tc.cursorReset == "")
+            {
+                tc.cursorReset = "\x1b[0 q";
+                tc.cursorBlinkingBlock = "\x1b[1 q";
+                tc.cursorBlock = "\x1b[2 q";
+                tc.cursorBlinkingUnderline = "\x1b[3 q";
+                tc.cursorUnderline = "\x1b[4 q";
+                tc.cursorBlinkingBar = "\x1b[5 q";
+                tc.cursorBar = "\x1b[6 q";
+            }
+            // bracketed paste
+            if (tc.enablePaste == "")
+            {
+                tc.enablePaste = "\x1b[?2004h";
+                tc.disablePaste = "\x1b[?2004l";
+                tc.pasteStart = "\x1b[200~";
+                tc.pasteEnd = "\x1b[201~";
+            }
+            // OSC URL support
+            if (tc.enterURL == "")
+            {
+                tc.enterURL = "\x1b]8;;%p1%s\x1b\\";
+                tc.exitURL = "\x1b]8;;\x1b\\";
+            }
+            // OSC window size
+            if (tc.setWindowSize == "")
+            {
+                tc.setWindowSize = "\x1b[8;%p1%p2%d;%dt";
+            }
+        }
+
+        // Amend some sequences for URXVT.
+        // It seems that urxvt at least send ESC as ALT prefix for these,
+        // although some places seem to indicate a separate ALT key sequence.
+        // Users are encouraged to update to an emulator that more closely
+        // matches xterm for better functionality.
+        if (tc.keyShfRight == "\x1b[c" && tc.keyShfLeft == "\x1b[d")
+        {
+            tc.keyShfUp = "\x1b[a";
+            tc.keyShfDown = "\x1b[b";
+            tc.keyCtrlUp = "\x1b[Oa";
+            tc.keyCtrlDown = "\x1b[Ob";
+            tc.keyCtrlRight = "\x1b[Oc";
+            tc.keyCtrlLeft = "\x1b[Od";
+        }
+        if (tc.keyShfHome == "\x1b[7$" && tc.keyShfEnd == "\x1b[8$")
+        {
+            tc.keyCtrlHome = "\x1b[7^";
+            tc.keyCtrlEnd = "\x1b[8^";
+        }
+
+        // likewise, if we have mouse support, let's try to add backeted
+        // paste support.
         return tc;
     }
 }
@@ -142,7 +203,7 @@ unittest
     environment["COLORTERM"] = "truecolor";
     tc = Database.get("mytest-truecolor");
     assert(tc !is null);
-    assert(tc.colors == 256);
+    assert(tc.colors == 1<<24);
     assert(tc.setFgBgRGB != "");
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
@@ -156,20 +217,22 @@ unittest
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
 
-    caps.truecolor = true;
+    caps.colors = 1<<24;
     caps.aliases = [];
     caps.name = "ctest";
+    caps.mouse = ":mouse";
     Database.put(&caps);
     tc = Database.get("ctest");
     assert(tc !is null);
-    assert(tc.colors == 256);
+    assert(tc.colors == 1<<24);
     assert(tc.setFgBgRGB != "");
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
+    assert(tc.enablePaste != ""); // xterm like
 
     auto ti = new Terminfo(tc);
     assert(ti !is null);
-    assert(ti.caps.colors == 256);
+    assert(ti.caps.colors == 1<<24);
     assert(ti.caps.setFgBgRGB != "");
     assert(ti.caps.setFg != "");
     assert(ti.caps.resetColors != "");

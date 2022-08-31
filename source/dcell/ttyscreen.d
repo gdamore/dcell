@@ -113,7 +113,22 @@ class TtyScreen /* : Screen */
     /**
      * Attempt to resize the terminal.  YMMV.
      */
-    abstract void setSize(int rows, int cols);
+    void setSize(Coord size)
+    {
+        if (ti.caps.setWindowSize != "") {
+            puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
+            cells.setAllDirty(true);
+            resize();
+        }
+    }
+
+    bool hasKey(Key k)
+    {
+        if (k == Key.rune) {
+            return true;
+        }
+        return (k in keyExist ? true : false);
+    }
 
 private:
     Terminfo ti;
@@ -123,6 +138,14 @@ private:
     Coord pos_; // location where we will update next
     Coord cursor_; // where the cursor should be
     Style style_; // current style
+    struct KeyCode
+    {
+        Key key;
+        Modifiers mod;
+    }
+
+    bool[Key] keyExist; // indicator of keys that are mapped
+    KeyCode[string] keyCodes; // sequence (escape) to a key
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
@@ -140,7 +163,7 @@ private:
         {
             puts(ti.caps.resetColors);
         }
-        if (ti.caps.truecolor)
+        if (ti.caps.colors > 256)
         {
             if (ti.caps.setFgBgRGB != "" && isRGB(fg) && isRGB(bg))
             {
@@ -367,15 +390,6 @@ private:
         }
     }
 
-    struct KeyCode
-    {
-        Key key;
-        Modifiers mod;
-    }
-
-    bool[Key] keyExist; // indicator of keys that are mapped
-    KeyCode[string] keyCodes; // sequence (escape) to a key
-
     // prepareKeyMod is used to populate the keys
     void prepareKeyMod(Key key, Modifiers mod, string val)
     {
@@ -453,10 +467,8 @@ private:
 
     void prepareXTermModifiers()
     {
-        if (!ti.caps.likeXTerm)
-        {
+        if (ti.caps.keyRight != "\x1b[;2C") // does this look "xtermish"?
             return;
-        }
         prepareKeyModXTerm(Key.right, ti.caps.keyRight);
         prepareKeyModXTerm(Key.left, ti.caps.keyLeft);
         prepareKeyModXTerm(Key.up, ti.caps.keyUp);
@@ -563,6 +575,8 @@ private:
         prepareKey(Key.cancel, ti.caps.keyCancel);
         prepareKey(Key.exit, ti.caps.keyExit);
         prepareKey(Key.backtab, ti.caps.keyBacktab);
+        prepareKey(Key.pasteStart, ti.caps.pasteStart);
+        prepareKey(Key.pasteEnd, ti.caps.pasteEnd);
 
         prepareKeyMod(Key.right, Modifiers.shift, ti.caps.keyShfRight);
         prepareKeyMod(Key.left, Modifiers.shift, ti.caps.keyShfLeft);
@@ -579,5 +593,37 @@ private:
         prepareKeyMod(Key.down, Modifiers.ctrl, ti.caps.keyCtrlDown);
         prepareKeyMod(Key.home, Modifiers.ctrl, ti.caps.keyCtrlHome);
         prepareKeyMod(Key.end, Modifiers.ctrl, ti.caps.keyCtrlEnd);
+
+        // Sadly, xterm handling of keycodes is somewhat erratic.  In
+        // particular, different codes are sent depending on application
+        // mode is in use or not, and the entries for many of these are
+        // simply absent from terminfo on many systems.  So we insert
+        // a number of escape sequences if they are not already used, in
+        // order to have the widest correct usage.  Note that prepareKey
+        // will not inject codes if the escape sequence is already known.
+        // We also only do this for terminals that have the application
+        // mode present.
+
+        if (ti.caps.enterKeypad != "")
+        {
+            prepareKey(Key.up, "\x1b[A");
+            prepareKey(Key.down, "\x1b[B");
+            prepareKey(Key.right, "\x1b[C");
+            prepareKey(Key.left, "\x1b[D");
+            prepareKey(Key.end, "\x1b[F");
+            prepareKey(Key.home, "\x1b[H");
+            prepareKey(Key.del, "\x1b[3~");
+            prepareKey(Key.home, "\x1b[1~");
+            prepareKey(Key.end, "\x1b[4~");
+            prepareKey(Key.pgUp, "\x1b[5~");
+            prepareKey(Key.pgDn, "\x1b[6~");
+
+            // Application mode
+            prepareKey(Key.up, "\x1bOA");
+            prepareKey(Key.down, "\x1bOB");
+            prepareKey(Key.right, "\x1bOC");
+            prepareKey(Key.left, "\x1bOD");
+            prepareKey(Key.home, "\x1bOH");
+        }
     }
 }

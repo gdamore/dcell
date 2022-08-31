@@ -364,80 +364,66 @@ private Termcap* convertCaps(Caps* caps)
     tc.enableACS = caps.getStr("enacs");
     tc.strikethrough = caps.getStr("smxx");
     tc.mouse = caps.getStr("kmous");
-    tc.likeXTerm = false;
 
-    // Terminfo lacks descriptions for a bunch of modified keys,
-    // but modern XTerm and emulators often have them. We detect
-    // this based on compatible definitions for shifted right.
-    // We also choose to use our modifiers for function keys --
-    // the terminfo entries list these all as higher coded escape
-    // keys, but it's nicer to match them to modifiers.
-    if (caps.getStr("kRIT") == "\x1b[1;2C")
-    {
-        tc.likeXTerm = true;
-    }
-    else
-    {
-        // Lookup high level function keys.
-        tc.keyShfInsert = caps.getStr("kIC");
-        tc.keyShfDelete = caps.getStr("kDC");
-        tc.keyShfRight = caps.getStr("kRIT");
-        tc.keyShfLeft = caps.getStr("kLFT");
-        tc.keyShfHome = caps.getStr("kHOM");
-        tc.keyShfEnd = caps.getStr("kEND");
-        tc.keyF13 = caps.getStr("kf13");
-        tc.keyF14 = caps.getStr("kf14");
-        tc.keyF15 = caps.getStr("kf15");
-        tc.keyF16 = caps.getStr("kf16");
-        tc.keyF17 = caps.getStr("kf17");
-        tc.keyF18 = caps.getStr("kf18");
-        tc.keyF19 = caps.getStr("kf19");
-        tc.keyF20 = caps.getStr("kf20");
-        tc.keyF21 = caps.getStr("kf21");
-        tc.keyF22 = caps.getStr("kf22");
-        tc.keyF23 = caps.getStr("kf23");
-        tc.keyF24 = caps.getStr("kf24");
-        tc.keyF25 = caps.getStr("kf25");
-        tc.keyF26 = caps.getStr("kf26");
-        tc.keyF27 = caps.getStr("kf27");
-        tc.keyF28 = caps.getStr("kf28");
-        tc.keyF29 = caps.getStr("kf29");
-        tc.keyF30 = caps.getStr("kf30");
-        tc.keyF31 = caps.getStr("kf31");
-        tc.keyF32 = caps.getStr("kf32");
-        tc.keyF33 = caps.getStr("kf33");
-        tc.keyF34 = caps.getStr("kf34");
-        tc.keyF35 = caps.getStr("kf35");
-        tc.keyF36 = caps.getStr("kf36");
-        tc.keyF37 = caps.getStr("kf37");
-        tc.keyF38 = caps.getStr("kf38");
-        tc.keyF39 = caps.getStr("kf39");
-        tc.keyF40 = caps.getStr("kf40");
-        tc.keyF41 = caps.getStr("kf41");
-        tc.keyF42 = caps.getStr("kf42");
-        tc.keyF43 = caps.getStr("kf43");
-        tc.keyF44 = caps.getStr("kf44");
-        tc.keyF45 = caps.getStr("kf45");
-        tc.keyF46 = caps.getStr("kf46");
-        tc.keyF47 = caps.getStr("kf47");
-        tc.keyF48 = caps.getStr("kf48");
-        tc.keyF49 = caps.getStr("kf49");
-        tc.keyF50 = caps.getStr("kf50");
-        tc.keyF51 = caps.getStr("kf51");
-        tc.keyF52 = caps.getStr("kf52");
-        tc.keyF53 = caps.getStr("kf53");
-        tc.keyF54 = caps.getStr("kf54");
-        tc.keyF55 = caps.getStr("kf55");
-        tc.keyF56 = caps.getStr("kf56");
-        tc.keyF57 = caps.getStr("kf57");
-        tc.keyF58 = caps.getStr("kf58");
-        tc.keyF59 = caps.getStr("kf59");
-        tc.keyF60 = caps.getStr("kf60");
-        tc.keyF61 = caps.getStr("kf61");
-        tc.keyF62 = caps.getStr("kf62");
-        tc.keyF63 = caps.getStr("kf63");
-        tc.keyF64 = caps.getStr("kf64");
-    }
+    // Lookup high level function keys.
+    tc.keyShfInsert = caps.getStr("kIC");
+    tc.keyShfDelete = caps.getStr("kDC");
+    tc.keyShfRight = caps.getStr("kRIT");
+    tc.keyShfLeft = caps.getStr("kLFT");
+    tc.keyShfHome = caps.getStr("kHOM");
+    tc.keyShfEnd = caps.getStr("kEND");
+    tc.keyF13 = caps.getStr("kf13");
+    tc.keyF14 = caps.getStr("kf14");
+    tc.keyF15 = caps.getStr("kf15");
+    tc.keyF16 = caps.getStr("kf16");
+    tc.keyF17 = caps.getStr("kf17");
+    tc.keyF18 = caps.getStr("kf18");
+    tc.keyF19 = caps.getStr("kf19");
+    tc.keyF20 = caps.getStr("kf20");
+    tc.keyF21 = caps.getStr("kf21");
+    tc.keyF22 = caps.getStr("kf22");
+    tc.keyF23 = caps.getStr("kf23");
+    tc.keyF24 = caps.getStr("kf24");
+    tc.keyF25 = caps.getStr("kf25");
+    tc.keyF26 = caps.getStr("kf26");
+    tc.keyF27 = caps.getStr("kf27");
+    tc.keyF28 = caps.getStr("kf28");
+    tc.keyF29 = caps.getStr("kf29");
+    tc.keyF30 = caps.getStr("kf30");
+    tc.keyF31 = caps.getStr("kf31");
+    tc.keyF32 = caps.getStr("kf32");
+    tc.keyF33 = caps.getStr("kf33");
+    tc.keyF34 = caps.getStr("kf34");
+    tc.keyF35 = caps.getStr("kf35");
+    tc.keyF36 = caps.getStr("kf36");
+    tc.keyF37 = caps.getStr("kf37");
+    tc.keyF38 = caps.getStr("kf38");
+    tc.keyF39 = caps.getStr("kf39");
+    tc.keyF40 = caps.getStr("kf40");
+    tc.keyF41 = caps.getStr("kf41");
+    tc.keyF42 = caps.getStr("kf42");
+    tc.keyF43 = caps.getStr("kf43");
+    tc.keyF44 = caps.getStr("kf44");
+    tc.keyF45 = caps.getStr("kf45");
+    tc.keyF46 = caps.getStr("kf46");
+    tc.keyF47 = caps.getStr("kf47");
+    tc.keyF48 = caps.getStr("kf48");
+    tc.keyF49 = caps.getStr("kf49");
+    tc.keyF50 = caps.getStr("kf50");
+    tc.keyF51 = caps.getStr("kf51");
+    tc.keyF52 = caps.getStr("kf52");
+    tc.keyF53 = caps.getStr("kf53");
+    tc.keyF54 = caps.getStr("kf54");
+    tc.keyF55 = caps.getStr("kf55");
+    tc.keyF56 = caps.getStr("kf56");
+    tc.keyF57 = caps.getStr("kf57");
+    tc.keyF58 = caps.getStr("kf58");
+    tc.keyF59 = caps.getStr("kf59");
+    tc.keyF60 = caps.getStr("kf60");
+    tc.keyF61 = caps.getStr("kf61");
+    tc.keyF62 = caps.getStr("kf62");
+    tc.keyF63 = caps.getStr("kf63");
+    tc.keyF64 = caps.getStr("kf64");
 
     // And the same thing for rxvt.
     // It seems that urxvt at least send ESC as ALT prefix for these,
@@ -468,14 +454,14 @@ private Termcap* convertCaps(Caps* caps)
     if (caps.getBool("Tc"))
     {
         // This presumes XTerm 24-bit true color.
-        tc.truecolor = true;
+        tc.colors = 1<<24;
     }
     else if (caps.getBool("RGB"))
     {
         // This is for xterm-direct, which uses a different scheme entirely.
         // (ncurses went a very different direction from everyone else, and
         // so it's unlikely anything is using this definition.)
-        tc.truecolor = true;
+        tc.colors = 1<24;
         tc.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
         tc.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
     }
