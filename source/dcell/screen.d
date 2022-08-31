@@ -9,38 +9,38 @@ public import dcell.cell;
 public import dcell.cursor;
 public import dcell.key;
 
-abstract class Screen
+interface Screen
 {
     // start();
     // stop();
-    
+
     /**
      * Clears the screen.  This doesn't take effect until
      * the show function is called.
      */
-    abstract void clear();
+    void clear();
 
     /**
      * Retrive the contents for a given address.  This is taken from
      * the backing draw buffer, and won't necessarily reflect what is
      * displayed to the user until show is called.
      */
-    abstract const(Cell) opIndex(Coord);
+    const(Cell) opIndex(Coord);
 
     /**
      * Set the content for for a given location.  This won't necessarily
      * take effect until the show function is called.
      */
-    abstract void opIndexAssign(Cell, Coord);
+    void opIndexAssign(Cell, Coord);
 
     /** Convenience for indexing */
-    const(Cell) opIndex(int x, int y)
+    final const(Cell) opIndex(int x, int y)
     {
         return this[Coord(x, y)];
     }
 
     /** Convenience for indexing. */
-    void opIndexAssign(Cell c, int x, int y)
+    final void opIndexAssign(Cell c, int x, int y)
     {
         this[Coord(x, y)] = c;
     }
@@ -48,7 +48,7 @@ abstract class Screen
     /**
      * Show the cursor at its current location.
      */
-    abstract void showCursor(Cursor);
+    void showCursor(Cursor);
 
     /**
      * Move the cursor to the given location, and show
@@ -58,7 +58,7 @@ abstract class Screen
      *  pos = position of the cursor
      *  cur = cursor style
      */
-    abstract void showCursor(Coord pos, Cursor cur=Cursor.current);
+    void showCursor(Coord pos, Cursor cur=Cursor.current);
 
     /**
      * It would be nice to know if a given key is supported by
@@ -69,7 +69,7 @@ abstract class Screen
      *
      * Returns: true if the key appears to be supported on the terminal.
      */
-    abstract bool hasKey(Key);
+    bool hasKey(Key);
 
     /**
      * Obtain the terminal window size.
@@ -78,7 +78,7 @@ abstract class Screen
      *
      * Returns: terminal dimensions
      */
-    abstract Coord size();
+    Coord size();
 
     // TODO: event posting, and polling (for keyboard)
 
@@ -90,7 +90,7 @@ abstract class Screen
      * Params: 
      *   b = true to enable bracketed paste, false for disable
      */
-    abstract void enablePaste(bool b);
+    void enablePaste(bool b);
 
     /**
      * Do we have a mouse? This may be overly optimitistic for some
@@ -98,7 +98,7 @@ abstract class Screen
      *
      * Returns: true if the terminal is thought to support mouse events
      */
-    abstract bool hasMouse();
+    bool hasMouse();
 
     /**
      * If the terminal supports color, this returns the
@@ -106,36 +106,36 @@ abstract class Screen
      *
      * Returns: the number of colors supported (max 256), or 0 if monochrome
      */
-    abstract int colors();
+    int colors();
 
     /**
      * Show content on the screen, doing so efficiently.
      */
-    abstract void show();
+    void show();
 
     /**
      * Update the screen, writing every cell.  This should be done
      * to repair screen damage, for example.
      */
-    abstract void sync();
+    void sync();
 
     /**
      * Emit a beep or bell.  This is done immediately.
      */
-    abstract void beep();
+    void beep();
 
     /**
      * Attempt to resize the terminal.  YMMV.
      */
-    abstract void setSize(Coord);
+    void setSize(Coord);
 
     /**
      * Fill the entire screen with the given content and style.
      */
-    abstract void fill(string s, Style style);
+    void fill(string s, Style style);
 
     /**
      * Fill the entire screen with the given content, but preserve the style.
      */
-    abstract void fill(string s);
+    void fill(string s);
 }
