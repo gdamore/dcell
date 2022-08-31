@@ -11,9 +11,9 @@ public import dcell.key;
 
 abstract class Screen
 {
-    abstract int setup();
-    abstract void teardown();
-
+    // start();
+    // stop();
+    
     /**
      * Clears the screen.  This doesn't take effect until
      * the show function is called.
@@ -128,4 +128,14 @@ abstract class Screen
      * Attempt to resize the terminal.  YMMV.
      */
     abstract void setSize(Coord);
+
+    /**
+     * Fill the entire screen with the given content and style.
+     */
+    abstract void fill(string s, Style style);
+
+    /**
+     * Fill the entire screen with the given content, but preserve the style.
+     */
+    abstract void fill(string s);
 }

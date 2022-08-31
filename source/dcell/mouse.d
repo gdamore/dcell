@@ -5,7 +5,9 @@
 
 module dcell.mouse;
 
-import core.time;
+import dcell.event;
+
+public import dcell.coord;
 public import dcell.key : Modifiers;
 
 /** 
@@ -56,9 +58,9 @@ enum Buttons : short
  */
 struct MouseEvent
 {
+    Event ev;
     Buttons btn; /// Buttons involved.
     Modifiers mod; /// Keyboard modifiers pressed during event.
-    int x; /// Column of event.
-    int y; /// Row of event.
-    MonoTime when; /// When the event fired.
+    Coord pos; /// Coordinates of mouse.
+    alias ev this;
 }

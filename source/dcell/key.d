@@ -5,7 +5,7 @@
 
 module dcell.key;
 
-import core.time;
+import dcell.event;
 
 /**
  * Key represents a single, unmodified key stroke.  Modifier keys are
@@ -168,8 +168,9 @@ enum Modifiers
  */
 struct KeyEvent
 {
+    Event ev;
     Key key; /// Key pressed.
     char ch; /// Set if key == rune.
     Modifiers mod; /// Any modifiers pressed together.
-    MonoTime when; /// When the event fired.
+    alias ev this;
 }

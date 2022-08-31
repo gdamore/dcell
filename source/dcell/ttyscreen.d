@@ -13,15 +13,15 @@ import dcell.key;
 import dcell.mouse;
 import dcell.terminfo;
 import dcell.tty;
+import dcell.screen;
 
-class TtyScreen /* : Screen */
+class TtyScreen : Screen
 {
 
-    abstract int setup();
-    abstract void teardown();
+    // abstract int setup();
+    // abstract void teardown();
 
-    /// Clears the screen.
-    void clear()
+    override void clear()
     {
         fill(" ");
         clear_ = true;
@@ -31,20 +31,17 @@ class TtyScreen /* : Screen */
         cells.setAllDirty(false);
     }
 
-    void fill(string s, Style style)
+    override void fill(string s, Style style)
     {
         cells.fill(s, style);
     }
 
-    void fill(string s)
+    override void fill(string s)
     {
         fill(s, this.style_);
     }
 
-    abstract void set(int x, int y, Cell c);
-    abstract Cell get(int x, int y);
-
-    void showCursor(Coord pos, Cursor cur = Cursor.current)
+    override void showCursor(Coord pos, Cursor cur = Cursor.current)
     {
         // just save the coordinates for now
         // it will be used during the next draw cycle
@@ -52,54 +49,52 @@ class TtyScreen /* : Screen */
         cursorShape = cur;
     }
 
-    void showCursor(Cursor cur)
+    override void showCursor(Cursor cur)
     {
         cursorShape = cur;
     }
 
-    Coord size()
+    override Coord size()
     {
         return (cells.size());
     }
 
-    const(Cell) opIndex(Coord pos)
+    override const(Cell) opIndex(Coord pos)
     {
         return (cells[pos]);
     }
 
-    void opIndexAssign(Cell c, Coord pos)
+    override void opIndexAssign(Cell c, Coord pos)
     {
         cells[pos] = c;
     }
 
-    // TODO: event posting, and polling (for keyboard)
+    override void enablePaste(bool b)
+    {
+        if (b) {
+            puts(ti.caps.enablePaste);
+        } else {
+            puts(ti.caps.disablePaste);
+        }
+    }
 
-    abstract void enablePaste(bool b);
-
-    bool hasMouse()
+    override bool hasMouse()
     {
         return ti.caps.mouse != "";
     }
 
-    int colors()
+    override int colors()
     {
         return ti.caps.colors;
     }
 
-    /**
-     * Show content on the screen, doing so efficiently.
-     */
-    void show()
+    override void show()
     {
         resize();
         draw();
     }
 
-    /**
-     * Update the screen, writing every cell.  This should be done
-     * to repair screen damage, for example.
-     */
-    void sync()
+    override void sync()
     {
         pos_ = Coord(-1, -1);
         resize();
@@ -108,18 +103,12 @@ class TtyScreen /* : Screen */
         draw();
     }
 
-    /**
-     * Emit a beep or bell.
-     */
-    void beep()
+    override void beep()
     {
         puts(ti.caps.bell);
     }
 
-    /**
-     * Attempt to resize the terminal.  YMMV.
-     */
-    void setSize(Coord size)
+    override void setSize(Coord size)
     {
         if (ti.caps.setWindowSize != "")
         {
@@ -129,7 +118,7 @@ class TtyScreen /* : Screen */
         }
     }
 
-    bool hasKey(Key k)
+    override bool hasKey(Key k)
     {
         if (k == Key.rune)
         {
@@ -163,7 +152,8 @@ private:
         ti.tPuts(s, tty.file());
     }
 
-    void sendColors(Style style) // does not send URL
+    // sendColors sends just the colors for a given style
+    void sendColors(Style style)
     {
         auto fg = style.fg;
         auto bg = style.bg;
@@ -662,5 +652,13 @@ private:
             prepareKey(Key.left, "\x1bOD");
             prepareKey(Key.home, "\x1bOH");
         }
+    }
+}
+
+unittest
+{
+    version (Posix)
+    {
+
     }
 }
