@@ -45,11 +45,31 @@ abstract class Screen
         this[Coord(x, y)] = c;
     }
 
-    abstract void hideCursor();
-    abstract void showCursor(Coord);
+    /**
+     * Show the cursor at its current location.
+     */
+    abstract void showCursor(Cursor);
 
-    abstract void hasKey(Key);
-    // TODO: setCursorStyle();
+    /**
+     * Move the cursor to the given location, and show
+     * it using the appropriate style.
+     *
+     * Params:
+     *  pos = position of the cursor
+     *  cur = cursor style
+     */
+    abstract void showCursor(Coord pos, Cursor cur=Cursor.current);
+
+    /**
+     * It would be nice to know if a given key is supported by
+     * a terminal.  Note that this is best-effort, and some terminals
+     * may present the ability to support a key, without actually having
+     * such a physical key and some combinations may be suppressed by
+     * the emulator or the environment the emulator runs in.
+     *
+     * Returns: true if the key appears to be supported on the terminal.
+     */
+    abstract bool hasKey(Key);
 
     /**
      * Obtain the terminal window size.
@@ -66,9 +86,11 @@ abstract class Screen
      * Enable backeted paste mode mode.  Bracketed paste mode
      * will pasted content in a single event, and is therefore
      * distinguishable from individually typed characters.
+     *
+     * Params: 
+     *   b = true to enable bracketed paste, false for disable
      */
-    abstract void enablePaste();
-    abstract void disablePaste();
+    abstract void enablePaste(bool b);
 
     /**
      * Do we have a mouse? This may be overly optimitistic for some

@@ -8,10 +8,11 @@ module dcell.ttyscreen;
 import std.string;
 
 import dcell.cell;
-import dcell.terminfo;
-import dcell.tty;
+import dcell.cursor;
 import dcell.key;
 import dcell.mouse;
+import dcell.terminfo;
+import dcell.tty;
 
 class TtyScreen /* : Screen */
 {
@@ -43,32 +44,37 @@ class TtyScreen /* : Screen */
     abstract void set(int x, int y, Cell c);
     abstract Cell get(int x, int y);
 
-    void hideCursor()
-    {
-        // just save invalid coords for now.
-        // it will be used on the next draw cycle
-        cursor_.x = -1;
-        cursor_.y = -1;
-    }
-
-    void showCursor(Coord pos)
+    void showCursor(Coord pos, Cursor cur = Cursor.current)
     {
         // just save the coordinates for now
         // it will be used during the next draw cycle
-        cursor_ = pos;
+        cursorPos = pos;
+        cursorShape = cur;
     }
 
-    // TODO: setCursorStyle();
+    void showCursor(Cursor cur)
+    {
+        cursorShape = cur;
+    }
 
     Coord size()
     {
         return (cells.size());
     }
 
+    const(Cell) opIndex(Coord pos)
+    {
+        return (cells[pos]);
+    }
+
+    void opIndexAssign(Cell c, Coord pos)
+    {
+        cells[pos] = c;
+    }
+
     // TODO: event posting, and polling (for keyboard)
 
-    abstract void enablePaste();
-    abstract void disablePaste();
+    abstract void enablePaste(bool b);
 
     bool hasMouse()
     {
@@ -115,7 +121,8 @@ class TtyScreen /* : Screen */
      */
     void setSize(Coord size)
     {
-        if (ti.caps.setWindowSize != "") {
+        if (ti.caps.setWindowSize != "")
+        {
             puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
             cells.setAllDirty(true);
             resize();
@@ -124,26 +131,28 @@ class TtyScreen /* : Screen */
 
     bool hasKey(Key k)
     {
-        if (k == Key.rune) {
+        if (k == Key.rune)
+        {
             return true;
         }
         return (k in keyExist ? true : false);
     }
 
 private:
-    Terminfo ti;
-    CellBuffer cells;
-    Tty tty;
-    bool clear_; // if a sceren clear is requested
-    Coord pos_; // location where we will update next
-    Coord cursor_; // where the cursor should be
-    Style style_; // current style
     struct KeyCode
     {
         Key key;
         Modifiers mod;
     }
 
+    Terminfo ti;
+    CellBuffer cells;
+    Tty tty;
+    bool clear_; // if a sceren clear is requested
+    Coord pos_; // location where we will update next
+    Style style_; // current style
+    Coord cursorPos;
+    Cursor cursorShape;
     bool[Key] keyExist; // indicator of keys that are mapped
     KeyCode[string] keyCodes; // sequence (escape) to a key
 
@@ -248,7 +257,7 @@ private:
     // sendCursor sends the current cursor location
     void sendCursor()
     {
-        if (!cells.isLegal(cursor_))
+        if (!cells.isLegal(cursorPos) || (cursorShape == Cursor.hidden))
         {
             if (ti.caps.hideCursor != "")
             {
@@ -264,12 +273,40 @@ private:
             }
             return;
         }
-        goTo(cursor_);
+        goTo(cursorPos);
         puts(ti.caps.showCursor);
-        // TODO: cursor style
+        final switch (cursorShape)
+        {
+        case Cursor.current:
+            break;
+        case Cursor.hidden:
+            puts(ti.caps.hideCursor);
+            break;
+        case Cursor.reset:
+            puts(ti.caps.cursorReset);
+            break;
+        case Cursor.bar:
+            puts(ti.caps.cursorBar);
+            break;
+        case Cursor.block:
+            puts(ti.caps.cursorBlock);
+            break;
+        case Cursor.underline:
+            puts(ti.caps.cursorUnderline);
+            break;
+        case Cursor.blinkingBar:
+            puts(ti.caps.cursorBlinkingBar);
+            break;
+        case Cursor.blinkingBlock:
+            puts(ti.caps.cursorBlinkingBlock);
+            break;
+        case Cursor.blinkingUnderline:
+            puts(ti.caps.cursorBlinkingUnderline);
+            break;
+        }
 
         // update our location
-        pos_ = cursor_;
+        pos_ = cursorPos;
     }
 
     // drawCell draws one cell.  It returns the width drawn (1 or 2).

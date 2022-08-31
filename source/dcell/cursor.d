@@ -12,9 +12,11 @@ import core.time;
  * together as a binary value to represent chording.  Scroll wheels are
  * included.
  */
-enum Cursor
+enum Cursor : byte
 {
-    normal = 0, // default for normal cursor
+    current = 0, // don't change cursor shape or visbility
+    reset, // reset to terminal default
+    hidden,
     block,
     underline,
     bar,
