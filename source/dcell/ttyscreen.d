@@ -21,6 +21,14 @@ class TtyScreen : Screen
     // abstract int setup();
     // abstract void teardown();
 
+    this(Tty tty, Terminfo ti)
+    {
+        this.tty = tty;
+        this.ti = ti;
+
+        prepareKeys();
+    }
+
     void clear()
     {
         fill(" ");
@@ -692,6 +700,42 @@ private:
             prepareKey(Key.right, "\x1bOC");
             prepareKey(Key.left, "\x1bOD");
             prepareKey(Key.home, "\x1bOH");
+        }
+
+        // we look breifly at all the keyCodes we
+        // have, to find their starting character.
+        // the vast majority of these will be escape.
+        bool[char] initials;
+        foreach (string esc, KeyCode kc; keyCodes)
+        {
+            if (esc != "")
+            {
+                initials[esc[0]] = true;
+            }
+        }
+        // Add key mappings for control keys.
+        for (char i = 0; i < ' '; i++)
+        {
+
+            // If this is starting character (typically esc) of other sequences,
+            // then do not set up the fast path mapping for it.
+            // We need to let the read do the whole timeout thing.
+            if (i in initials)
+                continue;
+
+            Key k = cast(Key) i;
+            keyExist[k] = true;
+            switch (k)
+            {
+            case Key.backspace, Key.tab, Key.esc, Key.enter:
+                // these are directly typeable
+                keyCodes["" ~ i] = KeyCode(k, Modifiers.none);
+                break;
+            default:
+                // these are generally represented as a control sequence
+                keyCodes["" ~ i] = KeyCode(k, Modifiers.ctrl);
+                break;
+            }
         }
     }
 }
