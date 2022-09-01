@@ -486,16 +486,6 @@ private Termcap* convertCaps(Caps* caps)
         }
     }
 
-    // For terminals that use "standard" SGR sequences, lets combine the
-    // foreground and background together.
-    if (startsWith(tc.setFg, "\x1b[") &&
-        startsWith(tc.setBg, "\x1b[") &&
-        endsWith(tc.setFg, ";m") &&
-        endsWith(tc.setBg, ";m"))
-    {
-        tc.setFgBg = tc.setFg[0 .. $ - 1]; // drop m
-        tc.setFgBg ~= replace(tc.setBg[2 .. $], "%p1", "%p2");
-    }
     return tc;
 }
 
