@@ -21,7 +21,7 @@ class TtyScreen : Screen
     // abstract int setup();
     // abstract void teardown();
 
-    override void clear()
+    void clear()
     {
         fill(" ");
         clear_ = true;
@@ -31,17 +31,17 @@ class TtyScreen : Screen
         cells.setAllDirty(false);
     }
 
-    override void fill(string s, Style style)
+    void fill(string s, Style style)
     {
         cells.fill(s, style);
     }
 
-    override void fill(string s)
+    void fill(string s)
     {
         fill(s, this.style_);
     }
 
-    override void showCursor(Coord pos, Cursor cur = Cursor.current)
+    void showCursor(Coord pos, Cursor cur = Cursor.current)
     {
         // just save the coordinates for now
         // it will be used during the next draw cycle
@@ -49,52 +49,49 @@ class TtyScreen : Screen
         cursorShape = cur;
     }
 
-    override void showCursor(Cursor cur)
+    void showCursor(Cursor cur)
     {
         cursorShape = cur;
     }
 
-    override Coord size()
+    Coord size()
     {
         return (cells.size());
     }
 
-    override const(Cell) opIndex(Coord pos)
+    const(Cell) opIndex(Coord pos)
     {
         return (cells[pos]);
     }
 
-    override void opIndexAssign(Cell c, Coord pos)
+    void opIndexAssign(Cell c, Coord pos)
     {
         cells[pos] = c;
     }
 
-    override void enablePaste(bool b)
+    void enablePaste(bool b)
     {
-        if (b) {
-            puts(ti.caps.enablePaste);
-        } else {
-            puts(ti.caps.disablePaste);
-        }
+        pasteEn = b;
+        sendPasteEnable(b);
     }
 
-    override bool hasMouse()
+    bool hasMouse()
     {
         return ti.caps.mouse != "";
     }
 
-    override int colors()
+    int colors()
     {
         return ti.caps.colors;
     }
 
-    override void show()
+    void show()
     {
         resize();
         draw();
     }
 
-    override void sync()
+    void sync()
     {
         pos_ = Coord(-1, -1);
         resize();
@@ -103,12 +100,12 @@ class TtyScreen : Screen
         draw();
     }
 
-    override void beep()
+    void beep()
     {
         puts(ti.caps.bell);
     }
 
-    override void setSize(Coord size)
+    void setSize(Coord size)
     {
         if (ti.caps.setWindowSize != "")
         {
@@ -118,13 +115,26 @@ class TtyScreen : Screen
         }
     }
 
-    override bool hasKey(Key k)
+    bool hasKey(Key k)
     {
         if (k == Key.rune)
         {
             return true;
         }
         return (k in keyExist ? true : false);
+    }
+
+    void enableMouse(MouseEnable en)
+    {
+        // we rely on the fact that all known implementations adhere
+        // to the de-facto standard from XTerm.  This is necessary as
+        // there is no standard terminfo sequence for reporting this
+        // information.
+        if (ti.caps.mouse != "")
+        {
+            mouseEn = en; // save this so we can restore after a suspend
+            sendMouseEnable(en);
+        }
     }
 
 private:
@@ -144,6 +154,8 @@ private:
     Cursor cursorShape;
     bool[Key] keyExist; // indicator of keys that are mapped
     KeyCode[string] keyCodes; // sequence (escape) to a key
+    MouseEnable mouseEn; // saved state for suspend/resume
+    bool pasteEn; // saved state for suspend/resume
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
@@ -415,6 +427,35 @@ private:
             cells.setAllDirty(true);
             // TODO: POST AN EVENT
         }
+    }
+
+    void sendMouseEnable(MouseEnable en)
+    {
+        // we rely on the fact that all known implementations adhere
+        // to the de-facto standard from XTerm.  This is necessary as
+        // there is no standard terminfo sequence for reporting this
+        // information.
+        if (ti.caps.mouse != "")
+        {
+            // start by disabling everything
+            puts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
+            // then turn on specific enables
+            if (en & MouseEnable.buttons)
+                puts("\x1b[?1000h");
+            if (en & MouseEnable.drag)
+                puts("\x1b[?1002h");
+            if (en & MouseEnable.motion)
+                puts("\x1b[?1003h");
+            // and if any are set, we need to send this
+            if (en & MouseEnable.all)
+                puts("\x1b[?1006h");
+        }
+
+    }
+
+    void sendPasteEnable(bool b)
+    {
+        puts(b ? ti.caps.enablePaste : ti.caps.disablePaste);
     }
 
     // prepareKeyMod is used to populate the keys

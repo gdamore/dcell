@@ -8,6 +8,7 @@ module dcell.screen;
 public import dcell.cell;
 public import dcell.cursor;
 public import dcell.key;
+public import dcell.mouse;
 
 interface Screen
 {
@@ -58,7 +59,7 @@ interface Screen
      *  pos = position of the cursor
      *  cur = cursor style
      */
-    void showCursor(Coord pos, Cursor cur=Cursor.current);
+    void showCursor(Coord pos, Cursor cur = Cursor.current);
 
     /**
      * It would be nice to know if a given key is supported by
@@ -99,6 +100,16 @@ interface Screen
      * Returns: true if the terminal is thought to support mouse events
      */
     bool hasMouse();
+
+    /**
+     * Enable mouse mode.  This can cause terminals/emulators
+     * to behave differently -- for example affecting the ability
+     * to scroll or use copy/paste.
+     *
+     * Params:
+     *   en = mouse events to report (mask)
+     */
+    void enableMouse(MouseEnable en);
 
     /**
      * If the terminal supports color, this returns the

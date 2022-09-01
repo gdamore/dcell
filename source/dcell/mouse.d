@@ -37,6 +37,20 @@ enum Buttons : short
 }
 
 /**
+ * MouseEnable are the different modes that can be enabled for
+ * mouse tracking.  The flagse can be OR'd together (except disable
+ * which should be used alone).
+ */
+enum MouseEnable
+{
+    disable = 0, /// no mouse reporting at all
+    buttons = 1 << 0, /// report on button press events only
+    drag = 1 << 2, /// report click-drag events (moving while button depressed)
+    motion = 1 << 3, /// report all motion events
+    all = buttons | drag | motion, /// report everything
+}
+
+/**
  * MouseEvent represents a single pressed key, possibly with modifiers.
  * It is sent on either mouse up or mouse down events.  It is also sent on
  * mouse motion events - if the terminal supports it.
