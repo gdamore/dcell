@@ -503,37 +503,11 @@ private:
             if (en & MouseEnable.all)
                 puts("\x1b[?1006h");
         }
-
     }
 
     void sendPasteEnable(bool b)
     {
         puts(b ? ti.caps.enablePaste : ti.caps.disablePaste);
-    }
-
-    // prepareKeyMod is used to populate the keys
-    void prepareKeyMod(Key key, Modifiers mod, string val)
-    {
-        if (val == "")
-            return;
-        if (val !in keyCodes)
-        {
-            keyExist[key] = true;
-            keyCodes[val] = KeyCode(key, mod);
-        }
-    }
-
-    // prepareKeyModReplace loads a key sequence, and optionally replaces
-    // a previously existing one if it matches.
-    void prepareKeyModReplace(Key key, Key replace, Modifiers mod, string val)
-    {
-        if (val == "")
-            return;
-        if ((val !in keyCodes) || keyCodes[val].key == replace)
-        {
-            keyExist[key] = true;
-            keyCodes[val] = KeyCode(key, mod);
-        }
     }
 
     void mainLoop()
