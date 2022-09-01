@@ -139,14 +139,14 @@ version (Posix)
             return Coord(wsz.ws_col, wsz.ws_row);
         }
 
-        void write(byte[] b)
+        void write(ubyte[] b)
         {
             f.rawWrite(b);
         }
 
-        byte[] read()
+        ubyte[] read()
         {
-            auto b = new byte[128];
+            auto b = new ubyte[128];
             return f.rawRead(b);
         }
 
@@ -183,7 +183,7 @@ version (Posix)
             dt.start();
             assert(dt.file().fileno() >= 0);
             auto wsz = dt.windowSize();
-            dt.write(cast(byte[]) "Here is some text.\r\n");
+            dt.write(cast(ubyte[]) "Here is some text.\r\n");
             dt.drain();
             auto b = dt.read();
             dt.stop();

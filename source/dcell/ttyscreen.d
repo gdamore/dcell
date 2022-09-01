@@ -429,7 +429,7 @@ private:
             c.width = 1;
         }
 
-        tty.write(cast(byte[]) c.text);
+        tty.write(cast(ubyte[]) c.text);
         pos_.x += c.width;
         if (ti.caps.automargin && pos_.x >= c.width)
         {
@@ -554,7 +554,7 @@ private:
                     return;
                 }
             }
-            byte[] b;
+            ubyte[] b;
             try
             {
                 b = tty.read();

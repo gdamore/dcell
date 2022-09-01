@@ -52,12 +52,12 @@ interface Tty {
     /**
      * Read some data (bytes) from the tty.
      */
-    byte[] read();
+    ubyte[] read();
  
     /**
      * Write some bytes to the tty.
     */
-    void write(byte[]);
+    void write(ubyte[]);
 
     /**
      * Get the underlying file.
