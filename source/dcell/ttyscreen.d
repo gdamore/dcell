@@ -17,16 +17,19 @@ import dcell.screen;
 
 class TtyScreen : Screen
 {
-
-    // abstract int setup();
-    // abstract void teardown();
-
-    this(Tty tty, Terminfo ti)
+    this(Tty tt, Terminfo tinfo)
     {
-        this.tty = tty;
-        this.ti = ti;
-
+        tty = tt;
+        ti = tinfo;
+        auto size = tty.windowSize();
+        cells = new CellBuffer(size);
         prepareKeys();
+    }
+
+    ~this()
+    {
+        tty.drain();
+        tty.stop();
     }
 
     void clear()
@@ -417,6 +420,8 @@ private:
                 // this way if we ever redraw that cell, it will
                 // be marked dirty, because we have clobbered it with
                 // the adjacent character
+                if (width < 1)
+                    width = 1;
                 if (width > 1)
                 {
                     cells.setDirty(Coord(pos.x + 1, pos.y), true);
@@ -744,6 +749,36 @@ unittest
 {
     version (Posix)
     {
+        import dcell.devtty;
+        import std.stdio;
 
+        writeln("STEP 1");
+        //        import dcell.terminfo.database;
+        auto caps = Database.get("xterm-256color");
+        writeln("STEP 2");
+        assert(caps.name != "");
+        auto tty = new DevTty();
+        writeln("STEP 3");
+        assert(tty !is null);
+        auto ti = new Terminfo(caps);
+        writeln("STEP 4");
+        assert(ti !is null);
+        assert(ti.caps.name != "");
+        writeln("CAPS IS OK");
+        auto ts = new TtyScreen(tty, ti);
+        writeln("STEP 5");
+        assert(ts !is null);
+
+        writeln("COLS ", ts.size().x, " ROWS ", ts.size().y);
+        ts.tty.start();
+
+        writeln("CLEARING...");
+        ts.clear();
+        writeln("CLEARED?");
+        ts.show();
+        writeln("SHOWN");
+        import core.thread;
+        Thread.sleep(dur!("seconds")(1));
+        destroy(ts);
     }
 }

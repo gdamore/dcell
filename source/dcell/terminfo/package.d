@@ -6,3 +6,4 @@
 module dcell.terminfo;
 
 public import dcell.terminfo.terminal;
+public import dcell.terminfo.database;

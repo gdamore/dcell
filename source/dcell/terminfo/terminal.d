@@ -135,14 +135,6 @@ class Terminfo
     }
 
     /** 
-     * Create an empty Terminfo.  This is mostly useless until the caps
-     * member is set.
-     */
-    this()
-    {
-    }
-
-    /** 
      * Construct a Terminfo using the given capabilities.
      *
      * Params: 
