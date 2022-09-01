@@ -31,10 +31,11 @@ synchronized class Parser
         return cast(Event[]) res;
     }
 
-    bool parse(byte[] b)
+    bool parse(ubyte[] b)
     {
         auto now = MonoTime.currTime();
-        if (b.length != 0) {
+        if (b.length != 0)
+        {
             // if we are adding to it, restart the timer
             keyStart = now;
         }
@@ -42,27 +43,27 @@ synchronized class Parser
         while (buf.length != 0)
         {
             partial = false;
-            if (parseRune()) {
-                keyStart = now;
-                continue;
-            }
-            if (parseFnKey()) {
+            if (parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
+            {
                 keyStart = now;
                 continue;
             }
             auto expire = ((now - keyStart) > seqTime);
 
-            // TODO: MOUSE
-
-            if (!partial || expire) {
-                if (buf[0] == '\x1b') {
-                    if (buf.length == 1) {
+            if (!partial || expire)
+            {
+                if (buf[0] == '\x1b')
+                {
+                    if (buf.length == 1)
+                    {
                         evs ~= newKeyEvent(Key.esc);
                         escaped = false;
-                    } else {
+                    }
+                    else
+                    {
                         escaped = true;
                     }
-                    buf = buf[1..$];
+                    buf = buf[1 .. $];
                     keyStart = now;
                     continue;
                 }
@@ -93,13 +94,15 @@ private:
 
     const Termcap* caps;
     bool escaped;
-    byte[] buf;
+    ubyte[] buf;
     Event[] evs;
     KeyCode[string] keyCodes;
     bool[Key] keyExist;
     bool partial; // record partially parsed sequences
     MonoTime keyStart; // when the timer started
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
+    bool buttonDown; // true if buttons were down
+    bool wasButton; // true if we saw a button press for recent mouse event
 
     // addKey loads a key sequence, and optionally replaces
     // a previously existing one if it matches.
@@ -163,7 +166,7 @@ private:
 
     void addXTermKeys()
     {
-        if (caps.keyRight != "\x1b[;2C") // does this look "xtermish"?
+        if (caps.keyShfRight != "\x1b[1;2C") // does this look "xtermish"?
             return;
         addXTermKey(Key.right, caps.keyRight);
         addXTermKey(Key.left, caps.keyLeft);
@@ -376,6 +379,67 @@ private:
         return ev;
     }
 
+    // NB: it is possible for x and y to be outside the current coordinates
+    // (happens for click drag for example).  Consumer of the event should clip
+    // the coordinates as needed.
+    Event newMouseEvent(int x, int y, int btn)
+    {
+        Event ev = {
+            type: EventType.mouse, when: MonoTime.currTime, mouse: {
+                pos: Coord(x, y)
+            }
+        };
+
+        // Mouse wheel has bit 6 set, no release events.  It should be noted
+        // that wheel events are sometimes misdelivered as mouse button events
+        // during a click-drag, so we debounce these, considering them to be
+        // button press events unless we see an intervening release event.
+
+        switch (btn & 0x43)
+        {
+        case 0:
+            ev.mouse.btn = Buttons.button1;
+            wasButton = true;
+            break;
+        case 1:
+            ev.mouse.btn = Buttons.button3;
+            wasButton = true;
+            break;
+        case 2:
+            ev.mouse.btn = Buttons.button2;
+            wasButton = true;
+            break;
+        case 3:
+            ev.mouse.btn = Buttons.none;
+            wasButton = false;
+            break;
+        case 0x40:
+            ev.mouse.btn = wasButton ? Buttons.button1 : Buttons.wheelUp;
+            break;
+        case 0x41:
+            ev.mouse.btn = wasButton ? Buttons.button2 : Buttons.wheelDown;
+            break;
+        default:
+            break;
+        }
+        if (btn & 0x4)
+            ev.mouse.mod |= Modifiers.shift;
+        if (btn & 0x8)
+            ev.mouse.mod |= Modifiers.alt;
+        if (btn & 0x10)
+            ev.mouse.mod |= Modifiers.ctrl;
+        return ev;
+    }
+
+    Event newPasteEvent(bool start)
+    {
+        Event ev = {
+            type: EventType.paste, when: MonoTime.currTime, paste: {start: start}
+        };
+        return ev;
+
+    }
+
     bool parseRune()
     {
         if (buf.length == 0)
@@ -439,10 +503,10 @@ private:
                 switch (kc.key)
                 {
                 case Key.pasteStart:
-                    // newEventPaste...(true);
+                    evs ~= newPasteEvent(true);
                     break;
                 case Key.pasteEnd:
-                    // newEventPaste(false);
+                    evs ~= newPasteEvent(false);
                     break;
                 default:
                     evs ~= newKeyEvent(kc.key, seq.length == 1 ? seq[0] : 0, mod);
@@ -456,6 +520,161 @@ private:
                 partial = true;
             }
         }
+        return false;
+    }
+
+    // look for an SGR mouse record, using a state machine
+    bool parseSgrMouse()
+    {
+        int x, y, btn, mov, state, val;
+        bool dig, neg;
+
+        for (int i = 0; i < buf.length; i++)
+        {
+            switch (buf[i])
+            {
+            case '\x1b':
+                if (state != 0)
+                    return false;
+                state = 1;
+                break;
+            case '\x9b': // 8-bit mode CSI
+                if (state != 0)
+                    return false;
+                state = 2;
+                break;
+            case '[':
+                if (state != 1)
+                    return false;
+                state = 2;
+                break;
+            case '<':
+                if (state != 2)
+                    return false;
+                val = 0;
+                dig = false;
+                neg = false;
+                state = 3;
+                break;
+            case '-':
+                if (state < 3 || state > 5 || dig || neg)
+                    return false;
+                neg = true; // no state change
+                break;
+            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+                if (state < 3 || state > 5)
+                    return false;
+                val *= 10;
+                val += int(buf[i] - '0');
+                dig = true; // no state change
+                break;
+            case ';':
+                if (state != 3 && state != 4)
+                    return false;
+                val = neg ? -val : val;
+                if (state == 3)
+                    btn = neg ? -val : val;
+                else
+                    x = (neg ? -val : val) - 1;
+                state++;
+                neg = false;
+                dig = false;
+                val = 0;
+                break;
+            case 'm', 'M':
+                if (state != 5)
+                    return false;
+                y = (neg ? -val : val) - 1;
+                mov = (btn & 0x20) != 0;
+                btn ^= 0x20;
+                if (buf[i] == 'm')
+                { // release
+                    btn |= 0x3;
+                    btn ^= 0x40;
+                    buttonDown = false;
+                }
+                else if (mov)
+                {
+                    // Some broken terminals appear to send
+                    // mouse button one motion events, instead of
+                    // encoding 35 (no buttons) into these events.
+                    // We resolve these by looking for a non-motion
+                    // event first.
+                    if (!buttonDown)
+                    {
+                        btn |= 0x3;
+                        btn ^= 0x40;
+                    }
+                }
+                else
+                {
+                    buttonDown = true;
+                }
+                buf = buf[i + 1 .. $];
+                evs ~= newMouseEvent(x, y, btn);
+                return true;
+            default:
+                // definitely not ours
+                return false;
+            }
+        }
+        // might be ours, inconclusive
+        if (state > 0)
+            partial = true;
+        return false;
+    }
+
+    bool parseLegacyMouse()
+    {
+        int x, y, btn;
+
+        enum State
+        {
+            start,
+            bracket,
+            end
+        }
+
+        State state;
+
+        for (int i = 0; i < buf.length; i++)
+        {
+            final switch (state)
+            {
+            case State.start:
+                switch (buf[i])
+                {
+                case '\x1b':
+                    state = State.bracket;
+                    break;
+                case '\x9b':
+                    state = State.end;
+                    break;
+                default:
+                    return false;
+                }
+                break;
+            case State.bracket:
+                if (buf[i] != '[')
+                    return false;
+                state++;
+                break;
+            case State.end:
+                if (buf[i] != 'M')
+                    return false;
+                if (buf.length < i + 4)
+                    break;
+                buf = buf[i + 1 .. $];
+                btn = int(buf[0]);
+                x = int(buf[1]) - 32 - 1;
+                y = int(buf[2]) - 32 - 1;
+                buf = buf[3 .. $];
+                evs ~= newMouseEvent(x, y, btn);
+                return true;
+            }
+        }
+        if (state > 0)
+            partial = true;
         return false;
     }
 }
@@ -486,15 +705,19 @@ unittest
         keyLeft: "\x1bOD",
         keyRight: "\x1bOC",
         keyBacktab: "\x1b[Z",
+        keyShfRight: "\x1b[1;2C",
         mouse: "\x1b[M",
     };
-
-    shared Parser p = new shared Parser(&term);
+    Database.put(&term);
+    auto tc = Database.get("test-term");
+    assert(tc !is null);
+    shared Parser p = new shared Parser(tc);
     assert(p.empty());
-    assert(p.parse(cast(byte[])"\x1bOC"));
+    assert(p.parse([])); // no data, is fine
+    assert(p.parse(cast(ubyte[]) "\x1bOC"));
     auto ev = p.events();
     import std.stdio;
-    writeln("EVENT LENGTH", ev.length);
+
     assert(ev.length == 1);
     assert(ev[0].type == EventType.key);
     assert(ev[0].key.key == Key.right);
@@ -507,9 +730,52 @@ unittest
     assert(ev.length == 0);
     Thread.sleep(msecs(100));
     assert(p.parse([]) == true);
-    ev = p.events;
+    ev = p.events();
     assert(ev.length == 1);
     assert(ev[0].type == EventType.key);
     assert(ev[0].key.key == Key.rune);
     assert(ev[0].key.mod == Modifiers.alt);
+
+    // lone escape
+    assert(p.parse(['\x1b']) == false);
+    ev = p.events();
+    assert(ev.length == 0);
+    Thread.sleep(msecs(100));
+    assert(p.parse([]) == true);
+    ev = p.events();
+    assert(ev.length == 1);
+    assert(ev[0].type == EventType.key);
+    assert(ev[0].key.key == Key.esc);
+    assert(ev[0].key.mod == Modifiers.none);
+
+    // try injecting paste events
+    assert(tc.enablePaste != "");
+    assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
+    ev = p.events();
+    assert(ev.length == 1);
+    assert(ev[0].type == EventType.paste);
+    assert(ev[0].paste.start == true);
+
+    assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+    ev = p.events();
+    assert(ev.length == 1);
+    assert(ev[0].type == EventType.paste);
+    assert(ev[0].paste.start == false);
+
+    // mouse events
+    assert(p.parse(['\x1b', '[', '<', '3', ';','2', ';', '3', 'M' ]));
+    ev = p.events();
+    assert(ev.length == 1);
+    assert(ev[0].type == EventType.mouse);
+    assert(ev[0].mouse.pos.x == 1);
+    assert(ev[0].mouse.pos.y == 2);
+
+    // unicode
+    ubyte[] b = [cast(byte)0xe2, cast(byte)0x82, cast(byte)0xac];
+    assert(p.parse(b));
+    ev = p.events();
+    assert(ev.length == 1);
+    assert(ev[0].type == EventType.key);
+    assert(ev[0].key.key == Key.rune);
+    assert(ev[0].key.ch == '€');
 }

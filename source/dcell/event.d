@@ -35,6 +35,7 @@ struct Event
         MouseEvent mouse;
         KeyEvent key;
         ResizeEvent resize;
+        PasteEvent paste;
     }
 }
 
@@ -46,3 +47,11 @@ struct Event
 struct ResizeEvent
 {
 }
+
+/**
+ * Paste start or stop.
+ */
+ struct PasteEvent
+ {
+    bool start;
+ }
