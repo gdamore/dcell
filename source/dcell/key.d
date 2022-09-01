@@ -5,8 +5,6 @@
 
 module dcell.key;
 
-import dcell.event;
-
 /**
  * Key represents a single, unmodified key stroke.  Modifier keys are
  * not considered as Keys.
@@ -168,9 +166,7 @@ enum Modifiers
  */
 struct KeyEvent
 {
-    Event ev;
     Key key; /// Key pressed.
-    char ch; /// Set if key == rune.
+    dchar ch; /// Set if key == rune.
     Modifiers mod; /// Any modifiers pressed together.
-    alias ev this;
 }

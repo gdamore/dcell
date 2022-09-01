@@ -5,8 +5,6 @@
 
 module dcell.mouse;
 
-import dcell.event;
-
 public import dcell.coord;
 public import dcell.key : Modifiers;
 
@@ -72,9 +70,7 @@ enum MouseEnable
  */
 struct MouseEvent
 {
-    Event ev;
     Buttons btn; /// Buttons involved.
     Modifiers mod; /// Keyboard modifiers pressed during event.
     Coord pos; /// Coordinates of mouse.
-    alias ev this;
 }

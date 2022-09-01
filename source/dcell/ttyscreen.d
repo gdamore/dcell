@@ -6,6 +6,8 @@
 module dcell.ttyscreen;
 
 import std.string;
+import std.variant;
+import std.utf;
 
 import dcell.cell;
 import dcell.cursor;
@@ -14,6 +16,7 @@ import dcell.mouse;
 import dcell.terminfo;
 import dcell.tty;
 import dcell.screen;
+import dcell.event;
 
 class TtyScreen : Screen
 {
@@ -23,7 +26,6 @@ class TtyScreen : Screen
         ti = tinfo;
         auto size = tty.windowSize();
         cells = new CellBuffer(size);
-        prepareKeys();
     }
 
     ~this()
@@ -34,56 +36,71 @@ class TtyScreen : Screen
 
     void clear()
     {
-        fill(" ");
-        clear_ = true;
-        // because we are going to clear it in the next cycle,
-        // lets mark all the cells clean, so that we don't waste
-        // needless time redrawing spaces for the entire screen.
-        cells.setAllDirty(false);
+        synchronized (this)
+        {
+            fill(" ");
+            clear_ = true;
+            // because we are going to clear it in the next cycle,
+            // lets mark all the cells clean, so that we don't waste
+            // needless time redrawing spaces for the entire screen.
+            cells.setAllDirty(false);
+        }
     }
 
     void fill(string s, Style style)
     {
-        cells.fill(s, style);
+        synchronized (this)
+            cells.fill(s, style);
     }
 
     void fill(string s)
     {
-        fill(s, this.style_);
+        synchronized (this)
+            fill(s, this.style_);
     }
 
     void showCursor(Coord pos, Cursor cur = Cursor.current)
     {
-        // just save the coordinates for now
-        // it will be used during the next draw cycle
-        cursorPos = pos;
-        cursorShape = cur;
+        synchronized (this)
+        {
+            // just save the coordinates for now
+            // it will be used during the next draw cycle
+            cursorPos = pos;
+            cursorShape = cur;
+        }
     }
 
     void showCursor(Cursor cur)
     {
-        cursorShape = cur;
+        synchronized (this)
+            cursorShape = cur;
     }
 
     Coord size()
     {
-        return (cells.size());
+        synchronized (this)
+            return (cells.size());
     }
 
     const(Cell) opIndex(Coord pos)
     {
-        return (cells[pos]);
+        synchronized (this)
+            return (cells[pos]);
     }
 
     void opIndexAssign(Cell c, Coord pos)
     {
-        cells[pos] = c;
+        synchronized (this)
+            cells[pos] = c;
     }
 
     void enablePaste(bool b)
     {
-        pasteEn = b;
-        sendPasteEnable(b);
+        synchronized (this)
+        {
+            pasteEn = b;
+            sendPasteEnable(b);
+        }
     }
 
     bool hasMouse()
@@ -98,31 +115,41 @@ class TtyScreen : Screen
 
     void show()
     {
-        resize();
-        draw();
+        synchronized (this)
+        {
+            resize();
+            draw();
+        }
     }
 
     void sync()
     {
-        pos_ = Coord(-1, -1);
-        resize();
-        clear_ = true;
-        cells.setAllDirty(true);
-        draw();
+        synchronized (this)
+        {
+            pos_ = Coord(-1, -1);
+            resize();
+            clear_ = true;
+            cells.setAllDirty(true);
+            draw();
+        }
     }
 
     void beep()
     {
-        puts(ti.caps.bell);
+        synchronized (this)
+            puts(ti.caps.bell);
     }
 
     void setSize(Coord size)
     {
-        if (ti.caps.setWindowSize != "")
+        synchronized (this)
         {
-            puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
-            cells.setAllDirty(true);
-            resize();
+            if (ti.caps.setWindowSize != "")
+            {
+                puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
+                cells.setAllDirty(true);
+                resize();
+            }
         }
     }
 
@@ -141,10 +168,21 @@ class TtyScreen : Screen
         // to the de-facto standard from XTerm.  This is necessary as
         // there is no standard terminfo sequence for reporting this
         // information.
-        if (ti.caps.mouse != "")
+        synchronized (this)
         {
-            mouseEn = en; // save this so we can restore after a suspend
-            sendMouseEnable(en);
+            if (ti.caps.mouse != "")
+            {
+                mouseEn = en; // save this so we can restore after a suspend
+                sendMouseEnable(en);
+            }
+        }
+    }
+
+    void handleEvents(void delegate(Variant) handler)
+    {
+        synchronized (this)
+        {
+            evHandler = handler;
         }
     }
 
@@ -167,6 +205,8 @@ private:
     KeyCode[string] keyCodes; // sequence (escape) to a key
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
+    void delegate(Variant) evHandler;
+    bool stopping; // if true we are in the process of shutting down
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
@@ -496,251 +536,39 @@ private:
         }
     }
 
-    void prepareKeyModXTerm(Key key, string val)
+    void mainLoop()
     {
-        if (val.length > 2 && val[0] == '\x1b' && val[1] == '[' && val[$ - 1] == '~')
-        {
-            // These suffixes are calculated assuming Xterm style modifier suffixes.
-            // Please see https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf for
-            // more information (specifically "PC-Style Function Keys").
-            val = val[0 .. $ - 1]; // drop trailing ~
-            prepareKeyModReplace(key, cast(Key)(key + 12), Modifiers.shift, val ~ ";2~");
-            prepareKeyModReplace(key, cast(Key)(key + 48), Modifiers.alt, val ~ ";3~");
-            prepareKeyModReplace(key, cast(Key)(key + 60), Modifiers.alt | Modifiers.shift, val ~ ";4~");
-            prepareKeyModReplace(key, cast(Key)(key + 24), Modifiers.ctrl, val ~ ";5~");
-            prepareKeyModReplace(key, cast(Key)(key + 36), Modifiers.ctrl | Modifiers.shift, val ~ ";6~");
-            prepareKeyMod(key, Modifiers.alt | Modifiers.ctrl, val ~ ";7~");
-            prepareKeyMod(key, Modifiers.shift | Modifiers.alt | Modifiers.ctrl, val ~ ";8~");
-            prepareKeyMod(key, Modifiers.meta, val ~ ";9~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.shift, val ~ ";10~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.alt, val ~ ";11~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.shift | Modifiers.alt, val ~ ";12~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl, val ~ ";13~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.shift, val ~ ";14~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.alt, val ~ ";15~");
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.shift | Modifiers.alt, val ~ ";16~");
-        }
-        else if (val.length == 3 && val[0] == '\x1b' && val[1] == '0')
-        {
-            val = val[2 .. $];
-            prepareKeyModReplace(key, cast(Key)(key + 12), Modifiers.shift, "\x1b[1;2" ~ val);
-            prepareKeyModReplace(key, cast(Key)(key + 48), Modifiers.alt, "\x1b[1;3" ~ val);
-            prepareKeyModReplace(key, cast(Key)(key + 24), Modifiers.ctrl, "\x1b[1;5" ~ val);
-            prepareKeyModReplace(key, cast(Key)(key + 36), Modifiers.ctrl | Modifiers.shift, "\x1b[1;6" ~ val);
-            prepareKeyModReplace(key, cast(Key)(key + 60), Modifiers.alt | Modifiers.shift, "\x1b[1;4" ~ val);
-            prepareKeyMod(key, Modifiers.alt | Modifiers.ctrl, "\x1b[1;7" ~ val);
-            prepareKeyMod(key, Modifiers.shift | Modifiers.alt | Modifiers.ctrl, "\x1b[1;8" ~ val);
-            prepareKeyMod(key, Modifiers.meta, "\x1b[1;9" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.shift, "\x1b[1;10" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.alt, "\x1b[1;11" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.alt | Modifiers.shift, "\x1b[1;12" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl, "\x1b[1;13" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.shift, "\x1b[1;14" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.alt, "\x1b[1;15" ~ val);
-            prepareKeyMod(key, Modifiers.meta | Modifiers.ctrl | Modifiers.alt | Modifiers.shift, "\x1b[1;16" ~ val);
-        }
+
     }
 
-    void prepareKey(Key key, string val)
+    // inputLoop reads from our TTY, and posts bytes read (on success)
+    // to the mainLoop thread.  If read fails, it posts an error and exits.
+    void inputLoop()
     {
-        prepareKeyMod(key, Modifiers.none, val);
-    }
-
-    void prepareXTermModifiers()
-    {
-        if (ti.caps.keyRight != "\x1b[;2C") // does this look "xtermish"?
-            return;
-        prepareKeyModXTerm(Key.right, ti.caps.keyRight);
-        prepareKeyModXTerm(Key.left, ti.caps.keyLeft);
-        prepareKeyModXTerm(Key.up, ti.caps.keyUp);
-        prepareKeyModXTerm(Key.down, ti.caps.keyDown);
-        prepareKeyModXTerm(Key.insert, ti.caps.keyInsert);
-        prepareKeyModXTerm(Key.del, ti.caps.keyDelete);
-        prepareKeyModXTerm(Key.pgUp, ti.caps.keyPgUp);
-        prepareKeyModXTerm(Key.pgDn, ti.caps.keyPgDn);
-        prepareKeyModXTerm(Key.home, ti.caps.keyHome);
-        prepareKeyModXTerm(Key.end, ti.caps.keyEnd);
-        prepareKeyModXTerm(Key.f1, ti.caps.keyF1);
-        prepareKeyModXTerm(Key.f2, ti.caps.keyF2);
-        prepareKeyModXTerm(Key.f3, ti.caps.keyF3);
-        prepareKeyModXTerm(Key.f4, ti.caps.keyF4);
-        prepareKeyModXTerm(Key.f5, ti.caps.keyF5);
-        prepareKeyModXTerm(Key.f6, ti.caps.keyF6);
-        prepareKeyModXTerm(Key.f7, ti.caps.keyF7);
-        prepareKeyModXTerm(Key.f8, ti.caps.keyF8);
-        prepareKeyModXTerm(Key.f9, ti.caps.keyF9);
-        prepareKeyModXTerm(Key.f10, ti.caps.keyF10);
-        prepareKeyModXTerm(Key.f11, ti.caps.keyF11);
-        prepareKeyModXTerm(Key.f12, ti.caps.keyF12);
-    }
-
-    void prepareKeys()
-    {
-        prepareKey(Key.backspace, ti.caps.keyBackspace);
-        prepareKey(Key.f1, ti.caps.keyF1);
-        prepareKey(Key.f2, ti.caps.keyF2);
-        prepareKey(Key.f3, ti.caps.keyF3);
-        prepareKey(Key.f4, ti.caps.keyF4);
-        prepareKey(Key.f5, ti.caps.keyF5);
-        prepareKey(Key.f6, ti.caps.keyF6);
-        prepareKey(Key.f7, ti.caps.keyF7);
-        prepareKey(Key.f8, ti.caps.keyF8);
-        prepareKey(Key.f9, ti.caps.keyF9);
-        prepareKey(Key.f10, ti.caps.keyF10);
-        prepareKey(Key.f11, ti.caps.keyF11);
-        prepareKey(Key.f12, ti.caps.keyF12);
-        prepareKey(Key.f13, ti.caps.keyF13);
-        prepareKey(Key.f14, ti.caps.keyF14);
-        prepareKey(Key.f15, ti.caps.keyF15);
-        prepareKey(Key.f16, ti.caps.keyF16);
-        prepareKey(Key.f17, ti.caps.keyF17);
-        prepareKey(Key.f18, ti.caps.keyF18);
-        prepareKey(Key.f19, ti.caps.keyF19);
-        prepareKey(Key.f20, ti.caps.keyF20);
-        prepareKey(Key.f21, ti.caps.keyF21);
-        prepareKey(Key.f22, ti.caps.keyF22);
-        prepareKey(Key.f23, ti.caps.keyF23);
-        prepareKey(Key.f24, ti.caps.keyF24);
-        prepareKey(Key.f25, ti.caps.keyF25);
-        prepareKey(Key.f26, ti.caps.keyF26);
-        prepareKey(Key.f27, ti.caps.keyF27);
-        prepareKey(Key.f28, ti.caps.keyF28);
-        prepareKey(Key.f29, ti.caps.keyF29);
-        prepareKey(Key.f30, ti.caps.keyF30);
-        prepareKey(Key.f31, ti.caps.keyF31);
-        prepareKey(Key.f32, ti.caps.keyF32);
-        prepareKey(Key.f33, ti.caps.keyF33);
-        prepareKey(Key.f34, ti.caps.keyF34);
-        prepareKey(Key.f35, ti.caps.keyF35);
-        prepareKey(Key.f36, ti.caps.keyF36);
-        prepareKey(Key.f37, ti.caps.keyF37);
-        prepareKey(Key.f38, ti.caps.keyF38);
-        prepareKey(Key.f39, ti.caps.keyF39);
-        prepareKey(Key.f40, ti.caps.keyF40);
-        prepareKey(Key.f41, ti.caps.keyF41);
-        prepareKey(Key.f42, ti.caps.keyF42);
-        prepareKey(Key.f43, ti.caps.keyF43);
-        prepareKey(Key.f44, ti.caps.keyF44);
-        prepareKey(Key.f45, ti.caps.keyF45);
-        prepareKey(Key.f46, ti.caps.keyF46);
-        prepareKey(Key.f47, ti.caps.keyF47);
-        prepareKey(Key.f48, ti.caps.keyF48);
-        prepareKey(Key.f49, ti.caps.keyF49);
-        prepareKey(Key.f50, ti.caps.keyF50);
-        prepareKey(Key.f51, ti.caps.keyF51);
-        prepareKey(Key.f52, ti.caps.keyF52);
-        prepareKey(Key.f53, ti.caps.keyF53);
-        prepareKey(Key.f54, ti.caps.keyF54);
-        prepareKey(Key.f55, ti.caps.keyF55);
-        prepareKey(Key.f56, ti.caps.keyF56);
-        prepareKey(Key.f57, ti.caps.keyF57);
-        prepareKey(Key.f58, ti.caps.keyF58);
-        prepareKey(Key.f59, ti.caps.keyF59);
-        prepareKey(Key.f60, ti.caps.keyF60);
-        prepareKey(Key.f61, ti.caps.keyF61);
-        prepareKey(Key.f62, ti.caps.keyF62);
-        prepareKey(Key.f63, ti.caps.keyF63);
-        prepareKey(Key.f64, ti.caps.keyF64);
-        prepareKey(Key.insert, ti.caps.keyInsert);
-        prepareKey(Key.del, ti.caps.keyDelete);
-        prepareKey(Key.home, ti.caps.keyHome);
-        prepareKey(Key.end, ti.caps.keyEnd);
-        prepareKey(Key.up, ti.caps.keyUp);
-        prepareKey(Key.down, ti.caps.keyDown);
-        prepareKey(Key.left, ti.caps.keyLeft);
-        prepareKey(Key.right, ti.caps.keyRight);
-        prepareKey(Key.pgUp, ti.caps.keyPgUp);
-        prepareKey(Key.pgDn, ti.caps.keyPgDn);
-        prepareKey(Key.help, ti.caps.keyHelp);
-        prepareKey(Key.print, ti.caps.keyPrint);
-        prepareKey(Key.cancel, ti.caps.keyCancel);
-        prepareKey(Key.exit, ti.caps.keyExit);
-        prepareKey(Key.backtab, ti.caps.keyBacktab);
-        prepareKey(Key.pasteStart, ti.caps.pasteStart);
-        prepareKey(Key.pasteEnd, ti.caps.pasteEnd);
-
-        prepareKeyMod(Key.right, Modifiers.shift, ti.caps.keyShfRight);
-        prepareKeyMod(Key.left, Modifiers.shift, ti.caps.keyShfLeft);
-        prepareKeyMod(Key.up, Modifiers.shift, ti.caps.keyShfUp);
-        prepareKeyMod(Key.down, Modifiers.shift, ti.caps.keyShfDown);
-        prepareKeyMod(Key.home, Modifiers.shift, ti.caps.keyShfHome);
-        prepareKeyMod(Key.end, Modifiers.shift, ti.caps.keyShfEnd);
-        prepareKeyMod(Key.pgUp, Modifiers.shift, ti.caps.keyShfPgUp);
-        prepareKeyMod(Key.pgDn, Modifiers.shift, ti.caps.keyShfPgDn);
-
-        prepareKeyMod(Key.right, Modifiers.ctrl, ti.caps.keyCtrlRight);
-        prepareKeyMod(Key.left, Modifiers.ctrl, ti.caps.keyCtrlLeft);
-        prepareKeyMod(Key.up, Modifiers.ctrl, ti.caps.keyCtrlUp);
-        prepareKeyMod(Key.down, Modifiers.ctrl, ti.caps.keyCtrlDown);
-        prepareKeyMod(Key.home, Modifiers.ctrl, ti.caps.keyCtrlHome);
-        prepareKeyMod(Key.end, Modifiers.ctrl, ti.caps.keyCtrlEnd);
-
-        // Sadly, xterm handling of keycodes is somewhat erratic.  In
-        // particular, different codes are sent depending on application
-        // mode is in use or not, and the entries for many of these are
-        // simply absent from terminfo on many systems.  So we insert
-        // a number of escape sequences if they are not already used, in
-        // order to have the widest correct usage.  Note that prepareKey
-        // will not inject codes if the escape sequence is already known.
-        // We also only do this for terminals that have the application
-        // mode present.
-
-        if (ti.caps.enterKeypad != "")
+        for (;;)
         {
-            prepareKey(Key.up, "\x1b[A");
-            prepareKey(Key.down, "\x1b[B");
-            prepareKey(Key.right, "\x1b[C");
-            prepareKey(Key.left, "\x1b[D");
-            prepareKey(Key.end, "\x1b[F");
-            prepareKey(Key.home, "\x1b[H");
-            prepareKey(Key.del, "\x1b[3~");
-            prepareKey(Key.home, "\x1b[1~");
-            prepareKey(Key.end, "\x1b[4~");
-            prepareKey(Key.pgUp, "\x1b[5~");
-            prepareKey(Key.pgDn, "\x1b[6~");
-
-            // Application mode
-            prepareKey(Key.up, "\x1bOA");
-            prepareKey(Key.down, "\x1bOB");
-            prepareKey(Key.right, "\x1bOC");
-            prepareKey(Key.left, "\x1bOD");
-            prepareKey(Key.home, "\x1bOH");
-        }
-
-        // we look breifly at all the keyCodes we
-        // have, to find their starting character.
-        // the vast majority of these will be escape.
-        bool[char] initials;
-        foreach (string esc, KeyCode kc; keyCodes)
-        {
-            if (esc != "")
+            synchronized (this)
             {
-                initials[esc[0]] = true;
+                if (stopping)
+                {
+                    return;
+                }
             }
-        }
-        // Add key mappings for control keys.
-        for (char i = 0; i < ' '; i++)
-        {
-
-            // If this is starting character (typically esc) of other sequences,
-            // then do not set up the fast path mapping for it.
-            // We need to let the read do the whole timeout thing.
-            if (i in initials)
-                continue;
-
-            Key k = cast(Key) i;
-            keyExist[k] = true;
-            switch (k)
+            byte[] b;
+            try
             {
-            case Key.backspace, Key.tab, Key.esc, Key.enter:
-                // these are directly typeable
-                keyCodes["" ~ i] = KeyCode(k, Modifiers.none);
-                break;
-            default:
-                // these are generally represented as a control sequence
-                keyCodes["" ~ i] = KeyCode(k, Modifiers.ctrl);
+                b = tty.read();
+            }
+            catch (Exception e)
+            {
+                // TODO: post an event message
+                return;
+            }
+            if (b.length == 0)
+            {
                 break;
             }
+
         }
     }
 }
@@ -778,6 +606,7 @@ unittest
         ts.show();
         writeln("SHOWN");
         import core.thread;
+
         Thread.sleep(dur!("seconds")(1));
         destroy(ts);
     }

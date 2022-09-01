@@ -7,14 +7,35 @@ module dcell.event;
 
 import core.time;
 
+import dcell.key;
+import dcell.mouse;
+
+enum EventType
+{
+    none = 0,
+    error,
+    key,
+    mouse,
+    paste,
+    resize,
+}
+
 /**
  * Event is the abstract from of an event.  We use structs because
  * these will be sent by value over the message box.  Other event
  * types should "derive" from this by using it as their first member
  * and using alias this.
  */
-struct Event {
+struct Event
+{
+    EventType type;
     MonoTime when;
+    union
+    {
+        MouseEvent mouse;
+        KeyEvent key;
+        ResizeEvent resize;
+    }
 }
 
 /**
@@ -22,7 +43,6 @@ struct Event {
  * It is something the application should use to determine
  * when it needs to update layouts, etc.
  */
-struct Resize {
-    Event ev;
-    alias ev this;
+struct ResizeEvent
+{
 }
