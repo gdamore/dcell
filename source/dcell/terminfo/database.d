@@ -92,6 +92,19 @@ synchronized class Database
         // we promise not to modify the aliases array.
         *tc = *(cast(Termcap*)(entries[name]));
 
+        // For terminals that use "standard" SGR sequences, lets combine the
+        // foreground and background together. This saves one byte sent
+        // per screen cell.  Not huge, but it might be as much as 10%.
+        if (startsWith(tc.setFg, "\x1b[") &&
+            startsWith(tc.setBg, "\x1b[") &&
+            endsWith(tc.setFg, ";m") &&
+            endsWith(tc.setBg, ";m"))
+        {
+            tc.setFgBg = tc.setFg[0 .. $ - 1]; // drop m
+            tc.setFgBg ~= ';';
+            tc.setFgBg ~= replace(tc.setBg[2 .. $], "%p1", "%p2");
+        }
+
         if (tc.colors > 256 || canFind(colorTerm, "truecolor") ||
             canFind(colorTerm, "24bit") || canFind(colorTerm, "24-bit"))
         {
@@ -203,7 +216,7 @@ unittest
     environment["COLORTERM"] = "truecolor";
     tc = Database.get("mytest-truecolor");
     assert(tc !is null);
-    assert(tc.colors == 1<<24);
+    assert(tc.colors == 1 << 24);
     assert(tc.setFgBgRGB != "");
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
@@ -217,14 +230,14 @@ unittest
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
 
-    caps.colors = 1<<24;
+    caps.colors = 1 << 24;
     caps.aliases = [];
     caps.name = "ctest";
     caps.mouse = ":mouse";
     Database.put(&caps);
     tc = Database.get("ctest");
     assert(tc !is null);
-    assert(tc.colors == 1<<24);
+    assert(tc.colors == 1 << 24);
     assert(tc.setFgBgRGB != "");
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
@@ -232,7 +245,7 @@ unittest
 
     auto ti = new Terminfo(tc);
     assert(ti !is null);
-    assert(ti.caps.colors == 1<<24);
+    assert(ti.caps.colors == 1 << 24);
     assert(ti.caps.setFgBgRGB != "");
     assert(ti.caps.setFg != "");
     assert(ti.caps.resetColors != "");

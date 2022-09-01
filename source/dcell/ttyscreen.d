@@ -596,18 +596,19 @@ unittest
         auto ts = new TtyScreen(tty, ti);
         writeln("STEP 5");
         assert(ts !is null);
+        //assert(ts.ti.caps.setFgBgRGB != "");
+        //assert(ts.ti.caps.setFgBg != "");
 
-        writeln("COLS ", ts.size().x, " ROWS ", ts.size().y);
         ts.tty.start();
 
-        writeln("CLEARING...");
         ts.clear();
-        writeln("CLEARED?");
+        ts.cells.setAllDirty(true);
+        ts[Coord(0,0)] = Cell("A", Style(Color.white, Color.red, Attr.underline), 1);
+        ts[Coord(1,0)] = Cell("B", Style(Color.white, Color.green, Attr.underline), 1);
         ts.show();
-        writeln("SHOWN");
         import core.thread;
 
-        Thread.sleep(dur!("seconds")(1));
+        Thread.sleep(dur!("seconds")(2));
         destroy(ts);
     }
 }
