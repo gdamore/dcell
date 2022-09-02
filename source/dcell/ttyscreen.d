@@ -5,9 +5,10 @@
 
 module dcell.ttyscreen;
 
+import core.time;
 import std.string;
-import std.variant;
 import std.utf;
+import std.concurrency;
 
 import dcell.cell;
 import dcell.cursor;
@@ -17,6 +18,7 @@ import dcell.terminfo;
 import dcell.tty;
 import dcell.screen;
 import dcell.event;
+import dcell.parser;
 
 class TtyScreen : Screen
 {
@@ -26,10 +28,22 @@ class TtyScreen : Screen
         ti = tinfo;
         auto size = tty.windowSize();
         cells = new CellBuffer(size);
+        parser = new shared Parser(ti.caps);
     }
 
     ~this()
     {
+        stop();
+    }
+
+    void stop()
+    {
+        puts(ti.caps.resetColors);
+        puts(ti.caps.attrOff);
+        puts(ti.caps.cursorReset);
+        puts(ti.caps.showCursor);
+        puts(ti.caps.cursorReset);
+        puts(ti.caps.clear);
         tty.drain();
         tty.stop();
     }
@@ -137,7 +151,10 @@ class TtyScreen : Screen
     void beep()
     {
         synchronized (this)
+        {
             puts(ti.caps.bell);
+            flush();
+        }
     }
 
     void setSize(Coord size)
@@ -147,6 +164,7 @@ class TtyScreen : Screen
             if (ti.caps.setWindowSize != "")
             {
                 puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
+                flush();
                 cells.setAllDirty(true);
                 resize();
             }
@@ -178,7 +196,7 @@ class TtyScreen : Screen
         }
     }
 
-    void handleEvents(void delegate(Variant) handler)
+    void handleEvents(void delegate(Event) handler)
     {
         synchronized (this)
         {
@@ -205,14 +223,21 @@ private:
     KeyCode[string] keyCodes; // sequence (escape) to a key
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
-    void delegate(Variant) evHandler;
+    void delegate(Event) evHandler;
     bool stopping; // if true we are in the process of shutting down
+    shared Parser parser;
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
     void puts(string s)
     {
         ti.tPuts(s, tty.file());
+    }
+
+    // flush queued output
+    void flush()
+    {
+        tty.file.flush();
     }
 
     // sendColors sends just the colors for a given style
@@ -295,6 +320,7 @@ private:
             sendColors(style_);
             sendAttrs(style_);
             puts(ti.caps.clear);
+            flush();
         }
     }
 
@@ -469,6 +495,7 @@ private:
             }
         }
         sendCursor();
+        flush();
     }
 
     void resize()
@@ -502,22 +529,52 @@ private:
             // and if any are set, we need to send this
             if (en & MouseEnable.all)
                 puts("\x1b[?1006h");
+            flush();
         }
     }
 
     void sendPasteEnable(bool b)
     {
         puts(b ? ti.caps.enablePaste : ti.caps.disablePaste);
+        flush();
+    }
+
+    void recvInput(ubyte[] b, ref Duration timer)
+    {
+        if (!parser.parse(b))
+            timer = msecs(50);
+        else
+            timer = seconds(3600);
     }
 
     void mainLoop()
     {
 
+        auto unhandled = false;
+        auto timer = seconds(3600); // we will wake up at least once an hour
+        for (;;)
+        {
+            receiveTimeout(timer,
+                (ubyte[] b) { recvInput(b, timer); },
+            );
+
+            auto events = parser.events();
+            foreach (Event ev; events)
+            {
+                synchronized (this)
+                {
+                    if (evHandler !is null)
+                    {
+                        evHandler(ev);
+                    }
+                }
+            }
+        }
     }
 
     // inputLoop reads from our TTY, and posts bytes read (on success)
     // to the mainLoop thread.  If read fails, it posts an error and exits.
-    void inputLoop()
+    void inputLoop(Tid loopTid)
     {
         for (;;)
         {
@@ -570,15 +627,18 @@ unittest
         auto ts = new TtyScreen(tty, ti);
         writeln("STEP 5");
         assert(ts !is null);
-        //assert(ts.ti.caps.setFgBgRGB != "");
-        //assert(ts.ti.caps.setFgBg != "");
+        assert(ts.ti.caps.setFgBg != "");
 
         ts.tty.start();
 
         ts.clear();
-        ts.cells.setAllDirty(true);
-        ts[Coord(0,0)] = Cell("A", Style(Color.white, Color.red, Attr.underline), 1);
-        ts[Coord(1,0)] = Cell("B", Style(Color.white, Color.green, Attr.underline), 1);
+        ts.showCursor(Coord(0, 0), Cursor.hidden);
+        auto c = ts.size();
+        c.x /= 2;
+        c.y /= 2;
+        ts[c] = Cell("A", Style(Color.white, Color.red, Attr.underline), 1);
+        c.x++;
+        ts[c] = Cell("B", Style(Color.white, Color.green, Attr.underline), 1);
         ts.show();
         import core.thread;
 
