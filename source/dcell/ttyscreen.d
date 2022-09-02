@@ -36,16 +36,31 @@ class TtyScreen : Screen
         stop();
     }
 
+    void start()
+    {
+        synchronized (this)
+        {
+            tty.start();
+            puts(ti.caps.clear);
+            resize();
+            draw();
+            flush();
+        }
+    }
+
     void stop()
     {
-        puts(ti.caps.resetColors);
-        puts(ti.caps.attrOff);
-        puts(ti.caps.cursorReset);
-        puts(ti.caps.showCursor);
-        puts(ti.caps.cursorReset);
-        puts(ti.caps.clear);
-        tty.drain();
-        tty.stop();
+        synchronized (this)
+        {
+            puts(ti.caps.resetColors);
+            puts(ti.caps.attrOff);
+            puts(ti.caps.cursorReset);
+            puts(ti.caps.showCursor);
+            puts(ti.caps.cursorReset);
+            puts(ti.caps.clear);
+            tty.drain();
+            tty.stop();
+        }
     }
 
     void clear()
@@ -629,9 +644,8 @@ unittest
         assert(ts !is null);
         assert(ts.ti.caps.setFgBg != "");
 
-        ts.tty.start();
+        ts.start();
 
-        ts.clear();
         ts.showCursor(Coord(0, 0), Cursor.hidden);
         auto c = ts.size();
         c.x /= 2;
