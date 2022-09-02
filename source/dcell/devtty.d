@@ -18,9 +18,9 @@ version (Posix)
     import dcell.tty;
 
     /**
- * A tty implemented on top of the /dev/tty device found on common
- * POSIX systems.
- */
+     * A tty implemented on top of the /dev/tty device found on common
+     * POSIX systems.
+     */
     class DevTty : Tty
     {
         private int fd;
