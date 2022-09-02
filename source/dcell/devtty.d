@@ -25,8 +25,8 @@ version (Posix)
     {
         private int fd;
         private File f;
-        string path;
-        termios saved;
+        private string path;
+        private termios saved;
 
         this(string name = "/dev/tty")
         {
