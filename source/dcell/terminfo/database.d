@@ -20,9 +20,7 @@ import dcell.terminfo.terminal;
  */
 synchronized class Database
 {
-    private alias iterm = const Termcap*;
     private static Termcap[string] terms;
-    //private static Termcap*[string] entries;
     private static const(Termcap)*[string] entries;
 
     /**
