@@ -13,7 +13,6 @@ import std.stdio;
 import std.string;
 
 public import dcell.terminfo.termcap;
-import dcell.terminfo.terminal;
 
 /**
  * Represents a database of terminal entries, indexed by their name.
