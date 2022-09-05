@@ -29,7 +29,7 @@ synchronized class Database
      * Params:
      *   ti = terminal capabilities to add
      */
-    static void put(const(Termcap)* tc)
+    static void put(immutable(Termcap)* tc)
     {
         entries[tc.name] = tc;
         foreach (name; tc.aliases)
@@ -50,7 +50,7 @@ synchronized class Database
      * Returns:
      *   terminal capabilities if known, `null` if not.
      */
-    static const(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false)
+    static immutable(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false)
     {
         if (name !in entries)
         {
@@ -192,17 +192,17 @@ synchronized class Database
 
         // likewise, if we have mouse support, let's try to add backeted
         // paste support.
-        return tc;
+        return cast(immutable(Termcap *))tc;
     }
 }
 
 unittest
 {
-    Termcap caps;
-    caps.name = "mytest";
-    caps.aliases = ["mytest-1", "mytest-2"];
+    immutable Termcap caps = {name: "mytest", aliases: ["mytest-1", "mytest-2"]};
+    immutable Termcap caps2 = {name: "ctest", mouse: ":mouse", colors: 1<<24};
 
     Database.put(&caps);
+    Database.put(&caps2);
 
     assert(Database.get("nosuch") is null);
     auto tc = Database.get("mytest");
@@ -227,11 +227,6 @@ unittest
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
 
-    caps.colors = 1 << 24;
-    caps.aliases = [];
-    caps.name = "ctest";
-    caps.mouse = ":mouse";
-    Database.put(&caps);
     tc = Database.get("ctest");
     assert(tc !is null);
     assert(tc.colors == 1 << 24);
