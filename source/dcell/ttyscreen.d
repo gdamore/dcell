@@ -27,7 +27,7 @@ class TtyScreen : Screen
         caps = tc;
         tty = tt;
         cells = new CellBuffer(tty.windowSize());
-        parser = new shared Parser(caps);
+        parser = new Parser(caps);
     }
 
     ~this()
@@ -37,98 +37,77 @@ class TtyScreen : Screen
 
     void start()
     {
-        synchronized (this)
-        {
-            tty.start();
-            puts(caps.clear);
-            resize();
-            draw();
-            flush();
-        }
+        tty.start();
+        puts(caps.clear);
+        resize();
+        draw();
+        flush();
     }
 
     void stop()
     {
-        synchronized (this)
-        {
-            puts(caps.resetColors);
-            puts(caps.attrOff);
-            puts(caps.cursorReset);
-            puts(caps.showCursor);
-            puts(caps.cursorReset);
-            puts(caps.clear);
-            tty.drain();
-            tty.stop();
-        }
+        puts(caps.resetColors);
+        puts(caps.attrOff);
+        puts(caps.cursorReset);
+        puts(caps.showCursor);
+        puts(caps.cursorReset);
+        puts(caps.clear);
+        tty.drain();
+        tty.stop();
     }
 
     void clear()
     {
-        synchronized (this)
-        {
-            fill(" ");
-            clear_ = true;
-            // because we are going to clear it in the next cycle,
-            // lets mark all the cells clean, so that we don't waste
-            // needless time redrawing spaces for the entire screen.
-            cells.setAllDirty(false);
-        }
+        fill(" ");
+        clear_ = true;
+        // because we are going to clear it in the next cycle,
+        // lets mark all the cells clean, so that we don't waste
+        // needless time redrawing spaces for the entire screen.
+        cells.setAllDirty(false);
     }
 
     void fill(string s, Style style)
     {
-        synchronized (this)
-            cells.fill(s, style);
+        cells.fill(s, style);
     }
 
     void fill(string s)
     {
-        synchronized (this)
-            fill(s, this.style_);
+        fill(s, this.style_);
     }
 
     void showCursor(Coord pos, Cursor cur = Cursor.current)
     {
-        synchronized (this)
-        {
-            // just save the coordinates for now
-            // it will be used during the next draw cycle
-            cursorPos = pos;
-            cursorShape = cur;
-        }
+        // just save the coordinates for now
+        // it will be used during the next draw cycle
+        cursorPos = pos;
+        cursorShape = cur;
     }
 
     void showCursor(Cursor cur)
     {
-        synchronized (this)
-            cursorShape = cur;
+        cursorShape = cur;
     }
 
     Coord size()
     {
-        synchronized (this)
-            return (cells.size());
+        return (cells.size());
     }
 
     const(Cell) opIndex(Coord pos)
     {
-        synchronized (this)
-            return (cells[pos]);
+        return (cells[pos]);
     }
 
     void opIndexAssign(Cell c, Coord pos)
     {
-        synchronized (this)
-            cells[pos] = c;
+        cells[pos] = c;
     }
 
     void enablePaste(bool b)
     {
-        synchronized (this)
-        {
-            pasteEn = b;
-            sendPasteEnable(b);
-        }
+        pasteEn = b;
+        sendPasteEnable(b);
     }
 
     bool hasMouse() pure
@@ -143,45 +122,33 @@ class TtyScreen : Screen
 
     void show()
     {
-        synchronized (this)
-        {
-            resize();
-            draw();
-        }
+        resize();
+        draw();
     }
 
     void sync()
     {
-        synchronized (this)
-        {
-            pos_ = Coord(-1, -1);
-            resize();
-            clear_ = true;
-            cells.setAllDirty(true);
-            draw();
-        }
+        pos_ = Coord(-1, -1);
+        resize();
+        clear_ = true;
+        cells.setAllDirty(true);
+        draw();
     }
 
     void beep()
     {
-        synchronized (this)
-        {
-            puts(caps.bell);
-            flush();
-        }
+        puts(caps.bell);
+        flush();
     }
 
     void setSize(Coord size)
     {
-        synchronized (this)
+        if (caps.setWindowSize != "")
         {
-            if (caps.setWindowSize != "")
-            {
-                puts(caps.setWindowSize, size.x, size.y);
-                flush();
-                cells.setAllDirty(true);
-                resize();
-            }
+            puts(caps.setWindowSize, size.x, size.y);
+            flush();
+            cells.setAllDirty(true);
+            resize();
         }
     }
 
@@ -200,22 +167,16 @@ class TtyScreen : Screen
         // to the de-facto standard from XTerm.  This is necessary as
         // there is no standard terminfo sequence for reporting this
         // information.
-        synchronized (this)
+        if (caps.mouse != "")
         {
-            if (caps.mouse != "")
-            {
-                mouseEn = en; // save this so we can restore after a suspend
-                sendMouseEnable(en);
-            }
+            mouseEn = en; // save this so we can restore after a suspend
+            sendMouseEnable(en);
         }
     }
 
     void handleEvents(void delegate(Event) handler)
     {
-        synchronized (this)
-        {
-            evHandler = handler;
-        }
+        evHandler = handler;
     }
 
 private:
@@ -237,7 +198,7 @@ private:
     bool pasteEn; // saved state for suspend/resume
     void delegate(Event) evHandler;
     bool stopping; // if true we are in the process of shutting down
-    shared Parser parser;
+    Parser parser;
     bool[Key] keyExist; // indicator of keys that are mapped
     KeyCode[string] keyCodes; // sequence (escape) to a key
 
@@ -585,12 +546,9 @@ private:
             auto events = parser.events();
             foreach (Event ev; events)
             {
-                synchronized (this)
+                if (evHandler !is null)
                 {
-                    if (evHandler !is null)
-                    {
-                        evHandler(ev);
-                    }
+                    evHandler(ev);
                 }
             }
         }
@@ -602,12 +560,9 @@ private:
     {
         for (;;)
         {
-            synchronized (this)
+            if (stopping)
             {
-                if (stopping)
-                {
-                    return;
-                }
+                return;
             }
             ubyte[] b;
             try

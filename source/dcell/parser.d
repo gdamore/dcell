@@ -15,12 +15,12 @@ import dcell.event;
 import dcell.terminfo;
 
 package:
-synchronized class Parser
+class Parser
 {
 
     this(const Termcap* tc)
     {
-        caps = cast(shared const Termcap*) tc;
+        caps = tc;
         addKeys();
     }
 
@@ -711,7 +711,7 @@ unittest
     Database.put(&term);
     auto tc = Database.get("test-term");
     assert(tc !is null);
-    shared Parser p = new shared Parser(tc);
+    Parser p = new Parser(tc);
     assert(p.empty());
     assert(p.parse([])); // no data, is fine
     assert(p.parse(cast(ubyte[]) "\x1bOC"));
