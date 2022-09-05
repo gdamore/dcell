@@ -240,11 +240,4 @@ unittest
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
     assert(tc.enablePaste != ""); // xterm like
-
-    auto ti = new Terminfo(tc);
-    assert(ti !is null);
-    assert(ti.caps.colors == 1 << 24);
-    assert(ti.caps.setFgBgRGB != "");
-    assert(ti.caps.setFg != "");
-    assert(ti.caps.resetColors != "");
 }

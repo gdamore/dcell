@@ -8,9 +8,11 @@ module dcell.style;
 public import dcell.attr;
 public import dcell.color;
 
-/// Text styling, which is an aggregate of attributes like bold or reverse,
-/// coloring (both foreground and background) and other attributes such as
-/// being clickable (to open a URL for example).
+/**
+ * Text styling, which is an aggregate of attributes like bold or reverse,
+ * coloring (both foreground and background) and other attributes such as
+ * being clickable (to open a URL for example).
+ */
 struct Style {
     Color fg; /// foreground color
     Color bg; /// background color

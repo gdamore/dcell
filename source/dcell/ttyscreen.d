@@ -22,13 +22,12 @@ import dcell.parser;
 
 class TtyScreen : Screen
 {
-    this(Tty tt, Terminfo tinfo)
+    this(Tty tt, const Termcap* tc)
     {
+        caps = tc;
         tty = tt;
-        ti = tinfo;
-        auto size = tty.windowSize();
-        cells = new CellBuffer(size);
-        parser = new shared Parser(ti.caps);
+        cells = new CellBuffer(tty.windowSize());
+        parser = new shared Parser(caps);
     }
 
     ~this()
@@ -41,7 +40,7 @@ class TtyScreen : Screen
         synchronized (this)
         {
             tty.start();
-            puts(ti.caps.clear);
+            puts(caps.clear);
             resize();
             draw();
             flush();
@@ -52,12 +51,12 @@ class TtyScreen : Screen
     {
         synchronized (this)
         {
-            puts(ti.caps.resetColors);
-            puts(ti.caps.attrOff);
-            puts(ti.caps.cursorReset);
-            puts(ti.caps.showCursor);
-            puts(ti.caps.cursorReset);
-            puts(ti.caps.clear);
+            puts(caps.resetColors);
+            puts(caps.attrOff);
+            puts(caps.cursorReset);
+            puts(caps.showCursor);
+            puts(caps.cursorReset);
+            puts(caps.clear);
             tty.drain();
             tty.stop();
         }
@@ -132,14 +131,14 @@ class TtyScreen : Screen
         }
     }
 
-    bool hasMouse()
+    bool hasMouse() pure
     {
-        return ti.caps.mouse != "";
+        return caps.mouse != "";
     }
 
-    int colors()
+    int colors() pure
     {
-        return ti.caps.colors;
+        return caps.colors;
     }
 
     void show()
@@ -167,7 +166,7 @@ class TtyScreen : Screen
     {
         synchronized (this)
         {
-            puts(ti.caps.bell);
+            puts(caps.bell);
             flush();
         }
     }
@@ -176,9 +175,9 @@ class TtyScreen : Screen
     {
         synchronized (this)
         {
-            if (ti.caps.setWindowSize != "")
+            if (caps.setWindowSize != "")
             {
-                puts(ti.tParm(ti.caps.setWindowSize, size.x, size.y));
+                puts(caps.setWindowSize, size.x, size.y);
                 flush();
                 cells.setAllDirty(true);
                 resize();
@@ -203,7 +202,7 @@ class TtyScreen : Screen
         // information.
         synchronized (this)
         {
-            if (ti.caps.mouse != "")
+            if (caps.mouse != "")
             {
                 mouseEn = en; // save this so we can restore after a suspend
                 sendMouseEnable(en);
@@ -226,7 +225,7 @@ private:
         Modifiers mod;
     }
 
-    Terminfo ti;
+    const Termcap* caps;
     CellBuffer cells;
     Tty tty;
     bool clear_; // if a sceren clear is requested
@@ -234,19 +233,29 @@ private:
     Style style_; // current style
     Coord cursorPos;
     Cursor cursorShape;
-    bool[Key] keyExist; // indicator of keys that are mapped
-    KeyCode[string] keyCodes; // sequence (escape) to a key
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
     void delegate(Event) evHandler;
     bool stopping; // if true we are in the process of shutting down
     shared Parser parser;
+    bool[Key] keyExist; // indicator of keys that are mapped
+    KeyCode[string] keyCodes; // sequence (escape) to a key
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
     void puts(string s)
     {
-        ti.tPuts(s, tty.file());
+        Termcap.puts(tty.file.lockingBinaryWriter(), s, &flush);
+    }
+
+    void puts(string s, int[] args...)
+    {
+        puts(Termcap.param(s, args));
+    }
+
+    void puts(string s, string[] args...)
+    {
+        puts(Termcap.param(s, args));
     }
 
     // flush queued output
@@ -263,28 +272,28 @@ private:
 
         if (fg == Color.reset || bg == Color.reset)
         {
-            puts(ti.caps.resetColors);
+            puts(caps.resetColors);
         }
-        if (ti.caps.colors > 256)
+        if (caps.colors > 256)
         {
-            if (ti.caps.setFgBgRGB != "" && isRGB(fg) && isRGB(bg))
+            if (caps.setFgBgRGB != "" && isRGB(fg) && isRGB(bg))
             {
                 auto rgb1 = decompose(fg);
                 auto rgb2 = decompose(bg);
-                puts(ti.tParm(ti.caps.setFgBgRGB,
-                        rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]));
+                puts(caps.setFgBgRGB,
+                    rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]);
             }
             else
             {
-                if (isRGB(fg) && ti.caps.setFgRGB != "")
+                if (isRGB(fg) && caps.setFgRGB != "")
                 {
                     auto rgb = decompose(fg);
-                    puts(ti.tParm(ti.caps.setFgRGB, rgb[0], rgb[1], rgb[2]));
+                    puts(caps.setFgRGB, rgb[0], rgb[1], rgb[2]);
                 }
-                if (isRGB(bg) && ti.caps.setBgRGB != "")
+                if (isRGB(bg) && caps.setBgRGB != "")
                 {
                     auto rgb = decompose(bg);
-                    puts(ti.tParm(ti.caps.setBgRGB, rgb[0], rgb[1], rgb[2]));
+                    puts(caps.setBgRGB, rgb[0], rgb[1], rgb[2]);
                 }
             }
         }
@@ -294,14 +303,14 @@ private:
             fg = toPalette(fg);
             bg = toPalette(bg);
         }
-        if (fg < 256 && bg < 256 && ti.caps.setFgBg != "")
-            puts(ti.tParm(ti.caps.setFgBg, fg, bg));
+        if (fg < 256 && bg < 256 && caps.setFgBg != "")
+            puts(caps.setFgBg, fg, bg);
         else
         {
             if (fg < 256)
-                puts(ti.tParm(ti.caps.setFg, fg));
+                puts(caps.setFg, fg);
             if (bg < 256)
-                puts(ti.tParm(ti.caps.setBg, bg));
+                puts(caps.setBg, bg);
         }
 
     }
@@ -310,19 +319,19 @@ private:
     {
         auto attr = style.attr;
         if (attr & Attr.bold)
-            puts(ti.caps.bold);
+            puts(caps.bold);
         if (attr & Attr.underline)
-            puts(ti.caps.underline);
+            puts(caps.underline);
         if (attr & Attr.reverse)
-            puts(ti.caps.reverse);
+            puts(caps.reverse);
         if (attr & Attr.blink)
-            puts(ti.caps.blink);
+            puts(caps.blink);
         if (attr & Attr.dim)
-            puts(ti.caps.dim);
+            puts(caps.dim);
         if (attr & Attr.italic)
-            puts(ti.caps.italic);
+            puts(caps.italic);
         if (attr & Attr.strikethrough)
-            puts(ti.caps.strikethrough);
+            puts(caps.strikethrough);
     }
 
     void clearScreen()
@@ -330,11 +339,11 @@ private:
         if (clear_)
         {
             clear_ = false;
-            puts(ti.caps.attrOff);
-            puts(ti.caps.exitURL);
+            puts(caps.attrOff);
+            puts(caps.exitURL);
             sendColors(style_);
             sendAttrs(style_);
-            puts(ti.caps.clear);
+            puts(caps.clear);
             flush();
         }
     }
@@ -343,7 +352,7 @@ private:
     {
         if (pos != pos_)
         {
-            puts(ti.tGoto(pos.x, pos.y));
+            puts(caps.setCursor, pos.y, pos.x);
             pos_ = pos;
         }
     }
@@ -353,9 +362,9 @@ private:
     {
         if (!cells.isLegal(cursorPos) || (cursorShape == Cursor.hidden))
         {
-            if (ti.caps.hideCursor != "")
+            if (caps.hideCursor != "")
             {
-                puts(ti.caps.hideCursor);
+                puts(caps.hideCursor);
             }
             else
             {
@@ -368,34 +377,34 @@ private:
             return;
         }
         goTo(cursorPos);
-        puts(ti.caps.showCursor);
+        puts(caps.showCursor);
         final switch (cursorShape)
         {
         case Cursor.current:
             break;
         case Cursor.hidden:
-            puts(ti.caps.hideCursor);
+            puts(caps.hideCursor);
             break;
         case Cursor.reset:
-            puts(ti.caps.cursorReset);
+            puts(caps.cursorReset);
             break;
         case Cursor.bar:
-            puts(ti.caps.cursorBar);
+            puts(caps.cursorBar);
             break;
         case Cursor.block:
-            puts(ti.caps.cursorBlock);
+            puts(caps.cursorBlock);
             break;
         case Cursor.underline:
-            puts(ti.caps.cursorUnderline);
+            puts(caps.cursorUnderline);
             break;
         case Cursor.blinkingBar:
-            puts(ti.caps.cursorBlinkingBar);
+            puts(caps.cursorBlinkingBar);
             break;
         case Cursor.blinkingBlock:
-            puts(ti.caps.cursorBlinkingBlock);
+            puts(caps.cursorBlinkingBlock);
             break;
         case Cursor.blinkingUnderline:
-            puts(ti.caps.cursorBlinkingUnderline);
+            puts(caps.cursorBlinkingUnderline);
             break;
         }
 
@@ -416,8 +425,8 @@ private:
         // wrap at the bottom right corner, then we want to insert
         // that character in place, to avoid the scroll of doom.
         auto size = cells.size();
-        if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && ti.caps.automargin && (
-                ti.caps.insertChar != ""))
+        if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && caps.automargin && (
+                caps.insertChar != ""))
         {
             auto pp = pos;
             pp.x--;
@@ -430,21 +439,21 @@ private:
         }
 
         // TODO: default style?  maybe not needed
-        if (ti.caps.colors == 0)
+        if (caps.colors == 0)
         {
             // monochrome, we just look at luminance and possibly
             // reverse the video.
             // TODO: implement palette lookup
             // if need be, c.style.attr ^= Attr.reverse;
         }
-        if (ti.caps.enterURL == "")
+        if (caps.enterURL == "")
         { // avoid pointless changes due to URL where not supported
             c.style.url = "";
         }
 
         if (c.style.fg != style_.fg || c.style.bg != style_.bg || c.style.attr != style_.attr)
         {
-            puts(ti.caps.attrOff);
+            puts(caps.attrOff);
             sendColors(c.style);
             sendAttrs(c.style);
         }
@@ -452,11 +461,11 @@ private:
         {
             if (c.style.url != "")
             {
-                puts(ti.tParmString(ti.caps.enterURL, c.style.url));
+                puts(caps.enterURL, c.style.url);
             }
             else
             {
-                puts(ti.caps.exitURL);
+                puts(caps.exitURL);
             }
         }
         // TODO: replacement encoding (ACSC, application supplied fallbacks)
@@ -472,7 +481,7 @@ private:
 
         tty.write(cast(ubyte[]) c.text);
         pos_.x += c.width;
-        if (ti.caps.automargin && pos_.x >= c.width)
+        if (caps.automargin && pos_.x >= c.width)
         {
             pos_.x = 1;
             pos_.y++;
@@ -488,7 +497,7 @@ private:
 
     void draw()
     {
-        puts(ti.caps.hideCursor); // hide the cursor while we draw
+        puts(caps.hideCursor); // hide the cursor while we draw
         clearScreen(); // no op if not needed
         auto size = cells.size();
         Coord pos = Coord(0, 0);
@@ -530,7 +539,7 @@ private:
         // to the de-facto standard from XTerm.  This is necessary as
         // there is no standard terminfo sequence for reporting this
         // information.
-        if (ti.caps.mouse != "")
+        if (caps.mouse != "")
         {
             // start by disabling everything
             puts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
@@ -550,7 +559,7 @@ private:
 
     void sendPasteEnable(bool b)
     {
-        puts(b ? ti.caps.enablePaste : ti.caps.disablePaste);
+        puts(b ? caps.enablePaste : caps.disablePaste);
         flush();
     }
 
@@ -634,15 +643,10 @@ unittest
         auto tty = new DevTty();
         writeln("STEP 3");
         assert(tty !is null);
-        auto ti = new Terminfo(caps);
-        writeln("STEP 4");
-        assert(ti !is null);
-        assert(ti.caps.name != "");
-        writeln("CAPS IS OK");
-        auto ts = new TtyScreen(tty, ti);
+        auto ts = new TtyScreen(tty, caps);
         writeln("STEP 5");
         assert(ts !is null);
-        assert(ts.ti.caps.setFgBg != "");
+        assert(ts.caps.setFgBg != "");
 
         ts.start();
 

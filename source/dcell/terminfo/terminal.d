@@ -5,10 +5,13 @@
 
 module dcell.terminfo.terminal;
 
+version(junk):
 import core.thread;
 import std.algorithm;
 import std.conv;
+import std.functional;
 import std.process : environment;
+import std.range;
 import std.stdio;
 import std.string;
 
@@ -20,119 +23,15 @@ import dcell.terminfo.database;
  * TTY based terminal.  The list of possible entries is not complete,
  * as we only provide entries we have a meaningful use for.
 */
-class Terminfo
+class XTerminfo
 {
-    const(Termcap) *caps;
+    const(Termcap)* caps;
     private struct Parameter
     {
         int i;
         string s;
     }
 
-    /**
-     * Emits the string, evaluating any inline padding escapes and applying
-     * delays.  These escapes are of the form $<delay> where delay is a number
-     * of milliseconds (decimal fractions are permitted).  All output from
-     * terminfo should be emitted using this function to ensure any embedded
-     * delays are applied.  (Note that most modern terminals do not need delays.)
-     * This implementation injects delays using the clock, rather that using
-     * padding characters, but a padding character must be supplied or the
-     * delay wil be ignored.
-     *
-     * Params:
-     *   s = string to emit (possibly with delay escapes)
-     *   f = file to write write it to
-     */
-    void tPuts(string s, File f)
-    {
-        while (s.length > 0)
-        {
-            auto beg = indexOf(s, "$<");
-            if (beg == -1)
-            {
-                f.write(s);
-                return;
-            }
-            f.write(s[0 .. beg]); // write the part *before* the time
-            s = s[beg .. $];
-            auto end = indexOf(s, ">");
-            if (end < 0)
-            {
-                // unterminated escape, emit it as is
-                f.write(s);
-                return;
-            }
-            auto val = s[2 .. end];
-            s = s[end + 1 .. $];
-            int usec = 0;
-            int mult = 1000; // 1 ms
-            bool dot = false;
-            bool valid = true;
-
-            while (valid && val.length > 0)
-            {
-                switch (val[0])
-                {
-                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-                    usec *= 10;
-                    usec += val[0] - '0';
-                    if (dot && mult > 1)
-                    {
-                        mult /= 10;
-                    }
-                    break;
-
-                case '.':
-                    if (!dot)
-                    {
-                        dot = true;
-                    }
-                    else
-                    {
-                        valid = false;
-                    }
-                    break;
-
-                default:
-                    valid = false;
-                    break;
-                }
-                val = val[1 .. $];
-            }
-
-            if (caps.padChar.length > 0 && valid)
-            {
-                f.flush(); // have to flush this out
-                Thread.sleep(usec.usecs * mult);
-            }
-        }
-    }
-
-    unittest
-    {
-        import std.datetime : Clock;
-        import core.time : seconds;
-
-        Termcap tc;
-        auto ti = new Terminfo(&tc);
-        auto tmp = std.stdio.File.tmpfile();
-        tc.padChar = " ";
-        auto now = Clock.currTime();
-        ti.tPuts("AB$<1000>C", tmp);
-        ti.tPuts("DEF$<100.5>\n", tmp);
-        auto end = Clock.currTime();
-        assert(end > now);
-        assert(now + seconds(1) <= end);
-        assert(now + seconds(2) > end);
-
-        tmp.rewind();
-        auto content = tmp.readln();
-        assert(content == "ABCDEF\n");
-        // negative tests -- we don't care what's in the file (UB), but it must not panic
-        ti.tPuts("Z$<123..0123>", tmp); // malformed dots 
-        ti.tPuts("LMN$<12X>", tmp); // invalid number
-        ti.tPuts("GHI$<123JKL", tmp); // unterminated delay
-    }
 
     /** 
      * Construct a Terminfo using the given capabilities.
@@ -145,7 +44,7 @@ class Terminfo
         caps = tc;
     }
 
-    this(Terminfo src)
+    this(XTerminfo src)
     {
         caps = src.caps;
     }
@@ -504,37 +403,7 @@ class Terminfo
         return to!string(output);
     }
 
-    string tGoto(int col, int row)
-    {
-        return tParm(caps.setCursor, row, col);
-    }
-
-    string tColor(int fg, int bg)
-    {
-        string rv = "";
-        if (caps.colors == 8)
-        {
-            // map 16 colors (4 bits) to 8 (3 bits), colors lose intensity
-            if (fg > 7 && fg < 16)
-            {
-                fg -= 8;
-            }
-            if (bg > 8 && bg < 16)
-            {
-                bg -= 8;
-            }
-        }
-        if (caps.colors > fg && fg >= 0)
-        {
-            rv ~= tParm(caps.setFg, fg);
-        }
-        if (caps.colors > bg && bg >= 0)
-        {
-            rv ~= tParm(caps.setBg, bg);
-        }
-        return rv;
-    }
-
+        /+
     unittest
     {
         // these are taken from xterm, mostly
@@ -589,4 +458,5 @@ class Terminfo
         assert(ti.tParm("%p1%p2%<%p2%p3%<%!%A%d", 1, 3, 2) == "1"); // NOT (and)
         assert(ti.tParm("%p1%p2%<%p1%p2%=%O%d", 1, 1) == "1"); // OR
     }
+    +/
 }

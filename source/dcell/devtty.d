@@ -100,7 +100,8 @@ version (Posix)
             }
 
             version (linux)
-            { // has TIOCGWINSZ already -- but it might be wrong
+            {
+                // has TIOCGWINSZ already -- but it might be wrong
                 // Linux has different values for TIOCGWINSZ depending on architecture
                 // SPARC, PPC, and MIPS use legacy BSD based values.  Others use a newer
                 // value.
