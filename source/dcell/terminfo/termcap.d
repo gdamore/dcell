@@ -288,7 +288,6 @@ struct Termcap
 
         auto now = Clock.currTime();
         auto ob = new OutBuffer();
-        auto sleep(Duration dur) = { Thread.sleep(dur); };
 
         puts(ob, "AB$<1000>C");
         puts(ob, "DEF$<100.5>\n");
