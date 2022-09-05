@@ -373,7 +373,7 @@ struct Termcap
      *    The evaluated capability with parameters applied.
      */
 
-    static string param(string s, int[] args...)
+    static string param(string s, int[] args...) pure
     {
         Parameter[] ps = new Parameter[args.length];
         foreach (i, val; args)
@@ -383,7 +383,7 @@ struct Termcap
         return paramInner(s, ps);
     }
 
-    static string param(string s, string[] args...)
+    static string param(string s, string[] args...) pure
     {
         Parameter[] ps = new Parameter[args.length];
         foreach (i, val; args)
@@ -393,12 +393,12 @@ struct Termcap
         return paramInner(s, ps);
     }
 
-    static string param(string s)
+    static string param(string s) pure
     {
         return paramInner(s, []);
     }
 
-    private static paramInner(string s, Parameter[] params)
+    private static paramInner(string s, Parameter[] params) pure
     {
         enum Skip
         {
