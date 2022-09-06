@@ -6,5 +6,15 @@
 	"description": "Terminal Cells for D.",
 	"license": "MIT",
 	"name": "dcell",
-	"targetType": "library"
+	"targetType": "none",
+	"dependencies":
+	{
+		"dcell:dcell": "*",
+		"dcell:mkinfo": "*",
+	},
+	"subPackages":
+	[
+		"dcell/",
+		"mkinfo/",
+	],
 }

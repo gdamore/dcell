@@ -1,0 +1,14 @@
+{
+	"copyright": "Copyright 2022 Garrett D'Amore",
+	"description": "Terminal database builder",
+	"name": "mkinfo",
+	"targetType": "executable",
+	"targetName": "mkinfo",
+	"targetPath": "bin",
+	"sourcePaths": [ "source" ],
+	"mainSourceFile": "source/mkinfo.d",
+	"dependencies":
+	{
+		"dcell:dcell": { "path": "../dcell" }
+	}
+}
