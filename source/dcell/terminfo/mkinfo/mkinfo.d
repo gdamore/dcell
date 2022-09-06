@@ -19,7 +19,8 @@ import std.traits;
 import std.conv;
 
 import dcell.terminfo;
-import dcell.terminfo.termcap;
+import dcell.termcap;
+import dcell.database;
 
 /**
  * Caps represents a "parsed" terminfo entry, before it is converted into

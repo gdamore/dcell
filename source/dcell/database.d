@@ -3,7 +3,7 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
 
-module dcell.terminfo.database;
+module dcell.database;
 
 import core.thread;
 import std.algorithm;
@@ -12,7 +12,7 @@ import std.process : environment;
 import std.stdio;
 import std.string;
 
-public import dcell.terminfo.termcap;
+public import dcell.termcap;
 
 /**
  * Represents a database of terminal entries, indexed by their name.

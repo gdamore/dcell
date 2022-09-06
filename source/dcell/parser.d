@@ -12,226 +12,152 @@ import std.utf;
 import dcell.key;
 import dcell.mouse;
 import dcell.event;
-import dcell.terminfo;
+import dcell.termcap;
 
 package:
-class Parser
+
+struct KeyCode
+{
+    Key key;
+    Modifiers mod;
+}
+
+struct ParseKeys
 {
 
-    this(const Termcap* tc)
-    {
-        caps = tc;
-        addKeys();
-    }
+    immutable bool[Key] exist;
+    immutable KeyCode[string] keys;
 
-    Event[] events()
+    this(const Termcap* caps)
     {
-        auto res = evs;
-        evs = null;
-        return cast(Event[]) res;
-    }
 
-    bool parse(ubyte[] b)
-    {
-        auto now = MonoTime.currTime();
-        if (b.length != 0)
+        bool[Key] ex;
+        KeyCode[string] kc;
+
+        void addKey(Key key, string val, Modifiers mod = Modifiers.none, Key replace = cast(Key) 0)
         {
-            // if we are adding to it, restart the timer
-            keyStart = now;
-        }
-        buf ~= b;
-        while (buf.length != 0)
-        {
-            partial = false;
-            if (parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
+            if (val == "")
+                return;
+            if ((val !in kc) || kc[val].key == replace)
             {
-                keyStart = now;
-                continue;
+                ex[key] = true;
+                kc[val] = KeyCode(key, mod);
             }
-            auto expire = ((now - keyStart) > seqTime);
+        }
 
-            if (!partial || expire)
+        void addXTermKey(Key key, string val)
+        {
+            if (val.length > 2 && val[0] == '\x1b' && val[1] == '[' && val[$ - 1] == '~')
             {
-                if (buf[0] == '\x1b')
-                {
-                    if (buf.length == 1)
-                    {
-                        evs ~= newKeyEvent(Key.esc);
-                        escaped = false;
-                    }
-                    else
-                    {
-                        escaped = true;
-                    }
-                    buf = buf[1 .. $];
-                    keyStart = now;
+                // These suffixes are calculated assuming Xterm style modifier suffixes.
+                // Please see https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf for
+                // more information (specifically "PC-Style Function Keys").
+                val = val[0 .. $ - 1]; // drop trailing ~
+                addKey(key, val ~ ";2~", Modifiers.shift, cast(Key)(key + 12));
+                addKey(key, val ~ ";3~", Modifiers.alt, cast(Key)(key + 48));
+                addKey(key, val ~ ";4~", Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
+                addKey(key, val ~ ";5~", Modifiers.ctrl, cast(Key)(key + 24));
+                addKey(key, val ~ ";6~", Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
+                addKey(key, val ~ ";7~", Modifiers.alt | Modifiers.ctrl);
+                addKey(key, val ~ ";8~", Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
+                addKey(key, val ~ ";9~", Modifiers.meta);
+                addKey(key, val ~ ";10~", Modifiers.meta | Modifiers.shift);
+                addKey(key, val ~ ";11~", Modifiers.meta | Modifiers.alt);
+                addKey(key, val ~ ";12~", Modifiers.meta | Modifiers.shift | Modifiers.alt);
+                addKey(key, val ~ ";13~", Modifiers.meta | Modifiers.ctrl);
+                addKey(key, val ~ ";14~", Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
+                addKey(key, val ~ ";15~", Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
+                addKey(key, val ~ ";16~",
+                    Modifiers.meta | Modifiers.ctrl | Modifiers.shift | Modifiers.alt);
+            }
+            else if (val.length == 3 && val[0] == '\x1b' && val[1] == '0')
+            {
+                val = val[2 .. $];
+                addKey(key, "\x1b[1;2" ~ val, Modifiers.shift, cast(Key)(key + 12));
+                addKey(key, "\x1b[1;3" ~ val, Modifiers.alt, cast(Key)(key + 48));
+                addKey(key, "\x1b[1;5" ~ val, Modifiers.ctrl, cast(Key)(key + 24));
+                addKey(key, "\x1b[1;6" ~ val, Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
+                addKey(key, "\x1b[1;4" ~ val, Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
+                addKey(key, "\x1b[1;7" ~ val, Modifiers.alt | Modifiers.ctrl);
+                addKey(key, "\x1b[1;8" ~ val, Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
+                addKey(key, "\x1b[1;9" ~ val, Modifiers.meta,);
+                addKey(key, "\x1b[1;10" ~ val, Modifiers.meta | Modifiers.shift);
+                addKey(key, "\x1b[1;11" ~ val, Modifiers.meta | Modifiers.alt);
+                addKey(key, "\x1b[1;12" ~ val, Modifiers.meta | Modifiers.alt | Modifiers.shift);
+                addKey(key, "\x1b[1;13" ~ val, Modifiers.meta | Modifiers.ctrl);
+                addKey(key, "\x1b[1;14" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
+                addKey(key, "\x1b[1;15" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
+                addKey(key, "\x1b[1;16" ~ val,
+                    Modifiers.meta | Modifiers.ctrl | Modifiers.alt | Modifiers.shift);
+            }
+        }
+
+        void addXTermKeys(const Termcap* caps)
+        {
+            if (caps.keyShfRight != "\x1b[1;2C") // does this look "xtermish"?
+                return;
+            addXTermKey(Key.right, caps.keyRight);
+            addXTermKey(Key.left, caps.keyLeft);
+            addXTermKey(Key.up, caps.keyUp);
+            addXTermKey(Key.down, caps.keyDown);
+            addXTermKey(Key.insert, caps.keyInsert);
+            addXTermKey(Key.del, caps.keyDelete);
+            addXTermKey(Key.pgUp, caps.keyPgUp);
+            addXTermKey(Key.pgDn, caps.keyPgDn);
+            addXTermKey(Key.home, caps.keyHome);
+            addXTermKey(Key.end, caps.keyEnd);
+            addXTermKey(Key.f1, caps.keyF1);
+            addXTermKey(Key.f2, caps.keyF2);
+            addXTermKey(Key.f3, caps.keyF3);
+            addXTermKey(Key.f4, caps.keyF4);
+            addXTermKey(Key.f5, caps.keyF5);
+            addXTermKey(Key.f6, caps.keyF6);
+            addXTermKey(Key.f7, caps.keyF7);
+            addXTermKey(Key.f8, caps.keyF8);
+            addXTermKey(Key.f9, caps.keyF9);
+            addXTermKey(Key.f10, caps.keyF10);
+            addXTermKey(Key.f11, caps.keyF11);
+            addXTermKey(Key.f12, caps.keyF12);
+        }
+
+        void addCtrlKeys()
+        {
+            // we look briefly at all the keyCodes we
+            // have, to find their starting character.
+            // the vast majority of these will be escape.
+            bool[char] initials;
+            foreach (esc, _; kc)
+            {
+                if (esc != "")
+                    initials[esc[0]] = true;
+            }
+            // Add key mappings for control keys.
+            for (char i = 0; i < ' '; i++)
+            {
+
+                // If this is starting character (typically esc) of other sequences,
+                // then do not set up the fast path mapping for it.
+                // We need to let the read do the whole timeout thing.
+                if (i in initials)
                     continue;
+
+                Key k = cast(Key) i;
+                ex[k] = true;
+                switch (k)
+                {
+                case Key.backspace, Key.tab, Key.esc, Key.enter:
+                    // these are directly typeable
+                    kc["" ~ i] = KeyCode(k, Modifiers.none);
+                    break;
+                default:
+                    // these are generally represented as a control sequence
+                    kc["" ~ i] = KeyCode(k, Modifiers.ctrl);
+                    break;
                 }
-                // no matches or timeout waiting for data, yank off the first byte
-                evs ~= newKeyEvent(Key.rune, buf[0], escaped ? Modifiers.alt : Modifiers.none);
-                escaped = false;
-                keyStart = now;
-                continue;
             }
-            // we must have partial data, so wait and come back in a bit
-            return false;
+
         }
 
-        return true;
-    }
-
-    bool empty()
-    {
-        return buf.length == 0;
-    }
-
-private:
-    struct KeyCode
-    {
-        Key key;
-        Modifiers mod;
-    }
-
-    const Termcap* caps;
-    bool escaped;
-    ubyte[] buf;
-    Event[] evs;
-    KeyCode[string] keyCodes;
-    bool[Key] keyExist;
-    bool partial; // record partially parsed sequences
-    MonoTime keyStart; // when the timer started
-    Duration seqTime = msecs(50); // time to fully decode a partial sequence
-    bool buttonDown; // true if buttons were down
-    bool wasButton; // true if we saw a button press for recent mouse event
-
-    // addKey loads a key sequence, and optionally replaces
-    // a previously existing one if it matches.
-    void addKey(Key key, string val, Modifiers mod = Modifiers.none, Key replace = cast(Key) 0)
-    {
-        if (val == "")
-            return;
-        if ((val !in keyCodes) || keyCodes[val].key == replace)
-        {
-            keyExist[key] = true;
-            keyCodes[val] = KeyCode(key, mod);
-        }
-    }
-
-    void addXTermKey(Key key, string val)
-    {
-        if (val.length > 2 && val[0] == '\x1b' && val[1] == '[' && val[$ - 1] == '~')
-        {
-            // These suffixes are calculated assuming Xterm style modifier suffixes.
-            // Please see https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf for
-            // more information (specifically "PC-Style Function Keys").
-            val = val[0 .. $ - 1]; // drop trailing ~
-            addKey(key, val ~ ";2~", Modifiers.shift, cast(Key)(key + 12));
-            addKey(key, val ~ ";3~", Modifiers.alt, cast(Key)(key + 48));
-            addKey(key, val ~ ";4~", Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
-            addKey(key, val ~ ";5~", Modifiers.ctrl, cast(Key)(key + 24));
-            addKey(key, val ~ ";6~", Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
-            addKey(key, val ~ ";7~", Modifiers.alt | Modifiers.ctrl);
-            addKey(key, val ~ ";8~", Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
-            addKey(key, val ~ ";9~", Modifiers.meta);
-            addKey(key, val ~ ";10~", Modifiers.meta | Modifiers.shift);
-            addKey(key, val ~ ";11~", Modifiers.meta | Modifiers.alt);
-            addKey(key, val ~ ";12~", Modifiers.meta | Modifiers.shift | Modifiers.alt);
-            addKey(key, val ~ ";13~", Modifiers.meta | Modifiers.ctrl);
-            addKey(key, val ~ ";14~", Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
-            addKey(key, val ~ ";15~", Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
-            addKey(key, val ~ ";16~",
-                Modifiers.meta | Modifiers.ctrl | Modifiers.shift | Modifiers.alt);
-        }
-        else if (val.length == 3 && val[0] == '\x1b' && val[1] == '0')
-        {
-            val = val[2 .. $];
-            addKey(key, "\x1b[1;2" ~ val, Modifiers.shift, cast(Key)(key + 12));
-            addKey(key, "\x1b[1;3" ~ val, Modifiers.alt, cast(Key)(key + 48));
-            addKey(key, "\x1b[1;5" ~ val, Modifiers.ctrl, cast(Key)(key + 24));
-            addKey(key, "\x1b[1;6" ~ val, Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
-            addKey(key, "\x1b[1;4" ~ val, Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
-            addKey(key, "\x1b[1;7" ~ val, Modifiers.alt | Modifiers.ctrl);
-            addKey(key, "\x1b[1;8" ~ val, Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
-            addKey(key, "\x1b[1;9" ~ val, Modifiers.meta,);
-            addKey(key, "\x1b[1;10" ~ val, Modifiers.meta | Modifiers.shift);
-            addKey(key, "\x1b[1;11" ~ val, Modifiers.meta | Modifiers.alt);
-            addKey(key, "\x1b[1;12" ~ val, Modifiers.meta | Modifiers.alt | Modifiers.shift);
-            addKey(key, "\x1b[1;13" ~ val, Modifiers.meta | Modifiers.ctrl);
-            addKey(key, "\x1b[1;14" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
-            addKey(key, "\x1b[1;15" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
-            addKey(key, "\x1b[1;16" ~ val,
-                Modifiers.meta | Modifiers.ctrl | Modifiers.alt | Modifiers.shift);
-        }
-    }
-
-    void addXTermKeys()
-    {
-        if (caps.keyShfRight != "\x1b[1;2C") // does this look "xtermish"?
-            return;
-        addXTermKey(Key.right, caps.keyRight);
-        addXTermKey(Key.left, caps.keyLeft);
-        addXTermKey(Key.up, caps.keyUp);
-        addXTermKey(Key.down, caps.keyDown);
-        addXTermKey(Key.insert, caps.keyInsert);
-        addXTermKey(Key.del, caps.keyDelete);
-        addXTermKey(Key.pgUp, caps.keyPgUp);
-        addXTermKey(Key.pgDn, caps.keyPgDn);
-        addXTermKey(Key.home, caps.keyHome);
-        addXTermKey(Key.end, caps.keyEnd);
-        addXTermKey(Key.f1, caps.keyF1);
-        addXTermKey(Key.f2, caps.keyF2);
-        addXTermKey(Key.f3, caps.keyF3);
-        addXTermKey(Key.f4, caps.keyF4);
-        addXTermKey(Key.f5, caps.keyF5);
-        addXTermKey(Key.f6, caps.keyF6);
-        addXTermKey(Key.f7, caps.keyF7);
-        addXTermKey(Key.f8, caps.keyF8);
-        addXTermKey(Key.f9, caps.keyF9);
-        addXTermKey(Key.f10, caps.keyF10);
-        addXTermKey(Key.f11, caps.keyF11);
-        addXTermKey(Key.f12, caps.keyF12);
-    }
-
-    void addCtrlKeys()
-    {
-        // we look breifly at all the keyCodes we
-        // have, to find their starting character.
-        // the vast majority of these will be escape.
-        bool[char] initials;
-        foreach (esc, KeyCode; keyCodes)
-        {
-            if (esc != "")
-                initials[esc[0]] = true;
-        }
-        // Add key mappings for control keys.
-        for (char i = 0; i < ' '; i++)
-        {
-
-            // If this is starting character (typically esc) of other sequences,
-            // then do not set up the fast path mapping for it.
-            // We need to let the read do the whole timeout thing.
-            if (i in initials)
-                continue;
-
-            Key k = cast(Key) i;
-            keyExist[k] = true;
-            switch (k)
-            {
-            case Key.backspace, Key.tab, Key.esc, Key.enter:
-                // these are directly typeable
-                keyCodes["" ~ i] = KeyCode(k, Modifiers.none);
-                break;
-            default:
-                // these are generally represented as a control sequence
-                keyCodes["" ~ i] = KeyCode(k, Modifiers.ctrl);
-                break;
-            }
-        }
-
-    }
-
-    void addKeys()
-    {
         addKey(Key.backspace, caps.keyBackspace);
         addKey(Key.f1, caps.keyF1);
         addKey(Key.f2, caps.keyF2);
@@ -361,13 +287,108 @@ private:
             addKey(Key.home, "\x1bOH");
         }
 
-        addXTermKeys();
+        addXTermKeys(caps);
 
         addKey(Key.pasteStart, caps.pasteStart);
         addKey(Key.pasteEnd, caps.pasteEnd);
 
         addCtrlKeys(); // do this one last
+        exist = cast(immutable(bool[Key])) ex;
+        keys = cast(immutable(KeyCode[string])) kc;
     }
+
+    bool hasKey(Key k) pure
+    {
+        if (k == Key.rune)
+        {
+            return true;
+        }
+        return (k in exist ? true : false);
+    }
+}
+
+class Parser
+{
+
+    this(const ParseKeys pk)
+    {
+        keyExist = pk.exist;
+        keyCodes = pk.keys;
+    }
+
+    Event[] events()
+    {
+        auto res = evs;
+        evs = null;
+        return cast(Event[]) res;
+    }
+
+    bool parse(string b)
+    {
+        auto now = MonoTime.currTime();
+        if (b.length != 0)
+        {
+            // if we are adding to it, restart the timer
+            keyStart = now;
+        }
+        buf ~= b;
+        while (buf.length != 0)
+        {
+            partial = false;
+            if (parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
+            {
+                keyStart = now;
+                continue;
+            }
+            auto expire = ((now - keyStart) > seqTime);
+
+            if (!partial || expire)
+            {
+                if (buf[0] == '\x1b')
+                {
+                    if (buf.length == 1)
+                    {
+                        evs ~= newKeyEvent(Key.esc);
+                        escaped = false;
+                    }
+                    else
+                    {
+                        escaped = true;
+                    }
+                    buf = buf[1 .. $];
+                    keyStart = now;
+                    continue;
+                }
+                // no matches or timeout waiting for data, yank off the first byte
+                evs ~= newKeyEvent(Key.rune, buf[0], escaped ? Modifiers.alt : Modifiers.none);
+                escaped = false;
+                keyStart = now;
+                continue;
+            }
+            // we must have partial data, so wait and come back in a bit
+            return false;
+        }
+
+        return true;
+    }
+
+    bool empty()
+    {
+        return buf.length == 0;
+    }
+
+private:
+
+    bool escaped;
+    ubyte[] buf;
+    Event[] evs;
+    const KeyCode[string] keyCodes;
+    const bool[Key] keyExist;
+    bool partial; // record partially parsed sequences
+    MonoTime keyStart; // when the timer started
+    Duration seqTime = msecs(50); // time to fully decode a partial sequence
+    bool buttonDown; // true if buttons were down
+    bool wasButton; // true if we saw a button press for recent mouse event
 
     Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none)
     {
@@ -481,7 +502,7 @@ private:
 
     bool parseFnKey()
     {
-        auto mod = Modifiers.none;
+        Modifiers mod = Modifiers.none;
         if (buf.length == 0)
         {
             return false;
@@ -494,7 +515,7 @@ private:
             }
             if (startsWith(buf, seq))
             {
-                auto mod = kc.mod;
+                mod = kc.mod;
                 if (escaped)
                 {
                     escaped = false;
@@ -682,6 +703,7 @@ private:
 unittest
 {
     import core.thread;
+    import dcell.database;
 
     // taken from xterm, but pared down
     static immutable Termcap term = {
@@ -711,10 +733,10 @@ unittest
     Database.put(&term);
     auto tc = Database.get("test-term");
     assert(tc !is null);
-    Parser p = new Parser(tc);
+    Parser p = new Parser(ParseKeys(tc));
     assert(p.empty());
-    assert(p.parse([])); // no data, is fine
-    assert(p.parse(cast(ubyte[]) "\x1bOC"));
+    assert(p.parse("")); // no data, is fine
+    assert(p.parse("\x1bOC"));
     auto ev = p.events();
     import std.stdio;
 
@@ -763,7 +785,7 @@ unittest
     assert(ev[0].paste.start == false);
 
     // mouse events
-    assert(p.parse(['\x1b', '[', '<', '3', ';','2', ';', '3', 'M' ]));
+    assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
     ev = p.events();
     assert(ev.length == 1);
     assert(ev[0].type == EventType.mouse);
@@ -771,7 +793,7 @@ unittest
     assert(ev[0].mouse.pos.y == 2);
 
     // unicode
-    ubyte[] b = [cast(byte)0xe2, cast(byte)0x82, cast(byte)0xac];
+    string b = [0xe2, 0x82, 0xac];
     assert(p.parse(b));
     ev = p.events();
     assert(ev.length == 1);

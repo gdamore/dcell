@@ -5,43 +5,98 @@
 
 module dcell.ttyscreen;
 
+import core.atomic;
 import core.time;
+import core.sync.mutex;
+import core.sync.condition;
 import std.string;
-import std.utf;
 import std.concurrency;
+import std.exception;
+import std.outbuffer;
+import std.range;
+import std.stdio;
 
 import dcell.cell;
 import dcell.cursor;
 import dcell.key;
 import dcell.mouse;
-import dcell.terminfo;
-import dcell.tty;
+import dcell.termcap;
+import dcell.database;
+import dcell.termio;
 import dcell.screen;
 import dcell.event;
 import dcell.parser;
 
+private shared class Turnstile
+{
+    private Mutex m;
+    private Condition c;
+    private bool val;
+
+    this()
+    {
+        m = new shared Mutex();
+        c = new shared Condition(m);
+    }
+
+    void set(bool b)
+    {
+        synchronized (m)
+        {
+            val = b;
+            c.notifyAll();
+        }
+    }
+
+    bool get()
+    {
+        bool b;
+        synchronized (m)
+        {
+            b = val;
+        }
+        return b;
+    }
+
+    void wait(bool b)
+    {
+        synchronized (m)
+        {
+            while (val != b)
+            {
+                c.wait();
+            }
+        }
+    }
+}
+
 class TtyScreen : Screen
 {
-    this(Tty tt, const Termcap* tc)
+    this(TtyImpl tt, immutable(Termcap)* tc)
     {
         caps = tc;
-        tty = tt;
-        cells = new CellBuffer(tty.windowSize());
-        parser = new Parser(caps);
+        ti = tt;
+        ti.start();
+        cells = new CellBuffer(ti.windowSize());
+        keys = ParseKeys(tc);
+        ob = new OutBuffer();
+        stopping = new Turnstile();
     }
 
     ~this()
     {
-        stop();
+        ti.stop();
     }
 
     void start()
     {
-        tty.start();
+        stopping.set(false);
+        ti.save();
+        ti.raw();
         puts(caps.clear);
         resize();
         draw();
-        flush();
+        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, stopping);
     }
 
     void stop()
@@ -52,8 +107,12 @@ class TtyScreen : Screen
         puts(caps.showCursor);
         puts(caps.cursorReset);
         puts(caps.clear);
-        tty.drain();
-        tty.stop();
+        flush();
+        stopping.set(true);
+        ti.blocking(false);
+        stopping.wait(false);
+        ti.blocking(true);
+        ti.restore();
     }
 
     void clear()
@@ -154,11 +213,7 @@ class TtyScreen : Screen
 
     bool hasKey(Key k)
     {
-        if (k == Key.rune)
-        {
-            return true;
-        }
-        return (k in keyExist ? true : false);
+        return (keys.hasKey(k));
     }
 
     void enableMouse(MouseEnable en)
@@ -174,11 +229,6 @@ class TtyScreen : Screen
         }
     }
 
-    void handleEvents(void delegate(Event) handler)
-    {
-        evHandler = handler;
-    }
-
 private:
     struct KeyCode
     {
@@ -186,9 +236,8 @@ private:
         Modifiers mod;
     }
 
-    const Termcap* caps;
+    const(Termcap)* caps;
     CellBuffer cells;
-    Tty tty;
     bool clear_; // if a sceren clear is requested
     Coord pos_; // location where we will update next
     Style style_; // current style
@@ -196,17 +245,16 @@ private:
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
-    void delegate(Event) evHandler;
-    bool stopping; // if true we are in the process of shutting down
-    Parser parser;
-    bool[Key] keyExist; // indicator of keys that are mapped
-    KeyCode[string] keyCodes; // sequence (escape) to a key
+    ParseKeys keys;
+    TtyImpl ti;
+    OutBuffer ob;
+    Turnstile stopping;
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
     void puts(string s)
     {
-        Termcap.puts(tty.file.lockingBinaryWriter(), s, &flush);
+        Termcap.puts(ob, s, &flush);
     }
 
     void puts(string s, int[] args...)
@@ -222,7 +270,9 @@ private:
     // flush queued output
     void flush()
     {
-        tty.file.flush();
+        ti.write(ob.toString());
+        ti.flush();
+        ob.clear();
     }
 
     // sendColors sends just the colors for a given style
@@ -440,7 +490,7 @@ private:
             c.width = 1;
         }
 
-        tty.write(cast(ubyte[]) c.text);
+        puts(c.text);
         pos_.x += c.width;
         if (caps.automargin && pos_.x >= c.width)
         {
@@ -485,7 +535,7 @@ private:
 
     void resize()
     {
-        auto phys = tty.windowSize();
+        auto phys = ti.windowSize();
         if (phys != cells.size())
         {
             cells.resize(phys);
@@ -524,98 +574,87 @@ private:
         flush();
     }
 
-    void recvInput(ubyte[] b, ref Duration timer)
+    static void inputLoop(shared TtyImpl tin, ParseKeys keys, shared Turnstile stopping)
     {
-        if (!parser.parse(b))
-            timer = msecs(50);
-        else
-            timer = seconds(3600);
-    }
+        TtyImpl f = cast(TtyImpl) tin;
+        Parser p = new Parser(keys);
+        bool poll = false;
 
-    void mainLoop()
-    {
+        f.blocking(true);
 
-        auto unhandled = false;
-        auto timer = seconds(3600); // we will wake up at least once an hour
         for (;;)
         {
-            receiveTimeout(timer,
-                (ubyte[] b) { recvInput(b, timer); },
-            );
-
-            auto events = parser.events();
-            foreach (Event ev; events)
-            {
-                if (evHandler !is null)
-                {
-                    evHandler(ev);
-                }
-            }
-        }
-    }
-
-    // inputLoop reads from our TTY, and posts bytes read (on success)
-    // to the mainLoop thread.  If read fails, it posts an error and exits.
-    void inputLoop(Tid loopTid)
-    {
-        for (;;)
-        {
-            if (stopping)
-            {
-                return;
-            }
-            ubyte[] b;
+            string s;
             try
             {
-                b = tty.read();
+                s = f.read();
             }
             catch (Exception e)
             {
-                // TODO: post an event message
+            }
+            if (s.length != 0)
+            {
+                p.parse(s);
+            }
+            foreach (_, ev; p.events())
+            {
+                send(ownerTid(), ev);
+            }
+            if (!p.empty())
+            {
+                f.blocking(false);
+                poll = true;
+            }
+            else if (poll)
+            {
+                // No data, so we can sleep until some arrives.
+                f.blocking(true);
+                poll = false;
+            }
+
+            if (stopping.get())
+            {
+                stopping.set(false);
                 return;
             }
-            if (b.length == 0)
-            {
+
+            if (f.eof() || f.error())
                 break;
-            }
-
         }
+        stopping.wait(true);
+        stopping.set(false);
     }
-}
 
-unittest
-{
-    version (Posix)
+    unittest
     {
-        import dcell.devtty;
-        import std.stdio;
+        version (Posix)
+        {
+            import dcell.devtty;
+            import std.stdio;
+            import core.thread;
 
-        writeln("STEP 1");
-        //        import dcell.terminfo.database;
-        auto caps = Database.get("xterm-256color");
-        writeln("STEP 2");
-        assert(caps.name != "");
-        auto tty = new DevTty();
-        writeln("STEP 3");
-        assert(tty !is null);
-        auto ts = new TtyScreen(tty, caps);
-        writeln("STEP 5");
-        assert(ts !is null);
-        assert(ts.caps.setFgBg != "");
+            auto caps = Database.get("xterm-256color");
+            assert(caps.name != "");
+            assert(caps.setFgBg != "");
+            auto ts = new TtyScreen(newDevTty(), caps);
+            assert(ts !is null);
 
-        ts.start();
+            ts.start();
+            ts.showCursor(Coord(0, 0), Cursor.hidden);
+            auto c = ts.size();
+            c.x /= 2;
+            c.y /= 2;
+            ts[c] = Cell("A", Style(Color.white, Color.red, Attr
+                    .underline), 1);
+            c.x++;
+            ts[c] = Cell("B", Style(Color.white, Color.green, Attr
+                    .underline), 1);
+            ts.show();
+            import core.thread;
 
-        ts.showCursor(Coord(0, 0), Cursor.hidden);
-        auto c = ts.size();
-        c.x /= 2;
-        c.y /= 2;
-        ts[c] = Cell("A", Style(Color.white, Color.red, Attr.underline), 1);
-        c.x++;
-        ts[c] = Cell("B", Style(Color.white, Color.green, Attr.underline), 1);
-        ts.show();
-        import core.thread;
-
-        Thread.sleep(dur!("seconds")(2));
-        destroy(ts);
+            Thread.sleep(dur!("seconds")(2));
+            ts.stop();
+            destroy(ts);
+        }
     }
 }
