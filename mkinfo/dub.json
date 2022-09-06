@@ -5,10 +5,8 @@
 	"targetType": "executable",
 	"targetName": "mkinfo",
 	"targetPath": "bin",
-	"sourcePaths": [ "source" ],
 	"mainSourceFile": "source/mkinfo.d",
-	"dependencies":
-	{
-		"dcell:dcell": { "path": "../dcell" }
+	"dependencies": {
+	    "dcell:dcell" : { "path": "../dcell" }
 	}
 }

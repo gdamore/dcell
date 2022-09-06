@@ -1,9 +1,7 @@
 {
-	"authors": [ "Garrett D'Amore" ],
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"description": "Terminal Cells for D.",
 	"name": "dcell",
 	"targetType": "library",
-	"sourcePaths": [ "source" ],
-	"importPaths": [ "source" ],
+	"authors": [ "Garrett D'Amore" ],
+	"copyright": "Copyright 2022 Garrett D'Amore",
+	"license": "BSL-1.0",
 }
