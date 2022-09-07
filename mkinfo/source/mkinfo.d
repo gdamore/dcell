@@ -18,7 +18,6 @@ import std.outbuffer;
 import std.traits;
 import std.conv;
 
-import dcell.terminfo;
 import dcell.termcap;
 import dcell.database;
 
