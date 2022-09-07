@@ -135,10 +135,10 @@ version (Posix)
         {
             termios tio;
             enforce(tcgetattr(fd, &tio) >= 0, "failed to get termio state");
-            tio.c_iflag ^= IGNBRK | BRKINT | ISTRIP | INLCR | IGNCR | ICRNL | IXON;
-            tio.c_oflag ^= OPOST;
-            tio.c_lflag ^= ECHO | ECHONL | ICANON | ISIG | IEXTEN;
-            tio.c_cflag ^= CSIZE | PARENB;
+            tio.c_iflag &= ~(IGNBRK | BRKINT | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+            tio.c_oflag &= ~OPOST;
+            tio.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+            tio.c_cflag &= ~(CSIZE | PARENB);
             tio.c_cflag |= CS8;
             tio.c_cc[VMIN] = 1; // at least one character
             tio.c_cc[VTIME] = 0; // but block forever
