@@ -146,7 +146,30 @@ interface Screen
     void fill(string s, Style style);
 
     /**
+     * Resize is called when the screen has changed.
+     * Typically this might be called after catching SIGWINCH.
+     */
+    void resize();
+
+    /**
      * Fill the entire screen with the given content, but preserve the style.
      */
     void fill(string s);
+
+    /**
+     * Start should be called to start processing.  Once this begins,
+     * events (see event.d) will be delivered to the caller via
+     * std.concurrency.send().  Additioanlly, this may change terminal
+     * settings to put the input stream into raw mode, etc.
+     */
+    void start();
+
+    /**
+     * Stop is called to stop processing on teh screen.  The terminal
+     * settings will be restored, and the screen may be cleared. Input
+     * events will no longer be delivered.  This should be called when
+     * the program is exited, or if suspending (to run a subshell process
+     * interactively for example).
+     */
+    void stop();
 }

@@ -153,6 +153,17 @@ class TtyScreen : Screen
         return (cells.size());
     }
 
+    void resize()
+    {
+        auto phys = ti.windowSize();
+        if (phys != cells.size())
+        {
+            cells.resize(phys);
+            cells.setAllDirty(true);
+            // TODO: POST AN EVENT
+        }
+    }
+
     const(Cell) opIndex(Coord pos)
     {
         return (cells[pos]);
@@ -533,17 +544,6 @@ private:
         flush();
     }
 
-    void resize()
-    {
-        auto phys = ti.windowSize();
-        if (phys != cells.size())
-        {
-            cells.resize(phys);
-            cells.setAllDirty(true);
-            // TODO: POST AN EVENT
-        }
-    }
-
     void sendMouseEnable(MouseEnable en)
     {
         // we rely on the fact that all known implementations adhere
@@ -592,10 +592,7 @@ private:
             catch (Exception e)
             {
             }
-            if (s.length != 0)
-            {
-                p.parse(s);
-            }
+            p.parse(s);
             foreach (_, ev; p.events())
             {
                 send(ownerTid(), ev);
@@ -630,7 +627,6 @@ private:
         version (Posix)
         {
             import dcell.devtty;
-            import std.stdio;
             import core.thread;
 
             auto caps = Database.get("xterm-256color");
