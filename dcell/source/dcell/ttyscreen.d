@@ -321,9 +321,8 @@ private:
         }
         else
         {
-            // TODO: we should fit these to closest palette match
-            fg = toPalette(fg);
-            bg = toPalette(bg);
+            fg = toPalette(fg, caps.colors);
+            bg = toPalette(bg, caps.colors);
         }
         if (fg < 256 && bg < 256 && caps.setFgBg != "")
             puts(caps.setFgBg, fg, bg);
@@ -621,7 +620,6 @@ private:
     {
         version (Posix)
         {
-            import dcell.devtty;
             import core.thread;
 
             auto caps = Database.get("xterm-256color");

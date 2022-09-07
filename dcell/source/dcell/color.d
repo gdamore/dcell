@@ -686,7 +686,7 @@ shared static this()
 /// Params:
 ///  c = a Color
 /// Returns: Numeric RGB value for color, or -1 if it cannot be represented.
-int toHex(Color c)
+int toHex(Color c) pure
 {
     if ((c & Color.isRGB) != 0)
     {
@@ -704,7 +704,7 @@ int toHex(Color c)
 /// Params:
 ///   rgb = hex value, red << 16 | green << 8 | blue
 /// Returns: The associated Color, or Color.invalid if a bad value for rgb was supplied.
-Color fromHex(int rgb)
+Color fromHex(int rgb) pure
 {
     if (rgb < 1 << 24)
     {
@@ -721,7 +721,7 @@ Color fromHex(int rgb)
 /// Params:
 ///   c = a valid Color   
 /// Returns: An RGB format Color, Color.invalid if it cannot be determined.
-Color toRGB(Color c)
+Color toRGB(Color c) pure
 {
     if ((c & Color.isRGB) != 0)
     {
@@ -739,7 +739,7 @@ Color toRGB(Color c)
 /// Params:
 ///   c = a valid color
 /// Returns: true if the color is an RGB format color
-bool isRGB(Color c)
+bool isRGB(Color c) pure
 {
     return (c & Color.isRGB) != 0;
 }
@@ -748,42 +748,46 @@ bool isRGB(Color c)
 /// This will try to find the lowest numbered palette entry.
 /// The palette entry might be a higher numbered color than the
 /// terminal can support, if it does not support a 256 color palette.
-/// This performs exact color matches only.
 /// 
 /// Params:
 ///   c = a valid Color
-/// Returns: the palette Color matching c, if one is found, or Color.invalid if not found
-Color toPalette(Color c)
+///   numColors = the size of the palette
+///
+/// Returns: the palette Color closest matching c
+Color toPalette(Color c, int numColors)
 {
-    if (c in rgbValues)
+    import std.functional;
+
+    switch (c)
     {
-        // it's already a palette entry
-        return c;
+    case Color.none, Color.reset, Color.invalid:
+        return Color.invalid;
+    default:
+        return memoize!bestColor(c, numColors);
     }
-    if (isRGB(c))
-    {
-        if (toHex(c) in palValues)
-        {
-            return palValues[toHex(c)];
-        }
-    }
-    return Color.invalid;
 }
 
 /**
  * decompose a color into red, green, and blue values.
  */
-auto decompose(Color c)
+auto decompose(Color c) pure
 {
     c = toRGB(c);
     return Tuple!(int, int, int)((c & 0xff0000) >> 16, ((c & 0xff00) >> 8), (c & 0xff));
 }
 
+void decompose(Color c, ref int r, ref int g, ref int b) pure
+{
+    c = toRGB(c);
+    r = int(c & 0xff0000) >> 16;
+    g = int(c & 0xff00) >> 8;
+    b = int(c & 0xff);
+}
+
 unittest
 {
-    assert(toPalette(Color.red) == Color.red);
-    assert(toPalette(cast(Color) 300) == Color.invalid);
-    assert(toPalette(cast(Color) 0x00FF00 | Color.isRGB) == Color.lime);
+    assert(toPalette(Color.red, 16) == Color.red);
+    assert(toPalette(cast(Color) 0x00FF00 | Color.isRGB, 16) == Color.lime);
     assert(toHex(Color.invalid) == -1);
     assert(toRGB(cast(Color) 512) == Color.invalid);
     assert(toRGB(Color.reset) == Color.invalid);
@@ -795,7 +799,7 @@ unittest
         auto c = fromHex(r);
         assert(toRGB(c) == c);
         assert(c != Color.invalid);
-        auto p = toPalette(c);
+        auto p = toPalette(c, 256);
         assert(p != Color.invalid);
         if (i < 16)
         {
@@ -812,7 +816,7 @@ unittest
     }
     for (Color c = Color.black; c <= Color.white; c++)
     {
-        assert(toPalette(toRGB(c)) == c);
+        assert(toPalette(toRGB(c), 256) == c);
     }
     assert(decompose(Color.yellowGreen)[0] == 0x9a);
     assert(decompose(Color.yellowGreen)[1] == 0xcd);
@@ -820,4 +824,92 @@ unittest
     assert(decompose(Color.red)[0] == 0xff);
     assert(decompose(Color.red)[1] == 0);
     assert(decompose(Color.red)[2] == 0);
+}
+
+private long redMean(Color c1, Color c2) pure
+{
+    int r1, r2, g1, g2, b1, b2;
+    decompose(c1, r1, g1, b1);
+    decompose(c2, r2, g2, b2);
+    long ar = (r1 + r2) / 2;
+    long dr = (r1 - r2);
+    long dg = (g1 - g2);
+    long db = (b1 - b2);
+
+    long dist;
+
+    // see https://en.wikipedia.org/wiki/Color_difference
+    dist = ((2 + ar / 256) * dr * dr) + (4 * dg * dg) + ((2 + ((255 - ar) / 256)) * db * db);
+
+    // not bothering with the square root, since we are just comparing values
+    return dist;
+}
+
+private Color bestColor(Color c, int numColors) pure
+{
+    // this is an expensive operation, so you really want
+    // to memoize it.
+    long abs(long a) pure
+    {
+        return a >= 0 ? a : -a;
+    }
+
+    c = toRGB(c);
+    if (c == Color.invalid)
+    {
+        return c;
+    }
+
+    // look for a perfect fit first before we start doing hard math
+    auto hex = toHex(c);
+    if ((hex in palValues) && (palValues[hex] <= numColors))
+    {
+        return (palValues[hex]);
+    }
+
+    if (numColors == 0)
+    {
+        auto d1 = redMean(c, Color.black);
+        auto d2 = redMean(c, Color.white);
+        return abs(d1) < abs(d2) ? Color.black : Color.white;
+    }
+    if (numColors > 256)
+    {
+        numColors = 256;
+    }
+    auto bestDist = long.max;
+    auto bestColor = Color.invalid;
+    for (Color pal = Color.black; pal < numColors; pal++)
+    {
+        auto d = redMean(c, toRGB(pal));
+        if (d < bestDist)
+        {
+            bestDist = d;
+            bestColor = pal;
+        }
+    }
+
+    return (bestColor);
+}
+
+unittest
+{
+    import std.stdio;
+
+    assert(bestColor(Color.red, 16) == Color.red);
+    assert(bestColor(Color.red, 256) == Color.red);
+    assert(bestColor(Color.paleGreen, 256) == cast(Color) 120);
+    assert(bestColor(Color.darkSlateBlue, 256) == cast(Color) 60);
+    assert(bestColor(fromHex(0xfe0000), 16) == Color.red);
+}
+
+unittest
+{
+    import std.stdio;
+
+    assert(toPalette(Color.red, 16) == Color.red);
+    assert(toPalette(Color.red, 256) == Color.red);
+    assert(toPalette(Color.paleGreen, 256) == cast(Color) 120);
+    assert(toPalette(Color.darkSlateBlue, 256) == cast(Color) 60);
+    assert(toPalette(fromHex(0xfe0000), 16) == Color.red);
 }
