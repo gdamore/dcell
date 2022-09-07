@@ -597,25 +597,44 @@ unittest
 
 void main(string[] args)
 {
+    import core.stdc.stdlib;
+    import std.getopt;
+    import std.path;
     import std.process;
-    string[] terms;
 
-    args = args[1..$];
-    if (args.length != 0) {
+    string[] terms;
+    string directory = ".";
+
+    auto help = getopt(args, "directory", &directory);
+    if (help.helpWanted)
+    {
+        defaultGetoptFormatter(stderr.lockingTextWriter(),
+            "Emit terminal database", help.options);
+        exit(1);
+    }
+    args = args[1 .. $];
+    if (args.length != 0)
+    {
         terms = args;
-    } else {
+    }
+    else
+    {
         terms ~= environment.get("TERM", "ansi");
     }
-    foreach (_, name; terms) {
+    foreach (_, name; terms)
+    {
         auto tc = getTermcap(name);
-        if (tc is null) {
-            throw new Exception("failed to get term for "~name);
+        if (tc is null)
+        {
+            throw new Exception("failed to get term for " ~ name);
         }
         string pkg;
-        pkg = replace(name, "-",  "");
+        pkg = replace(name, "-", "");
         pkg = replace(pkg, ".", "");
-        auto ob = mkTermSource(tc, "dcell.terminfo."~pkg);
-        writeln(ob.toString());
+        auto ob = mkTermSource(tc, "dcell.terminfo." ~ pkg);
+        import std.file;
+
+        auto autof = chainPath(directory, pkg ~ ".d");
+        write(autof, ob.toString());
     }
-    // blah blah
 }
