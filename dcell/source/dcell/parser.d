@@ -70,7 +70,7 @@ struct ParseKeys
                 addKey(key, val ~ ";16~",
                     Modifiers.meta | Modifiers.ctrl | Modifiers.shift | Modifiers.alt);
             }
-            else if (val.length == 3 && val[0] == '\x1b' && val[1] == '0')
+            else if (val.length == 3 && val[0] == '\x1b' && val[1] == 'O')
             {
                 val = val[2 .. $];
                 addKey(key, "\x1b[1;2" ~ val, Modifiers.shift, cast(Key)(key + 12));

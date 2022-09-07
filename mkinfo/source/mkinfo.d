@@ -508,7 +508,7 @@ OutBuffer mkTermSource(Termcap* tc, string modname)
     ob.writefln("");
     ob.writefln("module %s;", modname);
     ob.writefln("");
-    ob.writefln("import dcell.terminfo.database;");
+    ob.writefln("import dcell.database;");
     ob.writefln("");
     ob.writefln("// %s", tc.name);
     ob.writefln("static immutable Termcap term = {");
@@ -591,7 +591,7 @@ unittest
     assert(getTermcap("nosuch") is null);
     auto tc = getTermcap("xterm-256color");
     assert(tc !is null);
-    auto ob = mkTermSource(tc, "gdamore.dcell.terminfo.xterm256color");
+    auto ob = mkTermSource(tc, "dcell.terminfo.xterm256color");
     writefln("HERE IT IS\n%s\n", ob.toString());
 }
 
