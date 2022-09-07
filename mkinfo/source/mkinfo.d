@@ -154,12 +154,12 @@ unittest
 }
 
 /**
-* Load capabilities (parsed from infocmp -1 -x).
-*
-* Params: info = output from infocmp -1 -x
-* Returns: 
-*     parsed capabilities on success, null otherwise
-*/
+ * Load capabilities (parsed from infocmp -1 -x).
+ *
+ * Params: info = output from infocmp -1 -x
+ * Returns:
+ *   parsed capabilities on success, null otherwise
+ */
 Caps* parseCaps(string info)
 {
     auto cap = new Caps;
@@ -454,14 +454,14 @@ private Termcap* convertCaps(Caps* caps)
     if (caps.getBool("Tc"))
     {
         // This presumes XTerm 24-bit true color.
-        tc.colors = 1<<24;
+        tc.colors = 1 << 24;
     }
     else if (caps.getBool("RGB"))
     {
         // This is for xterm-direct, which uses a different scheme entirely.
         // (ncurses went a very different direction from everyone else, and
         // so it's unlikely anything is using this definition.)
-        tc.colors = 1<24;
+        tc.colors = 1 < 24;
         tc.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
         tc.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
     }
@@ -595,14 +595,27 @@ unittest
     writefln("HERE IT IS\n%s\n", ob.toString());
 }
 
-version (unittest)
+void main(string[] args)
 {
-    // when unittest with dub, we don't want a main program
-}
-else
-{
-    void main()
-    {
-        // blah blah
+    import std.process;
+    string[] terms;
+
+    args = args[1..$];
+    if (args.length != 0) {
+        terms = args;
+    } else {
+        terms ~= environment.get("TERM", "ansi");
     }
+    foreach (_, name; terms) {
+        auto tc = getTermcap(name);
+        if (tc is null) {
+            throw new Exception("failed to get term for "~name);
+        }
+        string pkg;
+        pkg = replace(name, "-",  "");
+        pkg = replace(pkg, ".", "");
+        auto ob = mkTermSource(tc, "dcell.terminfo."~pkg);
+        writeln(ob.toString());
+    }
+    // blah blah
 }
