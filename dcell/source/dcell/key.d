@@ -141,11 +141,11 @@ enum Key
     pasteEnd,
 
     // convenience aliases
-    backspace = 8,
-    tab = 9,
-    esc = 27,
-    enter = 13,
-    del = 127, // Note del2 has a different value
+    backspace = ctrlH,
+    tab = ctrlI,
+    esc = ctrlLeftSq,
+    enter = ctrlM,
+    del = 0x7F, // Note del2 has a different value
 }
 
 /** 
