@@ -332,9 +332,11 @@ class Parser
             keyStart = now;
         }
         buf ~= b;
+
         while (buf.length != 0)
         {
             partial = false;
+
             if (parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
             {
                 keyStart = now;
@@ -738,7 +740,6 @@ unittest
     assert(p.parse("")); // no data, is fine
     assert(p.parse("\x1bOC"));
     auto ev = p.events();
-    import std.stdio;
 
     assert(ev.length == 1);
     assert(ev[0].type == EventType.key);
