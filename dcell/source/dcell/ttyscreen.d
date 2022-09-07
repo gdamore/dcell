@@ -654,3 +654,18 @@ private:
         }
     }
 }
+
+Screen newTtyScreen(string term = "")
+{
+    import std.process;
+
+    if (term == "")
+    {
+        term = environment.get("TERM", "ansi");
+    }
+    auto caps = Database.get(term);
+    if (caps is null) {
+        throw new Exception("terminal not found");
+    }
+    return new TtyScreen(newDevTty(), caps);
+}

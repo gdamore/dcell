@@ -12,15 +12,7 @@ import std.stdio;
 import std.string;
 import std.concurrency;
 
-import dcell.termcap;
-import dcell.database;
-import dcell.screen;
-import dcell.style;
-import dcell.cell;
-import dcell.event;
-import dcell.termio;
-
-import dcell.ttyscreen;
+import dcell;
 
 void emitStr(Screen s, int x, int y, Style style, string str)
 {
@@ -70,8 +62,7 @@ void main()
 	import std.stdio;
 	import dcell.terminfo.xterm256color;
 
-	auto caps = Database.get("xterm-256color");
-	auto ts = new TtyScreen(newDevTty(), caps);
+	auto ts = newScreen();
 	assert(ts !is null);
 
 	ts.start();
