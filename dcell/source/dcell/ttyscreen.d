@@ -614,12 +614,7 @@ private:
                 stopping.set(false);
                 return;
             }
-
-            if (f.eof() || f.error())
-                break;
         }
-        stopping.wait(true);
-        stopping.set(false);
     }
 
     unittest

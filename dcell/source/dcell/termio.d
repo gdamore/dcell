@@ -67,12 +67,14 @@ interface TtyImpl
      */
     Coord windowSize();
 
-    bool eof();
-
-    bool error();
-
+    /**
+     * Stop input scanning.  This may close the tty device.
+     */
     void stop();
 
+    /**
+     * Start termio.  This will open the device.
+     */
     void start();
 }
 
@@ -204,7 +206,7 @@ version (Posix)
             // this has to use the underlying read system call
             import unistd = core.sys.posix.unistd;
             ubyte[] buf = new ubyte[128];
-            auto rv = unistd.read(file.fileno(), cast(void *)buf.ptr, buf.length);
+            auto rv = unistd.read(fd, cast(void *)buf.ptr, buf.length);
             if (rv < 0)
                 return "";
             return cast(string) buf[0 .. rv];
@@ -213,16 +215,6 @@ version (Posix)
         void write(string s)
         {
             file.rawWrite(s);
-        }
-
-        bool eof() @safe const
-        {
-            return file.eof();
-        }
-
-        bool error() @safe const
-        {
-            return file.error();
         }
 
     private:
