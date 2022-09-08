@@ -109,10 +109,13 @@ version (Posix)
 
         void stop()
         {
-            flush();
-            restore();
+            if (file.isOpen())
+            {
+                flush();
+                restore();
+                file.close();
+            }
             ignoreResize(fd);
-            file.close();
         }
 
         void save()

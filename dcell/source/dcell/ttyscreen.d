@@ -48,6 +48,8 @@ class TtyScreen : Screen
 
     void start()
     {
+        if (started)
+            return;
         stopping.set(false);
         ti.save();
         ti.raw();
@@ -55,10 +57,13 @@ class TtyScreen : Screen
         resize();
         draw();
         spawn(&inputLoop, cast(shared TtyImpl) ti, keys, stopping);
+        started = true;
     }
 
     void stop()
     {
+        if (!started)
+            return;
         puts(caps.resetColors);
         puts(caps.attrOff);
         puts(caps.cursorReset);
@@ -73,6 +78,7 @@ class TtyScreen : Screen
         stopping.wait(false);
         ti.blocking(true);
         ti.restore();
+        started = false;
     }
 
     void clear()
@@ -225,6 +231,7 @@ private:
     TtyImpl ti;
     OutBuffer ob;
     Turnstile stopping;
+    bool started;
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
@@ -257,7 +264,8 @@ private:
         auto fg = style.fg;
         auto bg = style.bg;
 
-        if (caps.colors == 0) {
+        if (caps.colors == 0)
+        {
             return;
         }
         if (fg == Color.reset || bg == Color.reset)
@@ -431,7 +439,8 @@ private:
         if (caps.colors == 0)
         {
             // if its monochrome, simulate ligher and darker with reverse
-            if (darker(c.style.fg, c.style.bg)) {
+            if (darker(c.style.fg, c.style.bg))
+            {
                 c.style.attr ^= Attr.reverse;
             }
         }
@@ -575,7 +584,8 @@ private:
                 poll = false;
             }
 
-            if (f.resized()) {
+            if (f.resized())
+            {
                 Event ev;
                 ev.type = EventType.resize;
                 ev.when = MonoTime.currTime();

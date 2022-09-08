@@ -4,10 +4,12 @@
 	"targetType": "none",
 	"dependencies": {
 		"dcell:dcell": "*",
+		"dcell:colors": "*",
 		"dcell:hello": "*",
 		"dcell:mouse": "*"
 	},
 	"subPackages": [
+		"./colors/",
 		"./hello/",
 		"./mouse/"
 	]
