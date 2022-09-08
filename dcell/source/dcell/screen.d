@@ -138,6 +138,11 @@ interface Screen
     void setSize(Coord);
 
     /**
+     * Set the default style used when clearning the screen, etc.
+     */
+    void setStyle(Style);
+
+    /**
      * Fill the entire screen with the given content and style.
      */
     void fill(string s, Style style);

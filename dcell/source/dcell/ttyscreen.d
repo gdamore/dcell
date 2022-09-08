@@ -37,6 +37,8 @@ class TtyScreen : Screen
         keys = ParseKeys(tc);
         ob = new OutBuffer();
         stopping = new Turnstile();
+        defStyle.bg = Color.reset;
+        defStyle.fg = Color.reset;
     }
 
     ~this()
@@ -90,7 +92,7 @@ class TtyScreen : Screen
 
     void fill(string s)
     {
-        fill(s, this.style_);
+        fill(s, this.defStyle);
     }
 
     void showCursor(Coord pos, Cursor cur = Cursor.current)
@@ -168,6 +170,11 @@ class TtyScreen : Screen
         flush();
     }
 
+    void setStyle(Style style)
+    {
+        defStyle = style;
+    }
+
     void setSize(Coord size)
     {
         if (caps.setWindowSize != "")
@@ -209,6 +216,7 @@ private:
     bool clear_; // if a sceren clear is requested
     Coord pos_; // location where we will update next
     Style style_; // current style
+    Style defStyle; // default style (when screen is cleared)
     Coord cursorPos;
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
@@ -319,8 +327,9 @@ private:
             clear_ = false;
             puts(caps.attrOff);
             puts(caps.exitURL);
-            sendColors(style_);
-            sendAttrs(style_);
+            sendColors(defStyle);
+            sendAttrs(defStyle);
+            style_ = defStyle;
             puts(caps.clear);
             flush();
         }

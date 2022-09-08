@@ -761,7 +761,7 @@ Color toPalette(Color c, int numColors)
     switch (c)
     {
     case Color.none, Color.reset, Color.invalid:
-        return Color.invalid;
+        return c;
     default:
         return memoize!bestColor(c, numColors);
     }

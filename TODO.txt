@@ -13,4 +13,3 @@
 * CellBuffer[] could return a reference.
 * Add more term definitions (kitty, tmux, etc.)
 * Dynamic term parsing from infocmp.
-* Fix clear.
