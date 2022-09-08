@@ -12,3 +12,5 @@
 * Modifiers.toString()
 * Attr.toString()
 * CellBuffer[] could return a reference.
+* Add more term definitions (kitty, tmux, etc.)
+* Dynamic term parsing from infocmp.
