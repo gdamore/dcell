@@ -1,0 +1,14 @@
+* Implement Windows support.
+* Provide better options for Event delivery.
+* Character fallback support via ACSC.
+* Investigate initp handling.
+* Convience enableMouse(bool)
+* Convience enablePaste(bool)
+* Paste refactoring into single Event.
+* Key.toString()
+* Color.toString()
+* Event.toString()
+* Buttons.toString()
+* Modifiers.toString()
+* Attr.toString()
+* CellBuffer[] could return a reference.
