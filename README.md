@@ -4,7 +4,7 @@
 [![Linux](https://img.shields.io/github/workflow/status/gdamore/dcell/linux?logoColor=grey&logo=linux&label=)](https://github.com/gdamore/tcell/actions/workflows/linux.yml)
 
 This is an early effort to "rewrite" my well-known
-[tcell](https://github.com/gdamore/tcell) (for Go)
+[Tcell](https://github.com/gdamore/tcell) (for Go)
 project into D.
 
 At present, this works reasonably well for most TTY type devices
@@ -13,11 +13,11 @@ systems.
 
 Windows support is missing.
 
-It supports most of the things that tcell supports.  The API is
+It supports most of the things that Tcell supports.  The API is
 subject to change, as I'm working on improving this.
 
 The demos/ directory has a few demo programs which might be
-interesting.  These were ported from tcell.
+interesting.  These were ported from Tcell.
 
 This effort was done principally to learn D, but hopefully it may
 someday later be useless because it appears that D does not have an
