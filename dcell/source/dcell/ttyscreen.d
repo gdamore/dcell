@@ -118,7 +118,6 @@ class TtyScreen : Screen
         {
             cells.resize(phys);
             cells.setAllDirty(true);
-            // TODO: POST AN EVENT
         }
     }
 

@@ -143,8 +143,9 @@ interface Screen
     void fill(string s, Style style);
 
     /**
-     * Resize is called when the screen has changed.
-     * Typically this might be called after catching SIGWINCH.
+     * Applications should call this in response to receiving
+     * a resize event.  (This can't be done automatically to
+     * avoid thread safety issues.)
      */
     void resize();
 
