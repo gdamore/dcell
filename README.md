@@ -1,7 +1,7 @@
 # Dcell
 
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
-[![Linux](https://img.shields.io/github/workflow/status/gdamore/dcell/linux?logoColor=grey&logo=linux&label=)](https://github.com/gdamore/tcell/actions/workflows/linux.yml)
+[![Linux](https://img.shields.io/github/workflow/status/gdamore/dcell/linux?logoColor=grey&logo=linux&label=)](https://github.com/gdamore/dcell/actions/workflows/linux.yml)
 
 This is an early effort to "rewrite" my well-known
 [Tcell](https://github.com/gdamore/tcell) (for Go)
