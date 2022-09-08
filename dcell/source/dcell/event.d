@@ -53,5 +53,5 @@ struct ResizeEvent
  */
  struct PasteEvent
  {
-    bool start;
+    dstring content;
  }

@@ -4,7 +4,6 @@
 * Investigate initp handling.
 * Convience enableMouse(bool)
 * Convience enablePaste(bool)
-* Paste refactoring into single Event.
 * Key.toString()
 * Color.toString()
 * Event.toString()
@@ -14,3 +13,4 @@
 * CellBuffer[] could return a reference.
 * Add more term definitions (kitty, tmux, etc.)
 * Dynamic term parsing from infocmp.
+* Fix clear.

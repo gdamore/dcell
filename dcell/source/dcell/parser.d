@@ -6,6 +6,7 @@
 module dcell.parser;
 
 import core.time;
+import std.ascii;
 import std.string;
 import std.utf;
 
@@ -27,6 +28,8 @@ struct ParseKeys
 
     immutable bool[Key] exist;
     immutable KeyCode[string] keys;
+    string pasteStart;
+    string pasteEnd;
 
     this(const Termcap* caps)
     {
@@ -289,8 +292,8 @@ struct ParseKeys
 
         addXTermKeys(caps);
 
-        addKey(Key.pasteStart, caps.pasteStart);
-        addKey(Key.pasteEnd, caps.pasteEnd);
+        pasteStart = caps.pasteStart;
+        pasteEnd = caps.pasteEnd;
 
         addCtrlKeys(); // do this one last
         exist = cast(immutable(bool[Key])) ex;
@@ -314,6 +317,8 @@ class Parser
     {
         keyExist = pk.exist;
         keyCodes = pk.keys;
+        pasteStart = pk.pasteStart;
+        pasteEnd = pk.pasteEnd;
     }
 
     Event[] events()
@@ -337,7 +342,14 @@ class Parser
         {
             partial = false;
 
-            if (parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
+            // the rule for paste events is that they get everything
+            // until the paste ends, or we time the data out.
+            if (pasting)
+            {
+            }
+
+            // we have to parse the paste bit first
+            if (parsePaste() || parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
             {
                 keyStart = now;
                 continue;
@@ -391,6 +403,11 @@ private:
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
     bool buttonDown; // true if buttons were down
     bool wasButton; // true if we saw a button press for recent mouse event
+    bool pasting;
+    MonoTime pasteTime;
+    dstring pasteBuf;
+    string pasteStart;
+    string pasteEnd;
 
     Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none)
     {
@@ -454,13 +471,70 @@ private:
         return ev;
     }
 
-    Event newPasteEvent(bool start)
+    Event newPasteEvent(dstring buffer)
     {
         Event ev = {
-            type: EventType.paste, when: MonoTime.currTime, paste: {start: start}
+            type: EventType.paste, when: MonoTime.currTime, paste: {
+                content: buffer
+            }
         };
         return ev;
 
+    }
+
+    bool parseSequence(string seq)
+    {
+        if (startsWith(buf, seq))
+        {
+            buf = buf[seq.length .. $]; // yank the sequence
+            return true;
+        }
+        if (startsWith(seq, buf))
+        {
+            partial = true;
+        }
+        return false;
+    }
+
+    bool parsePaste()
+    {
+        bool matches;
+
+        if (pasteStart == "")
+        {
+            return false;
+        }
+
+        auto now = MonoTime.currTime();
+        if (!pasting)
+        {
+            if (parseSequence(pasteStart))
+            {
+                pasting = true;
+                pasteBuf = "";
+                pasteTime = now;
+                return true;
+            }
+            return false;
+        }
+        assert(pasting);
+
+        // we end the sequence if we see it, but also if we timed out looking for it
+        if (parseSequence(pasteEnd) ||
+            ((now - pasteTime) > seqTime * 4))
+        {
+            pasting = false;
+            auto ev = newPasteEvent(pasteBuf);
+            pasteBuf = "";
+            evs ~= ev;
+            return true;
+        }
+        if (parseRune())
+        {
+            pasteTime = now;
+        }
+        // we pretend to have eaten the entire thing, even if there is stuff left
+        return true;
     }
 
     bool parseRune()
@@ -471,7 +545,8 @@ private:
         }
         dchar dc;
         Modifiers mod = Modifiers.none;
-        if (buf[0] >= ' ' && buf[0] <= 0x7F)
+        if ((buf[0] >= ' ' && buf[0] <= 0x7F) ||
+            (pasting && isWhite(buf[0])))
         {
             dc = buf[0];
             buf = buf[1 .. $];
@@ -481,7 +556,10 @@ private:
                 escaped = false;
                 mod = Modifiers.alt;
             }
-            evs ~= newKeyEvent(Key.rune, dc, mod);
+            if (pasting)
+                pasteBuf ~= dc;
+            else
+                evs ~= newKeyEvent(Key.rune, dc, mod);
             return true;
         }
         if (buf[0] < 0x80) // control character, not a rune
@@ -497,7 +575,10 @@ private:
         {
             return false;
         }
-        evs ~= newKeyEvent(Key.rune, dc, mod);
+        if (pasting)
+            pasteBuf ~= dc;
+        else
+            evs ~= newKeyEvent(Key.rune, dc, mod);
         buf = buf[index .. $];
         return true;
     }
@@ -523,18 +604,7 @@ private:
                     escaped = false;
                     mod = Modifiers.alt;
                 }
-                switch (kc.key)
-                {
-                case Key.pasteStart:
-                    evs ~= newPasteEvent(true);
-                    break;
-                case Key.pasteEnd:
-                    evs ~= newPasteEvent(false);
-                    break;
-                default:
-                    evs ~= newKeyEvent(kc.key, seq.length == 1 ? seq[0] : 0, mod);
-                    break;
-                }
+                evs ~= newKeyEvent(kc.key, seq.length == 1 ? seq[0] : 0, mod);
                 buf = buf[seq.length .. $];
                 return true;
             }
@@ -635,6 +705,7 @@ private:
                 }
                 buf = buf[i + 1 .. $];
                 import std.stdio;
+
                 evs ~= newMouseEvent(x, y, btn);
                 return true;
             default:

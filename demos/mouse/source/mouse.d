@@ -89,28 +89,6 @@ void drawSelect(Screen s, Coord c1, Coord c2, bool sel)
 	}
 }
 
-void handleEvent(Screen ts, Event ev)
-{
-	import core.stdc.stdlib : exit;
-
-	switch (ev.type)
-	{
-	case EventType.key:
-		if (ev.key.key == Key.esc || ev.key.key == Key.f1)
-		{
-			ts.stop();
-			exit(0);
-		}
-		break;
-	case EventType.resize:
-		ts.resize();
-		ts.sync();
-		break;
-	default:
-		break;
-	}
-}
-
 void main()
 {
 	import std.stdio;
@@ -130,6 +108,7 @@ void main()
 	s.start();
 	s.showCursor(Cursor.hidden);
 	s.enableMouse(MouseEnable.all);
+	s.enablePaste(true);
 	Style white;
 	white.fg = Color.midnightBlue;
 	white.bg = Color.lightCoral;
@@ -143,8 +122,8 @@ void main()
 	for (;;)
 	{
 		auto ps = pStr;
-		if (ps.length > 26)
-			ps = "..." ~ ps[$ - 24 .. $];
+		if (ps.length > 25)
+			ps = "..." ~ ps[$ - 23 .. $];
 		drawBox(s, Coord(1, 1), Coord(42, 7), white);
 		Coord pos = Coord(3, 2);
 		emitStr(s, pos, white, "Press ESC twice to exit, C to clear.");
@@ -178,6 +157,13 @@ void main()
 
 		switch (ev.type)
 		{
+		case EventType.resize:
+			s.resize();
+			s.sync();
+			break;
+		case EventType.paste:
+			pStr = ev.paste.content;
+			break;
 		case EventType.key:
 			pStr = "";
 			s[pos] = Cell('K', st);
@@ -275,7 +261,8 @@ void main()
 			s[pos] = Cell('X', st);
 			break;
 		}
-		if (oldTop.x >= 0 && oldBot.x >= 0) {
+		if (oldTop.x >= 0 && oldBot.x >= 0)
+		{
 			drawSelect(s, oldTop, oldBot, true);
 		}
 	}
