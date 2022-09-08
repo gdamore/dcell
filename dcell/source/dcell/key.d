@@ -137,8 +137,6 @@ enum Key
     f62,
     f63,
     f64,
-    pasteStart = 16_384, // used internally only
-    pasteEnd,
 
     // convenience aliases
     backspace = ctrlH,
