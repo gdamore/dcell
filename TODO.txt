@@ -3,8 +3,6 @@
 * Character fallback support via ACSC.
 * Investigate initp handling.
 * Convience enableMouse(bool)
-* Convience enablePaste(bool)
-* Key.toString()
 * Color.toString()
 * Event.toString()
 * Buttons.toString()

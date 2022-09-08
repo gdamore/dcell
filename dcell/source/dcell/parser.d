@@ -276,7 +276,7 @@ struct ParseKeys
             addKey(Key.left, "\x1b[D");
             addKey(Key.end, "\x1b[F");
             addKey(Key.home, "\x1b[H");
-            addKey(Key.del, "\x1b[3~");
+            addKey(Key.del2, "\x1b[3~");
             addKey(Key.home, "\x1b[1~");
             addKey(Key.end, "\x1b[4~");
             addKey(Key.pgUp, "\x1b[5~");
@@ -296,8 +296,14 @@ struct ParseKeys
         pasteEnd = caps.pasteEnd;
 
         addCtrlKeys(); // do this one last
+
+        // if DELETE didn't make it at 0x7F, add it - seems to be missing
+        // from some of the sequences.
+        addKey(Key.del2, "\x7F");
+
         exist = cast(immutable(bool[Key])) ex;
         keys = cast(immutable(KeyCode[string])) kc;
+
     }
 
     bool hasKey(Key k) pure
@@ -341,12 +347,6 @@ class Parser
         while (buf.length != 0)
         {
             partial = false;
-
-            // the rule for paste events is that they get everything
-            // until the paste ends, or we time the data out.
-            if (pasting)
-            {
-            }
 
             // we have to parse the paste bit first
             if (parsePaste() || parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
@@ -545,7 +545,7 @@ private:
         }
         dchar dc;
         Modifiers mod = Modifiers.none;
-        if ((buf[0] >= ' ' && buf[0] <= 0x7F) ||
+        if ((buf[0] >= ' ' && buf[0] < 0x7F) ||
             (pasting && isWhite(buf[0])))
         {
             dc = buf[0];
@@ -562,7 +562,7 @@ private:
                 evs ~= newKeyEvent(Key.rune, dc, mod);
             return true;
         }
-        if (buf[0] < 0x80) // control character, not a rune
+        if ((buf[0] < 0x80) || (buf[0] == 0x7F)) // control character, not a rune
             return false;
         // unicode bits...
         size_t index = 0;
@@ -592,11 +592,13 @@ private:
         }
         foreach (seq, kc; keyCodes)
         {
+            // ideally we'd use a trie to isolate
+            // duplicates for this.  for now, we just handle esc.
             if (seq.length == 1 && seq[0] == '\x1b')
             {
                 continue;
             }
-            if (startsWith(buf, seq))
+            if (parseSequence(seq))
             {
                 mod = kc.mod;
                 if (escaped)
@@ -605,12 +607,7 @@ private:
                     mod = Modifiers.alt;
                 }
                 evs ~= newKeyEvent(kc.key, seq.length == 1 ? seq[0] : 0, mod);
-                buf = buf[seq.length .. $];
                 return true;
-            }
-            if (startsWith(seq, buf))
-            {
-                partial = true;
             }
         }
         return false;

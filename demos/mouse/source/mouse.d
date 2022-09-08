@@ -186,14 +186,13 @@ void main()
 				{
 					s.clear();
 				}
-				kStr = [ev.key.ch];
 				esc = 0;
 				s[pos] = Cell('R', st);
 				break;
 			default:
-				kStr = "Undecoded";
 				break;
 			}
+			kStr = ev.key.toString();
 			break;
 		case EventType.mouse:
 			if (ev.mouse.mod & Modifiers.shift)

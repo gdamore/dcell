@@ -5,6 +5,9 @@
 
 module dcell.key;
 
+import std.string;
+import std.algorithm;
+
 /**
  * Key represents a single, unmodified key stroke.  Modifier keys are
  * not considered as Keys.
@@ -146,7 +149,7 @@ enum Key
     del = 0x7F, // Note del2 has a different value
 }
 
-static immutable string[Key] keyNames;
+static immutable dstring[Key] keyNames;
 shared static this()
 {
     keyNames[Key.enter] = "Enter";
@@ -290,4 +293,37 @@ struct KeyEvent
     Key key; /// Key pressed.
     dchar ch; /// Set if key == rune.
     Modifiers mod; /// Any modifiers pressed together.
+
+    dstring toString() const pure
+    {
+        dstring s = "";
+        if (mod & Modifiers.meta)
+        {
+            s ~= "Meta-";
+        }
+        if (mod & Modifiers.alt)
+        {
+            s ~= "Alt-";
+        }
+        dstring kn = "";
+        if (key in keyNames)
+        {
+            kn = keyNames[key];
+        }
+        else if (key == Key.rune)
+        {
+            kn = [ch];
+        }
+        else
+        {
+
+            kn = format("Key[%02X]"d, key);
+        }
+        if ((mod & Modifiers.ctrl) && !startsWith(kn, "Ctrl-"))
+        {
+            s ~= "Ctrl-";
+        }
+
+        return s ~ kn;
+    }
 }
