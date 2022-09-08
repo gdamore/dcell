@@ -60,7 +60,6 @@ void handleEvent(Screen ts, Event ev)
 void main()
 {
 	import std.stdio;
-	import dcell.terminfo.xterm256color;
 
 	auto ts = newScreen();
 	assert(ts !is null);

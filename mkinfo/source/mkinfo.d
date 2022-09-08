@@ -51,11 +51,11 @@ private struct Caps
 }
 
 /**
-* Unescape string data emitted by infocmp(1) into binary representations
-* suitable for use by this library.  This understands C style escape
-* sequences such as \n, but also octal sequences.  A lone \0 is understood
-* to represent a special form of NULL.  See terminfo(5) for more information.
-*/
+ * Unescape string data emitted by infocmp(1) into binary representations
+ * suitable for use by this library.  This understands C style escape
+ * sequences such as \n, but also octal sequences.  A lone \0 is understood
+ * to represent a special form of NULL.  See terminfo(5) for more information.
+ */
 private string unescape(string s)
 {
     enum escape
@@ -500,7 +500,7 @@ unittest
 
 // there might be better ways to do this
 
-OutBuffer mkTermSource(Termcap* tc, string modname)
+OutBuffer mkTermSource(Termcap*[] tcs, string modname)
 {
     auto ob = new OutBuffer;
 
@@ -509,9 +509,6 @@ OutBuffer mkTermSource(Termcap* tc, string modname)
     ob.writefln("module %s;", modname);
     ob.writefln("");
     ob.writefln("import dcell.database;");
-    ob.writefln("");
-    ob.writefln("// %s", tc.name);
-    ob.writefln("static immutable Termcap term = {");
 
     void addInt(string n, int i)
     {
@@ -554,34 +551,44 @@ OutBuffer mkTermSource(Termcap* tc, string modname)
         }
     }
 
-    auto names = FieldNameTuple!Termcap;
-    foreach (int i, ref x; tc.tupleof)
+    foreach (num, Termcap *tc; tcs)
     {
-        auto n = names[i];
+        ob.writefln("");
+        ob.writefln("// %s", tc.name);
+        ob.writefln("static immutable Termcap term%d = {", num);
 
-        static if (is(typeof(x) == int))
+        auto names = FieldNameTuple!Termcap;
+        foreach (int i, ref x; tc.tupleof)
         {
-            addInt(n, x);
+            auto n = names[i];
+
+            static if (is(typeof(x) == int))
+            {
+                addInt(n, x);
+            }
+            static if (is(typeof(x) == string))
+            {
+                addStr(n, x);
+            }
+            static if (is(typeof(x) == bool))
+            {
+                addBool(n, x);
+            }
+            static if (is(typeof(x) == string[]))
+            {
+                addArr(n, x);
+            }
         }
-        static if (is(typeof(x) == string))
-        {
-            addStr(n, x);
-        }
-        static if (is(typeof(x) == bool))
-        {
-            addBool(n, x);
-        }
-        static if (is(typeof(x) == string[]))
-        {
-            addArr(n, x);
-        }
+
+        ob.writefln("};");
     }
-
-    ob.writefln("};");
     ob.writefln("");
     ob.writefln("static this()");
     ob.writefln("{");
-    ob.writefln("    Database.add(&term);");
+    foreach (num, _; tcs)
+    {
+        ob.writefln("    Database.put(&term%d);", num);
+    }
     ob.writefln("}");
     return ob;
 }
@@ -591,8 +598,7 @@ unittest
     assert(getTermcap("nosuch") is null);
     auto tc = getTermcap("xterm-256color");
     assert(tc !is null);
-    auto ob = mkTermSource(tc, "dcell.terminfo.xterm256color");
-    writefln("HERE IT IS\n%s\n", ob.toString());
+    auto ob = mkTermSource([tc], "dcell.terminfo.xterm256color");
 }
 
 void main(string[] args)
@@ -621,17 +627,32 @@ void main(string[] args)
     {
         terms ~= environment.get("TERM", "ansi");
     }
-    foreach (_, name; terms)
+    foreach (index, string name; terms)
     {
+        Termcap*[] tcs;
         auto tc = getTermcap(name);
         if (tc is null)
         {
             throw new Exception("failed to get term for " ~ name);
         }
+        tcs ~= tc;
+
+        // look for common variants
+        foreach (unused, suffix; [
+                "16color", "88color", "256color", "truecolor", "direct"
+            ])
+        {
+            tc = getTermcap(name ~ "-" ~ suffix);
+            if (tc !is null)
+            {
+                tcs ~= tc;
+            }
+        }
+
         string pkg;
         pkg = replace(name, "-", "");
         pkg = replace(pkg, ".", "");
-        auto ob = mkTermSource(tc, "dcell.terminfo." ~ pkg);
+        auto ob = mkTermSource(tcs, "dcell.terminfo." ~ pkg);
         import std.file;
 
         auto autof = chainPath(directory, pkg ~ ".d");

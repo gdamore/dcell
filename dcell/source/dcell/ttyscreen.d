@@ -621,6 +621,7 @@ private:
         version (Posix)
         {
             import core.thread;
+	    import dcell.terminfo.xterm256color;
 
             auto caps = Database.get("xterm-256color");
             assert(caps.name != "");
@@ -647,6 +648,10 @@ private:
         }
     }
 }
+
+version(Posix):
+
+import dcell.terminfo;
 
 Screen newTtyScreen(string term = "")
 {
