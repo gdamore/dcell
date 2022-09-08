@@ -6,6 +6,8 @@
 module dcell.cell;
 
 import std.algorithm;
+import std.traits;
+import std.utf;
 
 public import dcell.coord;
 public import dcell.style;
@@ -23,6 +25,17 @@ struct Cell
     string text; /// character content - one character followed by any combinging characters
     Style style; /// styling for the cell
     int width; /// display width in cells
+
+    this(C)(C c, Style st = Style(), int w = 1) if (isSomeChar!C) {
+        text = toUTF8([c]);
+        style = st;
+        width = w;
+    }
+    this(S)(S s, Style st = Style(), int w = 1) if (isSomeString!S) {
+        text = s;
+        style = st;
+        width = w;
+    }
 }
 
 /**
@@ -255,7 +268,7 @@ class CellBuffer
      */
     void fill(string s, Style style)
     {
-        Cell c = {text: s, style: style};
+        Cell c = Cell(s, style);
         fill(c);
     }
 
@@ -310,6 +323,8 @@ class CellBuffer
         assert(cb.cells.length == 24 * 80);
         assert(cb.prev.length == 24 * 80);
         assert(cb.size_ == Coord(80, 24));
+
+        assert(Cell('A').text == "A");
 
         cb[Coord(2, 5)] = "b";
         assert(cb[2, 5].text == "b");

@@ -1,0 +1,14 @@
+{
+	"name": "demos",
+	"license": "BSL-1.0",
+	"targetType": "none",
+	"dependencies": {
+		"dcell:dcell": "*",
+		"dcell:hello": "*",
+		"dcell:mouse": "*"
+	},
+	"subPackages": [
+		"./hello/",
+		"./mouse/"
+	]
+}

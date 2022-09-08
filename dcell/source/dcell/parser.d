@@ -634,6 +634,7 @@ private:
                     buttonDown = true;
                 }
                 buf = buf[i + 1 .. $];
+                import std.stdio;
                 evs ~= newMouseEvent(x, y, btn);
                 return true;
             default:

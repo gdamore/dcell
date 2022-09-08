@@ -12,6 +12,7 @@ public import dcell.common;
 public import dcell.coord;
 public import dcell.cursor;
 public import dcell.event;
+public import dcell.glyph;
 public import dcell.key;
 public import dcell.mouse;
 public import dcell.screen;

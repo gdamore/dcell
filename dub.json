@@ -8,11 +8,13 @@
 	"dependencies": {
 		"dcell:dcell": "*",
 		"dcell:mkinfo": "*",
-		"dcell:hello": "*"
+		"dcell:hello": "*",
+		"dcell:mouse": "*"
 	},
 	"subPackages": [
 		"./dcell/",
 		"./mkinfo/",
-		"./demos/hello/"
+		"./demos/hello/",
+		"./demos/mouse/"
 	]
 }

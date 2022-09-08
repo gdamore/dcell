@@ -107,6 +107,8 @@ class TtyScreen : Screen
         puts(caps.showCursor);
         puts(caps.cursorReset);
         puts(caps.clear);
+        puts(caps.disablePaste);
+        enableMouse(MouseEnable.disable);
         flush();
         stopping.set(true);
         ti.blocking(false);
@@ -502,11 +504,10 @@ private:
 
         puts(c.text);
         pos_.x += c.width;
-        if (caps.automargin && pos_.x >= c.width)
-        {
-            pos_.x = 1;
-            pos_.y++;
-        }
+        // Note that we might be beyond the width, and if automargin
+        // is set true, we might have wrapped.  But it turns out that
+        // we can't reliably depend on automargin, as some terminals
+        // that claim to behave that way actually don't.
         cells.setDirty(pos, false);
         if (insert)
         {
@@ -621,7 +622,7 @@ private:
         version (Posix)
         {
             import core.thread;
-	    import dcell.terminfo.xterm256color;
+            import dcell.terminfo.xterm;
 
             auto caps = Database.get("xterm-256color");
             assert(caps.name != "");
@@ -649,9 +650,7 @@ private:
     }
 }
 
-version(Posix):
-
-import dcell.terminfo;
+version (Posix)  : import dcell.terminfo;
 
 Screen newTtyScreen(string term = "")
 {
@@ -662,7 +661,8 @@ Screen newTtyScreen(string term = "")
         term = environment.get("TERM", "ansi");
     }
     auto caps = Database.get(term);
-    if (caps is null) {
+    if (caps is null)
+    {
         throw new Exception("terminal not found");
     }
     return new TtyScreen(newDevTty(), caps);

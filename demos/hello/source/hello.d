@@ -6,7 +6,7 @@
 /**
  * Hello World (Dcell)
  */
-module mkinfo;
+module hello;
 
 import std.stdio;
 import std.string;
@@ -16,6 +16,7 @@ import dcell;
 
 void emitStr(Screen s, int x, int y, Style style, string str)
 {
+	// NB: this naively assumes only ASCII
 	while (str != "") 
 	{
 		s[Coord(x, y)] = Cell(str[0..1], style, 1);
