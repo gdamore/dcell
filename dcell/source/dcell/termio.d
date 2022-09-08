@@ -76,6 +76,13 @@ interface TtyImpl
      * Start termio.  This will open the device.
      */
     void start();
+
+    /**
+     * Resized returns true if the window was resized since last checked.
+     * Normally resize will force the window into non-blocking mode so
+     * that the caller can see the resize in a timely fashion.
+     */
+    bool resized();
 }
 
 version (Posix)
@@ -97,12 +104,14 @@ version (Posix)
             file = File(path, "r+");
             fd = file.fileno();
             save();
+            watchResize(fd);
         }
 
         void stop()
         {
             flush();
             restore();
+            ignoreResize(fd);
             file.close();
         }
 
@@ -205,8 +214,9 @@ version (Posix)
         {
             // this has to use the underlying read system call
             import unistd = core.sys.posix.unistd;
+
             ubyte[] buf = new ubyte[128];
-            auto rv = unistd.read(fd, cast(void *)buf.ptr, buf.length);
+            auto rv = unistd.read(fd, cast(void*) buf.ptr, buf.length);
             if (rv < 0)
                 return "";
             return cast(string) buf[0 .. rv];
@@ -215,6 +225,11 @@ version (Posix)
         void write(string s)
         {
             file.rawWrite(s);
+        }
+
+        bool resized()
+        {
+            return wasResized(fd);
         }
 
     private:
@@ -236,5 +251,90 @@ else
     TtyImpl newDevTty(string p = "/dev/tty")
     {
         throw new Exception("not supported");
+    }
+}
+
+version (Posix)
+{
+    import core.atomic;
+    import core.sys.posix.signal;
+
+    private __gshared int sigRaised = 0;
+    private __gshared int sigFd = -1;
+    private extern (C) void handleSigWinCh(int sig) nothrow
+    {
+        int fd = sigFd;
+        atomicStore(sigRaised, 1);
+        termios tio;
+        // wake the input loop so it can see the signal
+        // this is crummy but its the best way to get this noticed.
+        if (tcgetattr(fd, &tio) >= 0)
+        {
+            tio.c_cc[VMIN] = 0;
+            tio.c_cc[VTIME] = 1;
+            tcsetattr(fd, TCSANOW, &tio);
+        }
+    }
+
+    // We don't have a stanrdard definition of SIGWINCH
+    version (Linux)
+    {
+        // Legacy Linux is not even self-compatible ick.
+        version (MIPS_Any)
+            enum SIGWINCH = 20;
+        else
+            enum SIGWINCH = 28;
+    }
+    else version (Solaris)
+        enum SIGWINCH = 20;
+    else version (OSX)
+        enum SIGWINCH = 28;
+    else version (FreeBSD)
+        enum SIGWINCH = 28;
+    else version (NetBSD)
+        enum SIGWINCH = 28;
+    else version (DragonFlyBSD)
+        enum SIGWINCH = 28;
+    else version (OpenBSD)
+        enum SIGWINCH = 28;
+    else version (AIX)
+        enum SIGWINCH = 28;
+    else
+        static assert(0, "no version");
+
+    void watchResize(int fd)
+    {
+        if (atomicLoad(sigFd) == -1)
+        {
+            sigFd = fd;
+            sigaction_t sa;
+            sa.sa_handler = &handleSigWinCh;
+            sigaction(SIGWINCH, &sa, null);
+        }
+    }
+
+    void ignoreResize(int fd)
+    {
+        if (atomicLoad(sigFd) == fd)
+        {
+            sigaction_t sa;
+            sa.sa_handler = SIG_IGN;
+            sigaction(SIGWINCH, &sa, null);
+            sigFd = -1;
+        }
+    }
+
+    bool wasResized(int fd)
+    {
+        if (fd == atomicLoad(sigFd) && fd != -1)
+        {
+            int r = atomicLoad(sigRaised);
+            atomicStore(sigRaised, 0);
+            return r != 0;
+        }
+        else
+        {
+            return false;
+        }
     }
 }

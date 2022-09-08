@@ -558,11 +558,18 @@ private:
                 f.blocking(false);
                 poll = true;
             }
-            else if (poll)
+            else
             {
                 // No data, so we can sleep until some arrives.
                 f.blocking(true);
                 poll = false;
+            }
+
+            if (f.resized()) {
+                Event ev;
+                ev.type = EventType.resize;
+                ev.when = MonoTime.currTime();
+                send(ownerTid(), ev);
             }
 
             if (stopping.get())
