@@ -7,8 +7,6 @@ module dcell.ttyscreen;
 
 import core.atomic;
 import core.time;
-import core.sync.mutex;
-import core.sync.condition;
 import std.string;
 import std.concurrency;
 import std.exception;
@@ -26,49 +24,7 @@ import dcell.termio;
 import dcell.screen;
 import dcell.event;
 import dcell.parser;
-
-private shared class Turnstile
-{
-    private Mutex m;
-    private Condition c;
-    private bool val;
-
-    this()
-    {
-        m = new shared Mutex();
-        c = new shared Condition(m);
-    }
-
-    void set(bool b)
-    {
-        synchronized (m)
-        {
-            val = b;
-            c.notifyAll();
-        }
-    }
-
-    bool get()
-    {
-        bool b;
-        synchronized (m)
-        {
-            b = val;
-        }
-        return b;
-    }
-
-    void wait(bool b)
-    {
-        synchronized (m)
-        {
-            while (val != b)
-            {
-                c.wait();
-            }
-        }
-    }
-}
+import dcell.turnstile;
 
 class TtyScreen : Screen
 {

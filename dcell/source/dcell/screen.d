@@ -12,9 +12,6 @@ public import dcell.mouse;
 
 interface Screen
 {
-    // start();
-    // stop();
-
     /**
      * Clears the screen.  This doesn't take effect until
      * the show function is called.
