@@ -257,6 +257,9 @@ private:
         auto fg = style.fg;
         auto bg = style.bg;
 
+        if (caps.colors == 0) {
+            return;
+        }
         if (fg == Color.reset || bg == Color.reset)
         {
             puts(caps.resetColors);
@@ -425,13 +428,12 @@ private:
             goTo(pos);
         }
 
-        // TODO: default style?  maybe not needed
         if (caps.colors == 0)
         {
-            // monochrome, we just look at luminance and possibly
-            // reverse the video.
-            // TODO: implement palette lookup
-            // if need be, c.style.attr ^= Attr.reverse;
+            // if its monochrome, simulate ligher and darker with reverse
+            if (darker(c.style.fg, c.style.bg)) {
+                c.style.attr ^= Attr.reverse;
+            }
         }
         if (caps.enterURL == "")
         { // avoid pointless changes due to URL where not supported

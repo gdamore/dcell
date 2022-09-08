@@ -767,6 +767,16 @@ Color toPalette(Color c, int numColors)
     }
 }
 
+/// Return true if c1 is darker than c2.
+bool darker(Color c1, Color c2)
+{
+    import std.functional;
+
+    auto d1 = memoize!redMean(c1, Color.black);
+    auto d2 = memoize!redMean(c2, Color.black);
+    return (d1 < d2);
+}
+
 /**
  * decompose a color into red, green, and blue values.
  */
