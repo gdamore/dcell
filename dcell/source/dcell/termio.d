@@ -277,7 +277,7 @@ version (Posix)
     }
 
     // We don't have a stanrdard definition of SIGWINCH
-    version (Linux)
+    version (linux)
     {
         // Legacy Linux is not even self-compatible ick.
         version (MIPS_Any)
