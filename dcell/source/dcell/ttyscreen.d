@@ -114,7 +114,7 @@ class TtyScreen : Screen
         cursorShape = cur;
     }
 
-    Coord size()
+    Coord size() pure const
     {
         return (cells.size());
     }
@@ -129,7 +129,7 @@ class TtyScreen : Screen
         }
     }
 
-    const(Cell) opIndex(Coord pos)
+    ref Cell opIndex(Coord pos)
     {
         return (cells[pos]);
     }
@@ -145,12 +145,12 @@ class TtyScreen : Screen
         sendPasteEnable(b);
     }
 
-    bool hasMouse() pure
+    bool hasMouse() const pure
     {
         return caps.mouse != "";
     }
 
-    int colors() pure
+    int colors() const pure
     {
         return caps.colors;
     }
@@ -192,7 +192,7 @@ class TtyScreen : Screen
         }
     }
 
-    bool hasKey(Key k)
+    bool hasKey(Key k) const pure
     {
         return (keys.hasKey(k));
     }

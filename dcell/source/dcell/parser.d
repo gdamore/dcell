@@ -306,7 +306,7 @@ struct ParseKeys
 
     }
 
-    bool hasKey(Key k) pure
+    bool hasKey(Key k) const pure
     {
         if (k == Key.rune)
         {
@@ -327,7 +327,7 @@ class Parser
         pasteEnd = pk.pasteEnd;
     }
 
-    Event[] events()
+    Event[] events() pure
     {
         auto res = evs;
         evs = null;
@@ -386,7 +386,7 @@ class Parser
         return true;
     }
 
-    bool empty()
+    bool empty() const pure
     {
         return buf.length == 0;
     }
@@ -412,7 +412,7 @@ private:
     Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none)
     {
         Event ev = {
-            type: EventType.key, when: MonoTime.currTime, key: {
+            type: EventType.key, when: MonoTime.currTime(), key: {
                 key: k, ch: dch, mod: mod
             }
         };
@@ -474,7 +474,7 @@ private:
     Event newPasteEvent(dstring buffer)
     {
         Event ev = {
-            type: EventType.paste, when: MonoTime.currTime, paste: {
+            type: EventType.paste, when: MonoTime.currTime(), paste: {
                 content: buffer
             }
         };

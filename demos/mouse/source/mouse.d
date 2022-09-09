@@ -79,12 +79,10 @@ void drawSelect(Screen s, Coord c1, Coord c2, bool sel)
 	{
 		for (pos.x = c1.x; pos.x < c2.x; pos.x++)
 		{
-			Cell c = s[pos];
 			if (sel)
-				c.style.attr |= Attr.reverse;
+				s[pos].style.attr |= Attr.reverse;
 			else
-				c.style.attr &= ~Attr.reverse;
-			s[pos] = c;
+				s[pos].style.attr &= ~Attr.reverse;
 		}
 	}
 }

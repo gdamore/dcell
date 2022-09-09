@@ -26,12 +26,15 @@ struct Cell
     Style style; /// styling for the cell
     int width; /// display width in cells
 
-    this(C)(C c, Style st = Style(), int w = 1) if (isSomeChar!C) {
+    this(C)(C c, Style st = Style(), int w = 1) if (isSomeChar!C)
+    {
         text = toUTF8([c]);
         style = st;
         width = w;
     }
-    this(S)(S s, Style st = Style(), int w = 1) if (isSomeString!S) {
+
+    this(S)(S s, Style st = Style(), int w = 1) if (isSomeString!S)
+    {
         text = s;
         style = st;
         width = w;
@@ -52,12 +55,12 @@ class CellBuffer
     private Cell[] cells; // current content - linear for performance
     private Cell[] prev; // previous content - linear for performance
 
-    private int index(Coord pos)
+    private int index(Coord pos) nothrow pure const
     {
         return (pos.y * size_.x + pos.x);
     }
 
-    bool isLegal(Coord pos)
+    bool isLegal(Coord pos) nothrow pure const
     {
         return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
@@ -88,7 +91,7 @@ class CellBuffer
      * Params:
      *   pos = coordinates of cell to check
      */
-    bool dirty(Coord pos)
+    bool dirty(Coord pos) pure const
     {
         if (isLegal(pos))
         {
@@ -109,7 +112,7 @@ class CellBuffer
      *   pos = coordinate of sell to update
      *   b = mark all dirty if true, or clean if false
      */
-    void setDirty(Coord pos, bool b)
+    void setDirty(Coord pos, bool b) pure
     {
         if (isLegal(pos))
         {
@@ -131,7 +134,7 @@ class CellBuffer
      * Params:
      *   b = mark all dirty if true, or clean if false
      */
-    void setAllDirty(bool b)
+    void setAllDirty(bool b) pure
     {
         // structured this way for efficiency
         if (b)
@@ -150,18 +153,22 @@ class CellBuffer
         }
     }
 
-    const(Cell) opIndex(Coord pos)
+    ref Cell opIndex(Coord pos)
     {
-        if (isLegal(pos))
-        {
+        return cells[index(pos)];
+    }
+
+    ref Cell opIndex(int x, int y)
+    {
+        return this[(Coord(x, y))];
+    }
+
+    Cell get(Coord pos) nothrow pure
+    {
+        if (isLegal(pos)) {
             return cells[index(pos)];
         }
         return Cell();
-    }
-
-    const(Cell) opIndex(int x, int y)
-    {
-        return this[(Coord(x, y))];
     }
 
     /**
@@ -171,7 +178,7 @@ class CellBuffer
      *   c = content to store for the cell.
      *   pos = coordinate of the cell
      */
-    void opIndexAssign(Cell c, Coord pos)
+    void opIndexAssign(Cell c, Coord pos) pure
     {
         if (c.text == "" || c.text[0] < ' ')
         {
@@ -196,7 +203,7 @@ class CellBuffer
      *       character (including combining marks) is written.
      *   pos = coordinate to update.
      */
-    void opIndexAssign(string s, Coord pos)
+    void opIndexAssign(string s, Coord pos) pure
     {
         if (s == "" || s[0] < ' ')
         {
@@ -211,7 +218,7 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(Style style, Coord pos)
+    void opIndexAssign(Style style, Coord pos) pure
     {
         if (isLegal(pos))
         {
@@ -219,22 +226,22 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(Cell c, int x, int y)
+    void opIndexAssign(Cell c, int x, int y) pure
     {
         this[Coord(x, y)] = c;
     }
 
-    void opIndexAssign(string v, int x, int y)
+    void opIndexAssign(string v, int x, int y) pure
     {
         this[Coord(x, y)] = v;
     }
 
-    void opIndexAssign(Style v, int x, int y)
+    void opIndexAssign(Style v, int x, int y) pure
     {
         this[Coord(x, y)] = v;
     }
 
-    void fill(Cell c)
+    void fill(Cell c) pure
     {
         if (c.width < 0 || c.width > 2)
         {
@@ -254,7 +261,7 @@ class CellBuffer
     /**
      * Fill the entire contents, but leave any text styles undisturbed.
      */
-    void fill(string s)
+    void fill(string s) pure
     {
         for (int i = 0; i < cells.length; i++)
         {
@@ -266,7 +273,7 @@ class CellBuffer
     /**
      * Fill the entires contents, including the given style.
      */
-    void fill(string s, Style style)
+    void fill(string s, Style style) pure
     {
         Cell c = Cell(s, style);
         fill(c);
@@ -313,7 +320,8 @@ class CellBuffer
         resize(Coord(cols, rows));
     }
 
-    Coord size() {
+    Coord size() const pure nothrow
+    {
         return size_;
     }
 

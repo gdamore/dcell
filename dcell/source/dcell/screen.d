@@ -23,7 +23,7 @@ interface Screen
      * the backing draw buffer, and won't necessarily reflect what is
      * displayed to the user until show is called.
      */
-    const(Cell) opIndex(Coord);
+    ref Cell opIndex(Coord);
 
     /**
      * Set the content for for a given location.  This won't necessarily
