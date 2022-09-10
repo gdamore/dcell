@@ -2,7 +2,6 @@
 * Provide better options for Event delivery.
 * Character fallback support via ACSC.
 * Investigate initp handling.
-* Convience enableMouse(bool)
 * Color.toString()
 * Event.toString()
 * Buttons.toString()

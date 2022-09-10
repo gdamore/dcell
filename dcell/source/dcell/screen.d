@@ -25,17 +25,17 @@ interface Screen
      */
     ref Cell opIndex(Coord);
 
+    /** Convenience for indexing */
+    final ref Cell opIndex(int x, int y)
+    {
+        return this[Coord(x, y)];
+    }
+
     /**
      * Set the content for for a given location.  This won't necessarily
      * take effect until the show function is called.
      */
     void opIndexAssign(Cell, Coord);
-
-    /** Convenience for indexing */
-    final const(Cell) opIndex(int x, int y)
-    {
-        return this[Coord(x, y)];
-    }
 
     /** Convenience for indexing. */
     final void opIndexAssign(Cell c, int x, int y)
@@ -109,6 +109,25 @@ interface Screen
     void enableMouse(MouseEnable en);
 
     /**
+     * Enable typical mouse features. This enables tracking, but
+     * leaves drag events disabled.  Enabling mouse drag will impair
+     * use of copy-paste at the OS level, which many users tend to
+     * find frustrating.
+     */
+    final void enableMouse()
+    {
+        enableMouse(MouseEnable.buttons | MouseEnable.motion);
+    }
+
+    /**
+     * Disable all mouse handling/capture.
+     */
+    final void disableMouse()
+    {
+        enableMouse(MouseEnable.disable);
+    }
+
+    /**
      * If the terminal supports color, this returns the
      * the number of colors.
      *
@@ -144,8 +163,14 @@ interface Screen
 
     /**
      * Fill the entire screen with the given content and style.
+     * Content is not drawn until the show() or sync() functions are called.
      */
     void fill(string s, Style style);
+
+    /**
+     * Fill the entire screen with the given content, but preserve the style.
+     */
+    void fill(string s);
 
     /**
      * Applications should call this in response to receiving
@@ -153,11 +178,6 @@ interface Screen
      * avoid thread safety issues.)
      */
     void resize();
-
-    /**
-     * Fill the entire screen with the given content, but preserve the style.
-     */
-    void fill(string s);
 
     /**
      * Start should be called to start processing.  Once this begins,
