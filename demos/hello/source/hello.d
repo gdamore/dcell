@@ -28,10 +28,14 @@ void emitStr(Screen s, int x, int y, Style style, string str)
 void displayHelloWorld(Screen s)
 {
 	auto size = s.size();
+	Style def;
+	def.bg = Color.silver;
+	def.fg = Color.black;
+	s.setStyle(def);
 	s.clear();
-	Style style = {fg: Color.teal, bg: Color.red};
-	emitStr(s, size.x / 2 - 7, size.y / 2, style, "Hello, World!");
-	emitStr(s, size.x / 2 - 9, size.y / 2 + 1, Style(), "Press ESC to exit.");
+	Style style = {fg: Color.red, bg: Color.papayaWhip};
+	emitStr(s, size.x / 2 - 9, size.y / 2 - 1, style, " Hello, World! ");
+	emitStr(s, size.x / 2 - 11, size.y / 2 + 1, def, " Press ESC to exit. ");
 	s.show();
 }
 
@@ -65,7 +69,7 @@ void main()
 	auto ts = newScreen();
 	assert(ts !is null);
 
-	ts.start();
+	ts.start(thisTid());
 	displayHelloWorld(ts);
 	for (;;)
 	{

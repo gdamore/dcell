@@ -16,6 +16,7 @@ import std.stdio;
 
 import dcell.cell;
 import dcell.cursor;
+import dcell.evqueue;
 import dcell.key;
 import dcell.mouse;
 import dcell.termcap;
@@ -46,7 +47,7 @@ class TtyScreen : Screen
         ti.stop();
     }
 
-    void start()
+    private void start(Tid tid, EventQueue eq)
     {
         if (started)
             return;
@@ -56,8 +57,19 @@ class TtyScreen : Screen
         puts(caps.clear);
         resize();
         draw();
-        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, stopping);
+        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid, cast(shared EventQueue) eq, stopping);
         started = true;
+    }
+
+    void start(Tid tid)
+    {
+        start(tid, null);
+    }
+
+    void start()
+    {
+        eq = new EventQueue();
+        start(Tid(), eq);
     }
 
     void stop()
@@ -210,6 +222,25 @@ class TtyScreen : Screen
         }
     }
 
+    Event receiveEvent(Duration dur)
+    {
+        if (eq is null)
+        {
+            return Event(EventType.error);
+        }
+        return eq.receive(dur);
+    }
+
+    /** This variant of receiveEvent blocks forever until an event is available. */
+    Event receiveEvent()
+    {
+        if (eq is null)
+        {
+            return Event(EventType.error);
+        }
+        return eq.receive();
+    }
+
 private:
     struct KeyCode
     {
@@ -232,6 +263,7 @@ private:
     OutBuffer ob;
     Turnstile stopping;
     bool started;
+    EventQueue eq;
 
     // puts emits a parameterized string that may contain embedded delay padding.
     // it should not be used for user-supplied strings.
@@ -549,7 +581,7 @@ private:
         flush();
     }
 
-    static void inputLoop(shared TtyImpl tin, ParseKeys keys, shared Turnstile stopping)
+    static void inputLoop(shared TtyImpl tin, ParseKeys keys, Tid tid, shared EventQueue eq, shared Turnstile stopping)
     {
         TtyImpl f = cast(TtyImpl) tin;
         Parser p = new Parser(keys);
@@ -568,9 +600,24 @@ private:
             {
             }
             p.parse(s);
-            foreach (_, ev; p.events())
+            auto evs = p.events();
+            if (f.resized())
             {
-                send(ownerTid(), ev);
+                Event ev;
+                ev.type = EventType.resize;
+                ev.when = MonoTime.currTime();
+                evs ~= ev;
+            }
+            foreach (_, ev; evs)
+            {
+                if (eq is null)
+                    send(ownerTid(), ev);
+                else
+                {
+                    import std.stdio;
+
+                    eq.send(ev);
+                }
             }
             if (!p.empty())
             {
@@ -582,14 +629,6 @@ private:
                 // No data, so we can sleep until some arrives.
                 f.blocking(true);
                 poll = false;
-            }
-
-            if (f.resized())
-            {
-                Event ev;
-                ev.type = EventType.resize;
-                ev.when = MonoTime.currTime();
-                send(ownerTid(), ev);
             }
 
             if (stopping.get())

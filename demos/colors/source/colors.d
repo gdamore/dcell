@@ -135,25 +135,33 @@ void main()
 	while (!done)
 	{
 		cb.makeBox(s);
-		receiveTimeout(
-			msecs(50),
-			(Event ev) {
-			if (ev.type == EventType.key)
+		auto ev = s.receiveEvent(msecs(50));
+		switch (ev.type)
+		{
+		case EventType.key:
+			switch (ev.key.key)
 			{
-				switch (ev.key.key)
-				{
-				case Key.esc, Key.enter:
-					done = true;
-					break;
-				case Key.ctrlL:
-					s.resize();
-					s.sync();
-					break;
-				default:
-				}
+			case Key.esc, Key.enter:
+				done = true;
+				break;
+			case Key.ctrlL:
+				s.resize();
+				s.sync();
+				break;
+			default:
+
 			}
+			break;
+		case EventType.resize:
+			s.resize();
+			break;
+		case EventType.closed:
+			done = true;
+			break;
+		case EventType.error:
+			assert(0, "errror received");
+		default:
 		}
-		);
 	}
 	auto end = MonoTime.currTime();
 	s.stop();

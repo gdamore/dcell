@@ -5,9 +5,13 @@
 
 module dcell.screen;
 
+import core.time;
+import std.concurrency;
+
 public import dcell.cell;
 public import dcell.cursor;
 public import dcell.key;
+public import dcell.event;
 public import dcell.mouse;
 
 interface Screen
@@ -78,7 +82,22 @@ interface Screen
      */
     Coord size();
 
-    // TODO: event posting, and polling (for keyboard)
+    /**
+     * If start was called without a Tid to send to, then events
+     * are delivered into a queue that can be polled via this API.
+     * This function is thread safe.
+     * Params:
+     *   dur = maximum time to wait, if no event is available then EventType.none is returned.
+     * Returns:
+     *   The event, which will be EventType.none if it times out, or EventType.closed if it is stopped.
+     */
+    Event receiveEvent(Duration dur);
+
+    /**
+     * Receive events, withotu a timeout.  This only works if start
+     * was called without a tid.
+     */
+    Event receiveEvent();
 
     /**
      * Enable backeted paste mode mode.  Bracketed paste mode
@@ -186,6 +205,7 @@ interface Screen
      * settings to put the input stream into raw mode, etc.
      */
     void start();
+    void start(Tid);
 
     /**
      * Stop is called to stop processing on teh screen.  The terminal

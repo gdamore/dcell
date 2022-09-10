@@ -13,11 +13,12 @@ import dcell.mouse;
 enum EventType
 {
     none = 0,
-    error,
-    key,
-    mouse,
-    paste,
-    resize,
+    closed, /// input queue is closed (no more events will be received)
+    error, /// an error condition
+    key, /// a keyboard press
+    mouse, /// a mouse event
+    paste, /// a paste event
+    resize, /// window was resized
 }
 
 /**
@@ -51,7 +52,7 @@ struct ResizeEvent
 /**
  * Paste start or stop.
  */
- struct PasteEvent
- {
+struct PasteEvent
+{
     dstring content;
- }
+}

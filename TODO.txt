@@ -1,5 +1,4 @@
 * Implement Windows support.
-* Provide better options for Event delivery.
 * Character fallback support via ACSC.
 * Investigate initp handling.
 * Color.toString()

@@ -103,7 +103,7 @@ void main()
 	dstring pStr = "";
 	bool pasting = false;
 
-	s.start();
+	s.start(thisTid());
 	s.showCursor(Cursor.hidden);
 	s.enableMouse(MouseEnable.all);
 	s.enablePaste(true);
