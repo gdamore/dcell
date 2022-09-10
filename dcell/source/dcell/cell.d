@@ -354,15 +354,6 @@ class CellBuffer
         assert(c.style.fg == Color.blue);
         assert(c.style.attr == Attr.reverse);
 
-        cb[Coord(-1, 100)] = "z";
-        cb[Coord(-1, 100)] = st;
-        //cb.set(Coord(1, -100), "z", st);
-
-        c = cb[Coord(1, -100)];
-        assert(c.style.bg == Color.none);
-        assert(c.style.fg == Color.none);
-        assert(c.style.attr == Attr.none);
-
         cb[0, 0] = Cell("", st, 0);
         c = cb[0, 0];
         assert(c.text == " "); // space replaces null string
@@ -385,22 +376,6 @@ class CellBuffer
         c = cb[2, 0];
         assert(c.text == "@");
         assert(cb.dirty(Coord(2, 0)));
-
-        cb[-1, 10] = c;
-        c = cb[-1, 10];
-        assert(c.text == "");
-        assert(c.style.bg == Color.none);
-        assert(c.style.fg == Color.none);
-        assert(c.style.attr == Attr.none);
-        assert(!cb.dirty(Coord(-1, 10)));
-
-        cb[Coord(1, -10)] = c; // invalid
-        c = cb[Coord(1, -10)];
-        //assert(c.text == "");
-        assert(c.style.bg == Color.none);
-        assert(c.style.fg == Color.none);
-        assert(c.style.attr == Attr.none);
-        assert(!cb.dirty(Coord(1, -10)));
 
         st.attr = Attr.reverse;
         st.bg = Color.none;

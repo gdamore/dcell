@@ -8,11 +8,10 @@ module dcell.cursor;
 import core.time;
 
 /** 
- * The buttons that may be clicked, etc. on a mouse.  These can be cmobined
- * together as a binary value to represent chording.  Scroll wheels are
- * included.
+ * The cursor shape - the implementation may not support all of these,
+ * but hopefully at least reset and hidden are supported.
  */
-enum Cursor : byte
+enum Cursor
 {
     current = 0, // don't change cursor shape or visbility
     reset, // reset to terminal default

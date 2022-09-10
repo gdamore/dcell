@@ -843,16 +843,13 @@ unittest
     // try injecting paste events
     assert(tc.enablePaste != "");
     assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.paste);
-    assert(ev[0].paste.start == true);
-
+    assert(p.parse(['A']));
     assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+
     ev = p.events();
     assert(ev.length == 1);
     assert(ev[0].type == EventType.paste);
-    assert(ev[0].paste.start == false);
+    assert(ev[0].paste.content == "A");
 
     // mouse events
     assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
