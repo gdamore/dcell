@@ -29,7 +29,7 @@ import dcell.turnstile;
 
 class TtyScreen : Screen
 {
-    this(TtyImpl tt, immutable(Termcap)* tc)
+    this(TtyImpl tt, const(Termcap)* tc)
     {
         caps = tc;
         ti = tt;

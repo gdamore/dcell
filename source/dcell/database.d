@@ -14,6 +14,8 @@ import std.string;
 
 public import dcell.termcap;
 
+@safe:
+
 /**
  * Represents a database of terminal entries, indexed by their name.
  */
@@ -29,7 +31,7 @@ synchronized class Database
      * Params:
      *   ti = terminal capabilities to add
      */
-    static void put(immutable(Termcap)* tc)
+    static void put(immutable(Termcap)* tc) @safe
     {
         entries[tc.name] = tc;
         foreach (name; tc.aliases)
@@ -50,7 +52,7 @@ synchronized class Database
      * Returns:
      *   terminal capabilities if known, `null` if not.
      */
-    static immutable(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false)
+    static const(Termcap)* get(string name, bool addTrueColor = false, bool add256Color = false) @safe
     {
         if (name !in entries)
         {
@@ -87,7 +89,7 @@ synchronized class Database
         // poor mans copy, but we have to bypass the const,
         // although we're not going to change actual values.
         // we promise not to modify the aliases array.
-        *tc = *(cast(Termcap*)(entries[name]));
+        *tc = *(entries[name]);
 
         // For terminals that use "standard" SGR sequences, lets combine the
         // foreground and background together. This saves one byte sent
@@ -192,14 +194,14 @@ synchronized class Database
 
         // likewise, if we have mouse support, let's try to add backeted
         // paste support.
-        return cast(immutable(Termcap *))tc;
+        return tc;
     }
 }
 
-unittest
+@safe unittest
 {
-    immutable Termcap caps = {name: "mytest", aliases: ["mytest-1", "mytest-2"]};
-    immutable Termcap caps2 = {name: "ctest", mouse: ":mouse", colors: 1<<24};
+    static immutable Termcap caps = {name: "mytest", aliases: ["mytest-1", "mytest-2"]};
+    static immutable Termcap caps2 = {name: "ctest", mouse: ":mouse", colors: 1<<24};
 
     Database.put(&caps);
     Database.put(&caps2);

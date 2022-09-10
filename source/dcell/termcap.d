@@ -20,7 +20,7 @@ import std.string;
 struct Termcap
 {
     string name; /// primary name for terminal, e.g. "xterm"
-    string[] aliases; /// alternate names for terminal
+    immutable(string)[] aliases; /// alternate names for terminal
     int columns; /// `cols`, the number of columns present
     int lines; /// `lines`, the number lines (rows) present
     int colors; // `colors`, the number of colors supported
@@ -202,6 +202,15 @@ struct Termcap
     string exitURL; /// sequence to stop making text clickable link
     string setWindowSize; /// sequence to resize the window (rarely supported)
 
+    /** Permits a constant value to be assigned to a mutable value. */
+    void opAssign(scope const(Termcap)* other) @trusted
+    {
+        foreach (i, ref v; this.tupleof)
+        {
+            v = other.tupleof[i];
+        }
+    }
+
     /** 
      * Put a string to an out range, which is normally a file
      * to an interactive terminal like /dev/tty or stdin, while
@@ -211,7 +220,7 @@ struct Termcap
      * are encountered, the flush delegate is called (if not null),
      * and the function sleeps for the indicated amount of time.
      */
-    static void puts(R)(R output, string s, void delegate() flush = null)
+    static void puts(R)(R output, string s, void delegate() flush = null) 
             if (isOutputRange!(R, ubyte))
     {
         while (s.length > 0)
@@ -372,7 +381,7 @@ struct Termcap
      *    The evaluated capability with parameters applied.
      */
 
-    static string param(string s, int[] args...) pure
+    static string param(string s, int[] args...) pure @safe
     {
         Parameter[] ps = new Parameter[args.length];
         foreach (i, val; args)
@@ -382,7 +391,7 @@ struct Termcap
         return paramInner(s, ps);
     }
 
-    static string param(string s, string[] args...) pure
+    static string param(string s, string[] args...) pure @safe
     {
         Parameter[] ps = new Parameter[args.length];
         foreach (i, val; args)
@@ -392,12 +401,12 @@ struct Termcap
         return paramInner(s, ps);
     }
 
-    static string param(string s) pure
+    static string param(string s) pure @safe
     {
         return paramInner(s, []);
     }
 
-    private static paramInner(string s, Parameter[] params) pure
+    private static paramInner(string s, Parameter[] params) pure @safe
     {
         enum Skip
         {
@@ -707,7 +716,7 @@ struct Termcap
         return to!string(output);
     }
 
-    unittest
+    @safe unittest
     {
         assert(param("%i%p1%d;%p2%d", 2, 3) == "3;4"); // increment (goto)
         assert(param("%{50}%{3}%-%d") == "47"); // subtraction

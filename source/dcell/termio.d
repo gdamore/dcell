@@ -135,7 +135,7 @@ version (Posix)
             file.flush();
         }
 
-        void blocking(bool b)
+        void blocking(bool b) @trusted
         {
             termios tio;
             enforce(tcgetattr(fd, &tio) >= 0);
@@ -145,7 +145,7 @@ version (Posix)
             block = b;
         }
 
-        void raw()
+        void raw() @trusted
         {
             termios tio;
             enforce(tcgetattr(fd, &tio) >= 0, "failed to get termio state");
