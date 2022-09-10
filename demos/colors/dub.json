@@ -7,6 +7,6 @@
 	"targetPath": "bin",
 	"mainSourceFile": "source/colors.d",
 	"dependencies": {
-	    "dcell:dcell" : { "path": "../../dcell" }
+	    "dcell" : { "path": "../.." }
 	}
 }

@@ -7,6 +7,6 @@
 	"targetPath": "bin",
 	"mainSourceFile": "source/mkinfo.d",
 	"dependencies": {
-	    "dcell:dcell" : { "path": "../dcell" }
+	    "dcell" : { "path": "../.." }
 	}
 }

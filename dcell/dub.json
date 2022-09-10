@@ -1,7 +1,0 @@
-{
-	"name": "dcell",
-	"targetType": "library",
-	"authors": [ "Garrett D'Amore" ],
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"license": "BSL-1.0",
-}

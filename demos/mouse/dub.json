@@ -7,6 +7,6 @@
 	"targetPath": "bin",
 	"mainSourceFile": "source/mouse.d",
 	"dependencies": {
-	    "dcell:dcell" : { "path": "../../dcell" }
+	    "dcell" : { "path": "../../" }
 	}
 }
