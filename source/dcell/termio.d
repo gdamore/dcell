@@ -331,9 +331,7 @@ version (Posix)
     {
         if (fd == atomicLoad(sigFd) && fd != -1)
         {
-            int r = atomicLoad(sigRaised);
-            atomicStore(sigRaised, 0);
-            return r != 0;
+            return atomicExchange(&sigRaised, 0) != 0;
         }
         else
         {
