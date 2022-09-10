@@ -101,7 +101,7 @@ version (Posix)
 
         void start()
         {
-            file = File(path, "r+");
+            file = File(path, "r+b");
             fd = file.fileno();
             save();
             watchResize(fd);
