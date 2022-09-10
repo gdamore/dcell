@@ -35,7 +35,7 @@ struct Cell
 
     this(S)(S s, Style st = Style(), int w = 1) if (isSomeString!S)
     {
-        text = s;
+        text = toUTF8(s);
         style = st;
         width = w;
     }
@@ -75,7 +75,7 @@ class CellBuffer
         size_ = size;
         cells = new Cell[size.x * size.y];
         prev = new Cell[size.x * size.y];
-        for (int i = 0; i < cells.length; i++)
+        foreach (i; 0 .. cells.length)
         {
             cells[i].width = 1;
             cells[i].text = " ";
@@ -139,14 +139,14 @@ class CellBuffer
         // structured this way for efficiency
         if (b)
         {
-            for (int i = 0; i < prev.length; i++)
+            foreach (i; 0 .. prev.length)
             {
                 prev[i].text = "";
             }
         }
         else
         {
-            for (int i = 0; i < prev.length; i++)
+            foreach (i; 0 .. prev.length)
             {
                 prev[i] = cells[i];
             }
@@ -165,7 +165,8 @@ class CellBuffer
 
     Cell get(Coord pos) nothrow pure
     {
-        if (isLegal(pos)) {
+        if (isLegal(pos))
+        {
             return cells[index(pos)];
         }
         return Cell();
@@ -252,7 +253,7 @@ class CellBuffer
         {
             c.text = " ";
         }
-        for (int i = 0; i < cells.length; i++)
+        foreach (i; 0 .. cells.length)
         {
             cells[i] = c;
         }
@@ -263,7 +264,7 @@ class CellBuffer
      */
     void fill(string s) pure
     {
-        for (int i = 0; i < cells.length; i++)
+        foreach (i; 0 .. cells.length)
         {
             cells[i].text = s;
             cells[i].width = 1; // TODO: East Asian Width
@@ -293,7 +294,7 @@ class CellBuffer
             return;
         }
         auto newCells = new Cell[size.x * size.y];
-        for (int i = 0; i < newCells.length; i++)
+        foreach (i; 0 .. newCells.length)
         {
             // prefill with whitespace
             newCells[i].text = " ";
@@ -303,9 +304,9 @@ class CellBuffer
         int lx = min(size.x, size_.x);
         int ly = min(size.y, size_.y);
 
-        for (int y = 0; y < ly; y++)
+        foreach (y; 0 .. ly)
         {
-            for (int x = 0; x < lx; x++)
+            foreach (x; 0 .. lx)
             {
                 newCells[y * size.x + x] = cells[y * size_.x + x];
             }
