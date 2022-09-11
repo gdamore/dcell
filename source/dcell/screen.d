@@ -27,24 +27,34 @@ interface Screen
      * the backing draw buffer, and won't necessarily reflect what is
      * displayed to the user until show is called.
      */
-    ref Cell opIndex(Coord);
+    ref Cell opIndex(size_t x, size_t y);
 
     /** Convenience for indexing */
-    final ref Cell opIndex(int x, int y)
+    final ref Cell opIndex(Coord pos)
     {
-        return this[Coord(x, y)];
+        return this[pos.x, pos.y];
     }
 
     /**
      * Set the content for for a given location.  This won't necessarily
      * take effect until the show function is called.
      */
-    void opIndexAssign(Cell, Coord);
+    void opIndexAssign(Cell, size_t x, size_t y);
+
 
     /** Convenience for indexing. */
-    final void opIndexAssign(Cell c, int x, int y)
+    final void opIndexAssign(Cell c, Coord pos)
     {
-        this[Coord(x, y)] = c;
+        this[pos.x, pos.y] = c;
+    }
+
+    /** Support $ operation in indices. */
+    size_t opDollar(size_t dim)() {
+        static if (dim == 0) {
+            return size().x;
+        } else {
+            return size().y;
+        }
     }
 
     /**

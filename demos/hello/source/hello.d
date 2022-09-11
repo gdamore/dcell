@@ -19,7 +19,7 @@ void emitStr(Screen s, int x, int y, Style style, string str)
 	// NB: this naively assumes only ASCII
 	while (str != "") 
 	{
-		s[Coord(x, y)] = Cell(str[0..1], style, 1);
+		s[x, y] = Cell(str[0..1], style, 1);
 		str = str[1..$];
 		x += 1;
 	}
@@ -36,6 +36,12 @@ void displayHelloWorld(Screen s)
 	Style style = {fg: Color.red, bg: Color.papayaWhip};
 	emitStr(s, size.x / 2 - 9, size.y / 2 - 1, style, " Hello, World! ");
 	emitStr(s, size.x / 2 - 11, size.y / 2 + 1, def, " Press ESC to exit. ");
+
+	// this demonstrates a different method.
+	// it places a red X in the center of the screen.
+	s[$/2, $/2].text = "X";
+	s[$/2, $/2].style.fg = Color.white;
+	s[$/2, $/2].style.bg = Color.red;
 	s.show();
 }
 

@@ -55,9 +55,15 @@ class CellBuffer
     private Cell[] cells; // current content - linear for performance
     private Cell[] prev; // previous content - linear for performance
 
-    private int index(Coord pos) nothrow pure const
+    private size_t index(Coord pos) nothrow pure const
     {
-        return (pos.y * size_.x + pos.x);
+        return index(pos.x, pos.y);
+    }
+
+    private size_t index(size_t x, size_t y) nothrow pure const
+    {
+        assert(size_.x > 0);
+        return (y * size_.x + x);
     }
 
     bool isLegal(Coord pos) nothrow pure const
@@ -65,21 +71,21 @@ class CellBuffer
         return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
 
-    this(const int cols, const int rows)
+    this(const size_t cols, const size_t rows)
     {
-        this(Coord(cols, rows));
-    }
-
-    this(Coord size)
-    {
-        size_ = size;
-        cells = new Cell[size.x * size.y];
-        prev = new Cell[size.x * size.y];
+        cells = new Cell[cols * rows];
+        prev = new Cell[cols * rows];
+        assert((cols >= 0) && (rows >= 0) && (cols < int.max) && (rows < int.max));
         foreach (i; 0 .. cells.length)
         {
             cells[i].width = 1;
             cells[i].text = " ";
         }
+    }
+
+    this(Coord size)
+    {
+        this(size.x, size.y);
     }
 
     /**
@@ -155,12 +161,12 @@ class CellBuffer
 
     ref Cell opIndex(Coord pos)
     {
-        return cells[index(pos)];
+        return this[pos.x, pos.y];
     }
 
-    ref Cell opIndex(int x, int y)
+    ref Cell opIndex(size_t x, size_t y)
     {
-        return this[(Coord(x, y))];
+        return cells[index(x, y)];
     }
 
     Cell get(Coord pos) nothrow pure
@@ -179,21 +185,23 @@ class CellBuffer
      *   c = content to store for the cell.
      *   pos = coordinate of the cell
      */
+    void opIndexAssign(Cell c, size_t x, size_t y) pure
+    {
+        if ((x < size_.x) && (y < size_.y))
+        {
+            if (c.text == "" || c.text[0] < ' ')
+            {
+                c.text = " ";
+            }
+            // TODO: East Asian Width
+            c.width = 1;
+            cells[index(x ,y)] = c;
+        }
+    }
+
     void opIndexAssign(Cell c, Coord pos) pure
     {
-        if (c.text == "" || c.text[0] < ' ')
-        {
-            c.text = " ";
-        }
-        // TODO: East Asian Width
-        c.width = 1;
-
-        if (isLegal(pos))
-        {
-            auto ix = index(pos);
-
-            cells[index(pos)] = c;
-        }
+        this[pos.x, pos.y] = c;
     }
 
     /**
@@ -227,19 +235,14 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(Cell c, int x, int y) pure
+    void opIndexAssign(string v, size_t x, size_t y) pure
     {
-        this[Coord(x, y)] = c;
+        this[x ,y] = v;
     }
 
-    void opIndexAssign(string v, int x, int y) pure
+    void opIndexAssign(Style v, size_t x, size_t y) pure
     {
-        this[Coord(x, y)] = v;
-    }
-
-    void opIndexAssign(Style v, int x, int y) pure
-    {
-        this[Coord(x, y)] = v;
+        this[x, y] = v;
     }
 
     int opDollar(size_t dim)()

@@ -141,14 +141,14 @@ class TtyScreen : Screen
         }
     }
 
-    ref Cell opIndex(Coord pos)
+    ref Cell opIndex(size_t x, size_t y)
     {
-        return (cells[pos]);
+        return (cells[x, y]);
     }
 
-    void opIndexAssign(Cell c, Coord pos)
+    void opIndexAssign(Cell c, size_t x, size_t y)
     {
-        cells[pos] = c;
+        cells[x, y] = c;
     }
 
     void enablePaste(bool b)
