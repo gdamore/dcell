@@ -638,38 +638,6 @@ private:
             }
         }
     }
-
-    unittest
-    {
-        version (Posix)
-        {
-            import core.thread;
-            import dcell.terminfo.xterm;
-
-            auto caps = Database.get("xterm-256color");
-            assert(caps.name != "");
-            assert(caps.setFgBg != "");
-            auto ts = new TtyScreen(newDevTty(), caps);
-            assert(ts !is null);
-
-            ts.start();
-            ts.showCursor(Coord(0, 0), Cursor.hidden);
-            auto c = ts.size();
-            c.x /= 2;
-            c.y /= 2;
-            ts[c] = Cell("A", Style(Color.white, Color.red, Attr
-                    .underline), 1);
-            c.x++;
-            ts[c] = Cell("B", Style(Color.white, Color.green, Attr
-                    .underline), 1);
-            ts.show();
-            import core.thread;
-
-            Thread.sleep(dur!("seconds")(2));
-            ts.stop();
-            destroy(ts);
-        }
-    }
 }
 
 version (Posix)  : import dcell.terminfo;

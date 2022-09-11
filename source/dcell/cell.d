@@ -73,9 +73,12 @@ class CellBuffer
 
     this(const size_t cols, const size_t rows)
     {
+        assert((cols >= 0) && (rows >= 0) && (cols < int.max) && (rows < int.max));
         cells = new Cell[cols * rows];
         prev = new Cell[cols * rows];
-        assert((cols >= 0) && (rows >= 0) && (cols < int.max) && (rows < int.max));
+        size_.x = cast(int) cols;
+        size_.y = cast(int) rows;
+
         foreach (i; 0 .. cells.length)
         {
             cells[i].width = 1;
@@ -195,7 +198,7 @@ class CellBuffer
             }
             // TODO: East Asian Width
             c.width = 1;
-            cells[index(x ,y)] = c;
+            cells[index(x, y)] = c;
         }
     }
 
@@ -235,14 +238,19 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(string v, size_t x, size_t y) pure
+    void opIndexAssign(string s, size_t x, size_t y) pure
     {
-        this[x ,y] = v;
+        if (s == "" || s[0] < ' ')
+        {
+            s = " ";
+        }
+
+        cells[index(x, y)].text = s;
     }
 
     void opIndexAssign(Style v, size_t x, size_t y) pure
     {
-        this[x, y] = v;
+        cells[index(x, y)].style = v;
     }
 
     int opDollar(size_t dim)()
