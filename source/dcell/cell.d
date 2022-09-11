@@ -242,6 +242,18 @@ class CellBuffer
         this[Coord(x, y)] = v;
     }
 
+    int opDollar(size_t dim)()
+    {
+        if (dim == 0)
+        {
+            return size_.x;
+        }
+        else
+        {
+            return size_.y;
+        }
+    }
+
     void fill(Cell c) pure
     {
         if (c.width < 0 || c.width > 2)
@@ -427,5 +439,16 @@ class CellBuffer
         c.text = "";
         cb.fill(c);
         assert(cb[79, 23].text == " ");
+
+        // opDollar
+        assert(cb.size() == Coord(132, 50));
+        cb[0, 0].text = "A";
+        cb[$ - 1, 0].text = "B";
+        cb[0, $ - 1].text = "C";
+        cb[$ - 1, $ - 1].text = "D";
+        assert(cb[0, 0].text == "A");
+        assert(cb[131, 0].text == "B");
+        assert(cb[0, 49].text == "C");
+        assert(cb[131, 49].text == "D");
     }
 }
