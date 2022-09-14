@@ -57,7 +57,8 @@ class TtyScreen : Screen
         puts(caps.clear);
         resize();
         draw();
-        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid, cast(shared EventQueue) eq, stopping);
+        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid, cast(shared EventQueue) eq, cast(
+                shared Turnstile) stopping);
         started = true;
     }
 

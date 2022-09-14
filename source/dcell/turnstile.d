@@ -1,13 +1,18 @@
-// Copyright 2022 Garrett D'Amore
-//
-// Distributed under the Boost Software License, Version 1.0.
-// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
-
+/**
+ * Private turnstile implementation.
+ *
+ * Copyright: Copyright 2022 Garrett D'Amore
+ * Authors: Garrett D'Amore
+ * License:
+ *   Distributed under the Boost Software License, Version 1.0.
+ *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+ *   SPDX-License-Identifier: BSL-1.0
+ */
 module dcell.turnstile;
 
 import core.sync.condition;
 
-package shared class Turnstile
+package class Turnstile
 {
     private Mutex m;
     private Condition c;
@@ -15,11 +20,11 @@ package shared class Turnstile
 
     this()
     {
-        m = new shared Mutex();
-        c = new shared Condition(m);
+        m = new Mutex();
+        c = new Condition(m);
     }
 
-    void set(bool b)
+    void set(this T)(bool b) if ((is(T == Turnstile) || is(T == shared Turnstile)))
     {
         synchronized (m)
         {
@@ -28,7 +33,7 @@ package shared class Turnstile
         }
     }
 
-    bool get()
+    bool get(this T)() if ((is(T == Turnstile) || is(T == shared Turnstile)))
     {
         bool b;
         synchronized (m)
@@ -38,7 +43,7 @@ package shared class Turnstile
         return b;
     }
 
-    void wait(bool b)
+    void wait(this T)(bool b) if (is(T == Turnstile) || is(T == shared Turnstile))
     {
         synchronized (m)
         {
