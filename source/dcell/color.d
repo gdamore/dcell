@@ -1,17 +1,24 @@
-// Copyright 2022 Garrett D'Amore
-//
-// Distributed under the Boost Software License, Version 1.0.
-// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
-
+/**
+ * Color module for dcell.
+ *
+ * Copyright: Copyright 2022 Garrett D'Amore
+ * Authors: Garrett D'Amore
+ * License:
+ *   Distributed under the Boost Software License, Version 1.0.
+ *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+ *   SPDX-License-Identifier: BSL-1.0
+ */
 module dcell.color;
 
 import std.typecons;
 
-/// Color is a what you think, almost.
-/// However, the upper bits of the color are used to indicate special behaviors.
-/// If the value upper 24-bits are clear, then the value is an index into a
-/// palette (typically it should be less than 256).  If the isRGB bit is
-/// set, then the lower 24 bits are a 24-bit direct color (RGB).
+/**
+ * Color is a what you think, almost.
+ * However, the upper bits of the color are used to indicate special behaviors.
+ * If the value upper 24-bits are clear, then the value is an index into a
+ * palette (typically it should be less than 256).  If the isRGB bit is
+ * set, then the lower 24 bits are a 24-bit direct color (RGB).
+ */
 enum Color : uint
 {
     none = 1 << 24, /// no color change
@@ -681,11 +688,13 @@ shared static this()
     palValues[0xEEEEEE] = cast(Color) 255;
 }
 
-/// Obtain the numeric value of the RGB for the color.
-///
-/// Params:
-///  c = a Color
-/// Returns: Numeric RGB value for color, or -1 if it cannot be represented.
+/**
+ * Obtain the numeric value of the RGB for the color.
+ *
+ * Params:
+ *  c = a Color
+ * Returns: Numeric RGB value for color, or -1 if it cannot be represented.
+ */
 int toHex(Color c) pure
 {
     if ((c & Color.isRGB) != 0)
@@ -699,11 +708,13 @@ int toHex(Color c) pure
     return (-1);
 }
 
-/// Create a color from RGB values.
-/// 
-/// Params:
-///   rgb = hex value, red << 16 | green << 8 | blue
-/// Returns: The associated Color, or Color.invalid if a bad value for rgb was supplied.
+/**
+ * Create a color from RGB values.
+ *
+ * Params:
+ *   rgb = hex value, red << 16 | green << 8 | blue
+ * Returns: The associated Color, or Color.invalid if a bad value for rgb was supplied.
+ */
 Color fromHex(int rgb) pure
 {
     if (rgb < 1 << 24)
@@ -713,14 +724,16 @@ Color fromHex(int rgb) pure
     return Color.invalid;
 }
 
-/// Convert a color to RGB form.  This is useful to convert
-/// palette based colors to their full RGB values, which will provide
-/// fidelity when the terminal supports it, but consequently does not
-/// honor terminal preferences for color palettes.
-///
-/// Params:
-///   c = a valid Color   
-/// Returns: An RGB format Color, Color.invalid if it cannot be determined.
+/**
+ * Convert a color to RGB form.  This is useful to convert
+ * palette based colors to their full RGB values, which will provide
+ * fidelity when the terminal supports it, but consequently does not
+ * honor terminal preferences for color palettes.
+ *
+ * Params:
+ *   c = a valid Color
+ * Returns: An RGB format Color, Color.invalid if it cannot be determined.
+ */
 Color toRGB(Color c) pure
 {
     if ((c & Color.isRGB) != 0)
@@ -734,26 +747,30 @@ Color toRGB(Color c) pure
     return Color.invalid;
 }
 
-/// Is the color in RGB format? RGB format colors will try to be accurate
-/// on the terminal, and will not honor user preferences.
-/// Params:
-///   c = a valid color
-/// Returns: true if the color is an RGB format color
+/**
+ * Is the color in RGB format? RGB format colors will try to be accurate
+ * on the terminal, and will not honor user preferences.
+ * Params:
+ *   c = a valid color
+ * Returns: true if the color is an RGB format color
+ */
 bool isRGB(Color c) pure
 {
     return (c & Color.isRGB) != 0;
 }
 
-/// Given a color, try to find an associated palette entry for it.
-/// This will try to find the lowest numbered palette entry.
-/// The palette entry might be a higher numbered color than the
-/// terminal can support, if it does not support a 256 color palette.
-/// 
-/// Params:
-///   c = a valid Color
-///   numColors = the size of the palette
-///
-/// Returns: the palette Color closest matching c
+/**
+ * Given a color, try to find an associated palette entry for it.
+ * This will try to find the lowest numbered palette entry.
+ * The palette entry might be a higher numbered color than the
+ * terminal can support, if it does not support a 256 color palette.
+ *
+ * Params:
+ *   c = a valid Color
+ *   numColors = the size of the palette
+ *
+ * Returns: the palette Color closest matching c
+ */
 Color toPalette(Color c, int numColors)
 {
     import std.functional;
@@ -786,6 +803,9 @@ auto decompose(Color c) pure
     return Tuple!(int, int, int)((c & 0xff0000) >> 16, ((c & 0xff00) >> 8), (c & 0xff));
 }
 
+/**
+ * decompose a color into red, green, and blue values.
+ */
 void decompose(Color c, ref int r, ref int g, ref int b) pure
 {
     c = toRGB(c);
