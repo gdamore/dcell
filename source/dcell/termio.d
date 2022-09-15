@@ -90,6 +90,7 @@ version (Posix)
     import core.sys.posix.sys.ioctl;
     import core.sys.posix.termios;
     import core.sys.posix.unistd;
+    import core.sys.posix.fcntl;
     import std.stdio;
 
     package class PosixTty : TtyImpl
@@ -140,8 +141,10 @@ version (Posix)
             termios tio;
             enforce(tcgetattr(fd, &tio) >= 0);
             tio.c_cc[VMIN] = b ? 1 : 0;
-            tio.c_cc[VTIME] = b ? 0 : 1;
+            tio.c_cc[VTIME] = 0;
+
             enforce(tcsetattr(fd, TCSANOW, &tio) >= 0);
+            fcntl(fd, F_SETFL, b ? 0 : O_NONBLOCK);
             block = b;
         }
 
