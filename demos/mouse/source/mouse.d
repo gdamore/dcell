@@ -21,7 +21,7 @@ void emitStr(Screen s, Coord pos, Style style, dstring str)
 {
 	while (str != "")
 	{
-		s[pos] = Cell(str[0], style, 1);
+		s[pos] = Cell(str[0], style);
 		str = str[1 .. $];
 		pos.x++;
 	}

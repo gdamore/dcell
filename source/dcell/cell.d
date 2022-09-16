@@ -29,20 +29,22 @@ struct Cell
 {
     string text; /// character content - one character followed by any combinging characters
     Style style; /// styling for the cell
-    int width; /// display width in cells
 
-    this(C)(C c, Style st = Style(), int w = 1) if (isSomeChar!C)
+    this(C)(C c, Style st = Style()) if (isSomeChar!C)
     {
         text = toUTF8([c]);
         style = st;
-        width = w;
     }
 
-    this(S)(S s, Style st = Style(), int w = 1) if (isSomeString!S)
+    this(S)(S s, Style st = Style()) if (isSomeString!S)
     {
         text = toUTF8(s);
         style = st;
-        width = w;
+    }
+
+    @property uint width() pure const {
+        // TODO: east asian width
+        return 1;
     }
 }
 
@@ -86,7 +88,6 @@ class CellBuffer
 
         foreach (i; 0 .. cells.length)
         {
-            cells[i].width = 1;
             cells[i].text = " ";
         }
     }
@@ -201,8 +202,6 @@ class CellBuffer
             {
                 c.text = " ";
             }
-            // TODO: East Asian Width
-            c.width = 1;
             cells[index(x, y)] = c;
         }
     }
@@ -226,12 +225,10 @@ class CellBuffer
         {
             s = " ";
         }
-        // TODO: East Asian Width
         if (isLegal(pos))
         {
             auto ix = index(pos);
             cells[ix].text = s;
-            cells[ix].width = 1;
         }
     }
 
@@ -272,11 +269,6 @@ class CellBuffer
 
     void fill(Cell c) pure
     {
-        if (c.width < 0 || c.width > 2)
-        {
-            // TODO: East Asian Widths.
-            c.width = 1;
-        }
         if (c.text == "" || c.text[0] < ' ')
         {
             c.text = " ";
@@ -295,7 +287,6 @@ class CellBuffer
         foreach (i; 0 .. cells.length)
         {
             cells[i].text = s;
-            cells[i].width = 1; // TODO: East Asian Width
         }
     }
 
@@ -326,7 +317,6 @@ class CellBuffer
         {
             // prefill with whitespace
             newCells[i].text = " ";
-            newCells[i].width = 1;
         }
         // maximum dimensions to copy (minimum of dimensions)
         int lx = min(size.x, size_.x);
@@ -383,13 +373,13 @@ class CellBuffer
         assert(c.style.fg == Color.blue);
         assert(c.style.attr == Attr.reverse);
 
-        cb[0, 0] = Cell("", st, 0);
+        cb[0, 0] = Cell("", st);
         c = cb[0, 0];
         assert(c.text == " "); // space replaces null string
         assert(c.width == 1);
         assert(c.style == st);
 
-        cb[1, 0] = Cell("\x1b", st, 0);
+        cb[1, 0] = Cell("\x1b", st);
         c = cb[1, 0];
         assert(c.text == " "); // space replaces control sequence
         assert(c.width == 1);
@@ -434,7 +424,6 @@ class CellBuffer
         cb.setAllDirty(true);
         assert(cb.dirty(Coord(3, 1)));
 
-        c.width = -1;
         c.text = "A";
         cb.fill(c);
         assert(cb[0, 0].width == 1);

@@ -514,7 +514,6 @@ private:
         {
             // if too big to fit last column, just fill with a space
             c.text = " ";
-            c.width = 1;
         }
 
         puts(c.text);
