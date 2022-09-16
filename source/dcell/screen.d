@@ -1,8 +1,13 @@
-// Copyright 2022 Garrett D'Amore
-//
-// Distributed under the Boost Software License, Version 1.0.
-// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
-
+/**
+ * Screen module for dcell provides the common interface for different implementations of KVM type devices.
+ *
+ * Copyright: Copyright 2022 Garrett D'Amore
+ * Authors: Garrett D'Amore
+ * License:
+ *   Distributed under the Boost Software License, Version 1.0.
+ *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+ *   SPDX-License-Identifier: BSL-1.0
+ */
 module dcell.screen;
 
 import core.time;
@@ -14,6 +19,10 @@ public import dcell.key;
 public import dcell.event;
 public import dcell.mouse;
 
+/**
+ * Screen is implemented by different platforms to provide a common interface for building
+ * text best full-screen user interfaces.
+ */
 interface Screen
 {
     /**

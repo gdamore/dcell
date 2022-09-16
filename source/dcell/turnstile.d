@@ -12,7 +12,13 @@ module dcell.turnstile;
 
 import core.sync.condition;
 
-package class Turnstile
+package:
+
+/**
+ * Turnstile implements a thread safe primitive -- applications can
+ * set or wait for a condition.
+ */
+class Turnstile
 {
     private Mutex m;
     private Condition c;

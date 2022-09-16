@@ -1,8 +1,13 @@
-// Copyright 2022 Garrett D'Amore
-//
-// Distributed under the Boost Software License, Version 1.0.
-// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
-
+/**
+ * Mouse module for dcell contains definitions related to mice (pointing devices not rodents).
+ *
+ * Copyright: Copyright 2022 Garrett D'Amore
+ * Authors: Garrett D'Amore
+ * License:
+ *   Distributed under the Boost Software License, Version 1.0.
+ *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+ *   SPDX-License-Identifier: BSL-1.0
+ */
 module dcell.mouse;
 
 public import dcell.coord;

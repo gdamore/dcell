@@ -1,8 +1,14 @@
-// Copyright 2022 Garrett D'Amore
-//
-// Distributed under the Boost Software License, Version 1.0.
-// (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
-
+/**
+ * Parser module for dcell contains the code for parsing terminfo escapes
+ * as they arrive on /dev/tty.
+ *
+ * Copyright: Copyright 2022 Garrett D'Amore
+ * Authors: Garrett D'Amore
+ * License:
+ *   Distributed under the Boost Software License, Version 1.0.
+ *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
+ *   SPDX-License-Identifier: BSL-1.0
+ */
 module dcell.parser;
 
 import core.time;
