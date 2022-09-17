@@ -1,14 +1,19 @@
 {
-	"name": "dcell",
+	"authors": [
+		"Garrett D'Amore"
+	],
+	"copyright": "Copyright 2022 Garrett D'Amore",
+	"dependencies": {
+		"east_asian_width": "~>1.0.0"
+	},
 	"description": "Terminal Cells for D.",
 	"license": "BSL-1.0",
-	"authors": [ "Garrett D'Amore" ],
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"targetType": "library",
+	"name": "dcell",
 	"subPackages": [
 		"./mkinfo/",
 		"./demos/colors/",
 		"./demos/hello/",
 		"./demos/mouse/"
-	]
+	],
+	"targetType": "library"
 }
