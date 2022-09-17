@@ -14,6 +14,8 @@ import std.algorithm;
 import std.traits;
 import std.utf;
 
+import eastasianwidth;
+
 public import dcell.coord;
 public import dcell.style;
 
@@ -27,25 +29,90 @@ public import dcell.style;
  */
 struct Cell
 {
-    string text; /// character content - one character followed by any combinging characters
+    string xtext; /// character content - one character followed by any combinging characters
     Style style; /// styling for the cell
 
     this(C)(C c, Style st = Style()) if (isSomeChar!C)
     {
-        text = toUTF8([c]);
+        ss = toUTF8([c]);
+        ds = toUTF32([c]);
         style = st;
     }
 
     this(S)(S s, Style st = Style()) if (isSomeString!S)
     {
-        text = toUTF8(s);
+        ss = toUTF8(s);
+        ds = toUTF32(s);
         style = st;
     }
 
-    @property uint width() pure const {
-        // TODO: east asian width
-        return 1;
+    @property const(string) text() pure @safe const
+    {
+        return ss;
     }
+
+    @property const(string) text(const(string) s) pure @safe
+    {
+        ds = toUTF32(s);
+        ss = s;
+        return s;
+    }
+
+    /**
+     * The display width of the contents of the cell, which will be 1 (typical western
+     * characters, as well as ambiguous characters) or 2 (typical CJK characters).
+     * This relies on the accuracy of the content in the imported east_asian_width
+     * package, and may therefore not be perfectly correct for a given platform or
+     * font or context.  In particular it may be wrong for some emoji.  Note also that
+     * the D std.uni notion of grapheme boundaries is out of date, and so many
+     * things that should be treated as a single grapheme (or grapheme cluster) will
+     * not be.
+     */
+    @property uint width() pure const
+    {
+        enum regionA = '\U0001F1E6';
+        enum regionZ = '\U0001F1FF';
+
+        if (ds.length < 1)
+        {
+            return (0);
+        }
+        if (ds[0] < ' ')
+            return 0; // control characters
+        if (ds[0] < '\u02b0') // most common case, covers ASCII, Latin supplements, IPA
+            return 1;
+        // flags - missing from east asian width decoding (and also stdin)
+        if ((ds.length >= 2) && (ds[0] >= regionA && ds[0] <= regionZ && ds[1] >= regionA && ds[1] <= regionZ))
+        {
+            return 2;
+        }
+        return cast(uint) displayWidth(ds[0]);
+    }
+
+    private dstring ds;
+    private string ss;
+}
+
+unittest
+{
+    assert(Cell('\t').width == 0);
+    assert(Cell('A').width == 1); // ASCII
+    assert(Cell("B").width == 1); // ASCII (string)
+    assert(Cell('ￂ').width == 1); // half-width form
+    assert(Cell('￥').width == 2); // full-width yen
+    assert(Cell('Ｚ').width == 2); // full-width Z
+    assert(Cell('角').width == 2); // a CJK character
+    assert(Cell('😂').width == 2); // emoji
+    assert(Cell('♀').width == 1); // modifier alone
+    assert(Cell("\U0001F44D").width == 2); // thumbs up
+    assert(Cell("\U0001f1fa\U0001f1f8").width == 2); // US flag (regional indicators)
+
+    // The following are broken due to bugs in std.uni and/or the east asian width.
+    // At some point it may be easier to refactor this ourself.
+    // assert(Cell("\U0001f9db\u200d\u2640").width == 1); // female vampire
+    // assert(Cell("🤝 🏽").width == 2); // modified emoji (medium skin tone handshake)
+    // assert(Cell("🧛‍♀️").width == 2); // modified emoji -- does not work
+    // assert(Cell("\U0001F44D\U0001F3fD").width == 2); // thumbs up, medium skin tone
 }
 
 /**
