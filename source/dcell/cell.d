@@ -73,7 +73,7 @@ class CellBuffer
         return (y * size_.x + x);
     }
 
-    bool isLegal(Coord pos) nothrow pure const
+    package bool isLegal(Coord pos) nothrow pure const
     {
         return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
