@@ -1,0 +1,32 @@
+name: dmd
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+        matrix:
+          os: [ ubuntu-latest ]
+          dc: [ dmd-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: D Compiler Installation
+      uses: dlang-community/setup-dlang@v1.2.0
+      with:
+        compiler: ${{ matrix.dc }}
+
+    - name: Build and Test
+      run: |
+        dub -q test
