@@ -301,7 +301,7 @@ private Termcap* convertCaps(Caps* caps)
 {
     auto tc = new Termcap;
     tc.name = caps.name;
-    tc.aliases = caps.aliases;
+    tc.aliases = cast(immutable(string)[])caps.aliases;
     tc.colors = caps.getInt("colors");
     tc.columns = caps.getInt("columns");
     tc.lines = caps.getInt("lines");
