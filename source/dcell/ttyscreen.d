@@ -64,8 +64,8 @@ class TtyScreen : Screen
         puts(caps.clear);
         resize();
         draw();
-        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid, cast(shared EventQueue) eq, cast(
-                shared Turnstile) stopping);
+        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid,
+                cast(shared EventQueue) eq, cast(shared Turnstile) stopping);
         started = true;
     }
 
@@ -318,8 +318,7 @@ private:
             {
                 auto rgb1 = decompose(fg);
                 auto rgb2 = decompose(bg);
-                puts(caps.setFgBgRGB,
-                    rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]);
+                puts(caps.setFgBgRGB, rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]);
             }
             else
             {
@@ -463,8 +462,8 @@ private:
         // wrap at the bottom right corner, then we want to insert
         // that character in place, to avoid the scroll of doom.
         auto size = cells.size();
-        if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && caps.automargin && (
-                caps.insertChar != ""))
+        if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && caps.automargin
+                && (caps.insertChar != ""))
         {
             auto pp = pos;
             pp.x--;
@@ -485,7 +484,8 @@ private:
             }
         }
         if (caps.enterURL == "")
-        { // avoid pointless changes due to URL where not supported
+        {
+            // avoid pointless changes due to URL where not supported
             c.style.url = "";
         }
 
@@ -588,7 +588,8 @@ private:
         flush();
     }
 
-    static void inputLoop(shared TtyImpl tin, ParseKeys keys, Tid tid, shared EventQueue eq, shared Turnstile stopping)
+    static void inputLoop(shared TtyImpl tin, ParseKeys keys, Tid tid,
+            shared EventQueue eq, shared Turnstile stopping)
     {
         TtyImpl f = cast(TtyImpl) tin;
         Parser p = new Parser(keys);

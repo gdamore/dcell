@@ -216,7 +216,7 @@ struct Termcap
         }
     }
 
-    /** 
+    /**
      * Put a string to an out range, which is normally a file
      * to an interactive terminal like /dev/tty or stdin, while
      * interpretreting embedded delay sequences of the form
