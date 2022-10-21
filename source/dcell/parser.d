@@ -408,7 +408,6 @@ private:
     MonoTime keyStart; // when the timer started
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
     bool buttonDown; // true if buttons were down
-    bool wasButton; // true if we saw a button press for recent mouse event
     bool pasting;
     MonoTime pasteTime;
     dstring pasteBuf;
@@ -445,25 +444,21 @@ private:
         {
         case 0:
             ev.mouse.btn = Buttons.button1;
-            wasButton = true;
             break;
         case 1:
             ev.mouse.btn = Buttons.button3;
-            wasButton = true;
             break;
         case 2:
             ev.mouse.btn = Buttons.button2;
-            wasButton = true;
             break;
         case 3:
             ev.mouse.btn = Buttons.none;
-            wasButton = false;
             break;
         case 0x40:
-            ev.mouse.btn = wasButton ? Buttons.button1 : Buttons.wheelUp;
+            ev.mouse.btn = Buttons.wheelUp;
             break;
         case 0x41:
-            ev.mouse.btn = wasButton ? Buttons.button2 : Buttons.wheelDown;
+            ev.mouse.btn = Buttons.wheelDown;
             break;
         default:
             break;
