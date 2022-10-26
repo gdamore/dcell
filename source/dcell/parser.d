@@ -652,36 +652,53 @@ private:
                     return false;
                 neg = true; // no state change
                 break;
-            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+            case '0': .. case '9':
                 if (state < 3 || state > 5)
                     return false;
                 val *= 10;
-                val += int(buf[i] - '0');
+                val += cast(int)(buf[i] - '0');
                 dig = true; // no state change
                 break;
             case ';':
                 if (state != 3 && state != 4)
                     return false;
-                val = neg ? -val : val;
-                if (state == 3)
-                    btn = neg ? -val : val;
-                else
-                    x = (neg ? -val : val) - 1;
-                state++;
-                neg = false;
-                dig = false;
-                val = 0;
+                if (neg)
+                    val = -val;
+                switch (state)
+                {
+                case 3:
+                    btn = val;
+                    val = 0;
+                    neg = false;
+                    dig = false;
+                    state = 4;
+                    break;
+                case 4:
+                    x = val - 1;
+                    val = 0;
+                    neg = false;
+                    dig = false;
+                    state = 5;
+                    break;
+                default:
+                    return false;
+                }
                 break;
             case 'm', 'M':
                 if (state != 5)
                     return false;
-                y = (neg ? -val : val) - 1;
+                if (neg)
+                {
+                    val = -val;
+                }
+                y = val - 1;
                 mov = (btn & 0x20) != 0;
-                btn ^= 0x20;
+                btn &= ~0x20;
                 if (buf[i] == 'm')
-                { // release
+                {
+                    // release
                     btn |= 0x3;
-                    btn ^= 0x40;
+                    btn &= ~0x40;
                     buttonDown = false;
                 }
                 else if (mov)
@@ -694,7 +711,7 @@ private:
                     if (!buttonDown)
                     {
                         btn |= 0x3;
-                        btn ^= 0x40;
+                        btn &= ~0x40;
                     }
                 }
                 else

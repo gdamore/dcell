@@ -213,12 +213,18 @@ void main()
 				bStr ~= " WR";
 			// we only want buttons, not wheel events
 			auto button = ev.mouse.btn;
-			button &= ~Buttons.wheelUp;
-			button &= ~Buttons.wheelDown;
-			button &= ~Buttons.wheelLeft;
-			button &= ~Buttons.wheelRight;
-			if (button == Buttons.none)
+			button &= 0xff;
+
+			if ((button != Buttons.none) && (oldTop.x < 0))
 			{
+				oldTop = ev.mouse.pos;
+			}
+
+			// NB: this does is the unmasked value!
+			// It also does not support chording mouse buttons
+			switch (ev.mouse.btn)
+			{
+			case Buttons.none:
 				if (oldTop.x >= 0)
 				{
 					Style ns = up;
@@ -227,33 +233,39 @@ void main()
 					oldTop = Coord(-1, -1);
 					oldBot = Coord(-1, -1);
 				}
-			}
-			else if (oldTop.x < 0)
-			{
-				oldTop = ev.mouse.pos;
-			}
-			if (button & Buttons.button1)
+				break;
+			case Buttons.button1:
 				bStr ~= " B1";
-			if (button & Buttons.button2)
+				break;
+			case Buttons.button2:
 				bStr ~= " B2";
-			if (button & Buttons.button3)
+				break;
+			case Buttons.button3:
 				bStr ~= " B3";
-			if (button & Buttons.button4)
+				break;
+			case Buttons.button4:
 				bStr ~= " B4";
-			if (button & Buttons.button5)
+				break;
+			case Buttons.button5:
 				bStr ~= " B5";
-			if (button & Buttons.button6)
+				break;
+			case Buttons.button6:
 				bStr ~= " B6";
-			if (button & Buttons.button7)
+				break;
+			case Buttons.button7:
 				bStr ~= " B7";
-			if (button & Buttons.button8)
+				break;
+			case Buttons.button8:
 				bStr ~= " B8";
-			if (bStr.length > 0)
-				lb = bStr[$ - 1];
-			mousePos = ev.mouse.pos;
+				break;
+			default:
+				break;
+			}
+			// mousePos = ev.mouse.pos;
 			if (button != Buttons.none)
 				oldBot = ev.mouse.pos;
 
+			mousePos = ev.mouse.pos;
 			s[pos] = Cell('M', st);
 			break;
 		default:
