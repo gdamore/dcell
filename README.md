@@ -21,5 +21,5 @@ The demos/ directory has a few demo programs which might be
 interesting.  These were ported from Tcell.
 
 This effort was done principally to learn D, but hopefully it may
-someday later be useless because it appears that D does not have an
+someday later be useful because it appears that D does not have an
 analog for tcell.
