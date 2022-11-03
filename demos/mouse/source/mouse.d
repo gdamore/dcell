@@ -103,7 +103,6 @@ void main()
 	dstring bStr = "";
 	dstring kStr = "";
 	dstring pStr = "";
-	bool pasting = false;
 
 	s.start(thisTid());
 	s.showCursor(Cursor.hidden);
@@ -115,7 +114,6 @@ void main()
 	Coord mousePos = Coord(-1, -1);
 	Coord oldTop = Coord(-1, -1);
 	Coord oldBot = Coord(-1, -1);
-	Coord bPos;
 	int esc = 0;
 	dchar lb;
 
@@ -235,30 +233,39 @@ void main()
 				}
 				break;
 			case Buttons.button1:
+				lb = '1';
 				bStr ~= " B1";
 				break;
 			case Buttons.button2:
+				lb = '2';
 				bStr ~= " B2";
 				break;
 			case Buttons.button3:
+				lb = '3';
 				bStr ~= " B3";
 				break;
 			case Buttons.button4:
+				lb = '4';
 				bStr ~= " B4";
 				break;
 			case Buttons.button5:
+				lb = '5';
 				bStr ~= " B5";
 				break;
 			case Buttons.button6:
+				lb = '6';
 				bStr ~= " B6";
 				break;
 			case Buttons.button7:
+				lb = '7';
 				bStr ~= " B7";
 				break;
 			case Buttons.button8:
+				lb = '8';
 				bStr ~= " B8";
 				break;
 			default:
+				lb = '?';
 				break;
 			}
 			// mousePos = ev.mouse.pos;
