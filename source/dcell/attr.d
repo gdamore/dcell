@@ -10,7 +10,7 @@
  */
 module dcell.attr;
 
-/** 
+/**
  * Text attributes that do not include color.
  */
 enum Attr : int

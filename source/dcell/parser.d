@@ -16,9 +16,9 @@ import std.ascii;
 import std.string;
 import std.utf;
 
+import dcell.event;
 import dcell.key;
 import dcell.mouse;
-import dcell.event;
 import dcell.termcap;
 
 package:
@@ -564,7 +564,7 @@ private:
             return true;
         }
         if ((buf[0] < 0x80) || (buf[0] == 0x7F)) // control character, not a rune
-            return false;
+        return false;
         // unicode bits...
         size_t index = 0;
         auto temp = cast(string) buf;
@@ -629,17 +629,17 @@ private:
                     return false;
                 state = 1;
                 break;
-            case '\x9b': // 8-bit mode CSI
+                case '\x9b': // 8-bit mode CSI
                 if (state != 0)
                     return false;
                 state = 2;
                 break;
-            case '[':
+                case '[':
                 if (state != 1)
                     return false;
                 state = 2;
                 break;
-            case '<':
+                case '<':
                 if (state != 2)
                     return false;
                 val = 0;
@@ -647,19 +647,19 @@ private:
                 neg = false;
                 state = 3;
                 break;
-            case '-':
+                case '-':
                 if (state < 3 || state > 5 || dig || neg)
                     return false;
                 neg = true; // no state change
                 break;
-            case '0': .. case '9':
+                case '0': .. case '9':
                 if (state < 3 || state > 5)
                     return false;
                 val *= 10;
                 val += cast(int)(buf[i] - '0');
                 dig = true; // no state change
                 break;
-            case ';':
+                case ';':
                 if (state != 3 && state != 4)
                     return false;
                 if (neg)
@@ -684,7 +684,7 @@ private:
                     return false;
                 }
                 break;
-            case 'm', 'M':
+                case 'm', 'M':
                 if (state != 5)
                     return false;
                 if (neg)
@@ -723,7 +723,7 @@ private:
 
                 evs ~= newMouseEvent(x, y, btn);
                 return true;
-            default:
+                default:
                 // definitely not ours
                 return false;
             }
@@ -754,24 +754,24 @@ private:
             case State.start:
                 switch (buf[i])
                 {
-                case '\x1b':
+            case '\x1b':
                     state = State.bracket;
                     break;
-                case '\x9b':
+            case '\x9b':
                     state = State.end;
                     break;
-                default:
+            default:
                     return false;
                 }
                 break;
             case State.bracket:
                 if (buf[i] != '[')
-                    return false;
+                return false;
                 state++;
                 break;
             case State.end:
                 if (buf[i] != 'M')
-                    return false;
+                return false;
                 if (buf.length < i + 4)
                     break;
                 buf = buf[i + 1 .. $];

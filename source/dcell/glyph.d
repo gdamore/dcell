@@ -10,7 +10,7 @@
  */
 module dcell.glyph;
 
-/** 
+/**
  * Common symbols.
  */
 class Glyph
@@ -88,4 +88,21 @@ class Glyph
         fallbacks[upperRightCorner] = "+";
         fallbacks[vertLine] = "|";
     }
+}
+
+/// Box drawing characters
+enum Box
+{
+    tl = Glyph.upperLeftCorner,
+    tr = Glyph.upperRightCorner,
+    tt = Glyph.topTee,
+    hl = Glyph.horizLine,
+    vl = Glyph.vertLine,
+    lt = Glyph.leftTee,
+    rt = Glyph.rightTee,
+    bl = Glyph.lowerLeftCorner,
+    bt = Glyph.bottomTee,
+    br = Glyph.lowerRightCorner,
+    ct = Glyph.plus,
+
 }

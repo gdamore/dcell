@@ -205,8 +205,12 @@ synchronized class Database
 
 @safe unittest
 {
-    static immutable Termcap caps = {name: "mytest", aliases: ["mytest-1", "mytest-2"]};
-    static immutable Termcap caps2 = {name: "ctest", mouse: ":mouse", colors: 1<<24};
+    static immutable Termcap caps = {
+        name: "mytest", aliases: ["mytest-1", "mytest-2"]
+    };
+    static immutable Termcap caps2 = {
+        name: "ctest", mouse: ":mouse", colors: 1 << 24
+    };
 
     Database.put(&caps);
     Database.put(&caps2);
