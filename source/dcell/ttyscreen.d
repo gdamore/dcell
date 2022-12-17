@@ -258,7 +258,7 @@ private:
 
     const(Termcap)* caps;
     CellBuffer cells;
-    bool clear_; // if a sceren clear is requested
+    bool clear_; // if a screen clear is requested
     Coord pos_; // location where we will update next
     Style style_; // current style
     Style defStyle; // default style (when screen is cleared)
@@ -458,7 +458,7 @@ private:
         {
             return c.width;
         }
-        // automargin handling -- if we are going to automatically
+        // auto-margin handling -- if we are going to automatically
         // wrap at the bottom right corner, then we want to insert
         // that character in place, to avoid the scroll of doom.
         auto size = cells.size();
@@ -477,7 +477,7 @@ private:
 
         if (caps.colors == 0)
         {
-            // if its monochrome, simulate ligher and darker with reverse
+            // if its monochrome, simulate lighter and darker with reverse
             if (darker(c.style.fg, c.style.bg))
             {
                 c.style.attr ^= Attr.reverse;
@@ -518,9 +518,9 @@ private:
 
         puts(c.text);
         pos_.x += c.width;
-        // Note that we might be beyond the width, and if automargin
+        // Note that we might be beyond the width, and if auto-margin
         // is set true, we might have wrapped.  But it turns out that
-        // we can't reliably depend on automargin, as some terminals
+        // we can't reliably depend on auto-margin, as some terminals
         // that claim to behave that way actually don't.
         cells.setDirty(pos, false);
         if (insert)
