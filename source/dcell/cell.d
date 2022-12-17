@@ -19,17 +19,17 @@ import eastasianwidth;
 public import dcell.coord;
 public import dcell.style;
 
-/** 
+/**
  * Cell represents the contents of a single character cell on screen,
- * or in some cases two adjacent cells.  Terminals are expected to have a uniform 
- * display width for each cell, and to have a fixed number of cell columsn and rows.
+ * or in some cases two adjacent cells.  Terminals are expected to have a uniform
+ * display width for each cell, and to have a fixed number of cell columns and rows.
  * (We assume fixed pitch fonts.)  The occasion when a double wide character is present
  * occurs for certain East Asian characters that require twice as much horizontal space
  * to display as others.  (This can also occur with some emoji.)
  */
 struct Cell
 {
-    string xtext; /// character content - one character followed by any combinging characters
+    string xtext; /// character content - one character followed by any combining characters
     Style style; /// styling for the cell
 
     this(C)(C c, Style st = Style()) if (isSomeChar!C)
@@ -255,7 +255,7 @@ class CellBuffer
     }
 
     /**
-     * Set content for the cell.  
+     * Set content for the cell.
      *
      * Params:
      *   c = content to store for the cell.
@@ -382,7 +382,7 @@ class CellBuffer
         auto newCells = new Cell[size.x * size.y];
         foreach (i; 0 .. newCells.length)
         {
-            // prefill with whitespace
+            // pre-fill with whitespace
             newCells[i].text = " ";
         }
         // maximum dimensions to copy (minimum of dimensions)

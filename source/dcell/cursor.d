@@ -12,13 +12,13 @@ module dcell.cursor;
 
 import core.time;
 
-/** 
+/**
  * The cursor shape - the implementation may not support all of these,
  * but hopefully at least reset and hidden are supported.
  */
 enum Cursor
 {
-    current = 0, // don't change cursor shape or visbility
+    current = 0, // don't change cursor shape or visibility
     reset, // reset to terminal default
     hidden,
     block,

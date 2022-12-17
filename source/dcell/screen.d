@@ -32,7 +32,7 @@ interface Screen
     void clear();
 
     /**
-     * Retrive the contents for a given address.  This is taken from
+     * Retrieve the contents for a given address.  This is taken from
      * the backing draw buffer, and won't necessarily reflect what is
      * displayed to the user until show is called.
      */
@@ -113,23 +113,23 @@ interface Screen
     Event receiveEvent(Duration dur);
 
     /**
-     * Receive events, withotu a timeout.  This only works if start
+     * Receive events, without a timeout.  This only works if start
      * was called without a tid.
      */
     Event receiveEvent();
 
     /**
-     * Enable backeted paste mode mode.  Bracketed paste mode
+     * Enable bracketed paste mode mode.  Bracketed paste mode
      * will pasted content in a single event, and is therefore
      * distinguishable from individually typed characters.
      *
-     * Params: 
+     * Params:
      *   b = true to enable bracketed paste, false for disable
      */
     void enablePaste(bool b);
 
     /**
-     * Do we have a mouse? This may be overly optimitistic for some
+     * Do we have a mouse? This may be overly optimistic for some
      * terminals, but it is a good first guess.
      *
      * Returns: true if the terminal is thought to support mouse events
@@ -195,7 +195,7 @@ interface Screen
     void setSize(Coord);
 
     /**
-     * Set the default style used when clearning the screen, etc.
+     * Set the default style used when clearing the screen, etc.
      */
     void setStyle(Style);
 
@@ -220,17 +220,17 @@ interface Screen
     /**
      * Start should be called to start processing.  Once this begins,
      * events (see event.d) will be delivered to the caller via
-     * std.concurrency.send().  Additioanlly, this may change terminal
+     * std.concurrency.send().  Additionally, this may change terminal
      * settings to put the input stream into raw mode, etc.
      */
     void start();
     void start(Tid);
 
     /**
-     * Stop is called to stop processing on teh screen.  The terminal
+     * Stop is called to stop processing on the screen.  The terminal
      * settings will be restored, and the screen may be cleared. Input
      * events will no longer be delivered.  This should be called when
-     * the program is exited, or if suspending (to run a subshell process
+     * the program is exited, or if suspending (to run a sub-shell process
      * interactively for example).
      */
     void stop();

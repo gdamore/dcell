@@ -18,7 +18,7 @@ import std.range;
 import std.stdio;
 import std.string;
 
-/** 
+/**
  * Represents the actual capabilities - this is an entry in a terminfo
  * database.
  */
@@ -219,13 +219,13 @@ struct Termcap
     /**
      * Put a string to an out range, which is normally a file
      * to an interactive terminal like /dev/tty or stdin, while
-     * interpretreting embedded delay sequences of the form
+     * interpreting embedded delay sequences of the form
      * $<DELAY> (where DELAY is given in milliseconds, and must
-     * be a postive rational number of millseconds). When these
+     * be a positive rational number of milliseconds). When these
      * are encountered, the flush delegate is called (if not null),
      * and the function sleeps for the indicated amount of time.
      */
-    static void puts(R)(R output, string s, void delegate() flush = null) 
+    static void puts(R)(R output, string s, void delegate() flush = null)
             if (isOutputRange!(R, ubyte))
     {
         while (s.length > 0)
@@ -312,7 +312,7 @@ struct Termcap
 
         assert(ob.toString() == "ABCDEF\n");
         // negative tests -- we don't care what's in the file (UB), but it must not panic
-        puts(ob, "Z$<123..0123>"); // malformed dots 
+        puts(ob, "Z$<123..0123>"); // malformed dots
         puts(ob, "LMN$<12X>"); // invalid number
         puts(ob, "GHI$<123JKL"); // unterminated delay
     }
@@ -364,7 +364,7 @@ struct Termcap
         import std.range;
 
         auto o = nullSink();
-        puts(o, "Z$<123..0123>"); // malformed dots 
+        puts(o, "Z$<123..0123>"); // malformed dots
         puts(o, "LMN$<12X>"); // invalid number
         puts(o, "GHI$<123JKL"); // unterminated delay
     }
@@ -378,7 +378,7 @@ struct Termcap
     /**
      * Evaluates a terminal capability string and expands it, using the supplied integer parameters.
      *
-     * Params: 
+     * Params:
      *   s = A terminal capability string.  The actual string, not the name of the capability.
      *   args = A list of parameters for the capability.
      *
