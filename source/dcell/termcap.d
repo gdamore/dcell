@@ -480,7 +480,6 @@ struct Termcap
 
         while (input.length > 0)
         {
-            Parameter p;
             int i1, i2;
 
             // In some cases we need to pop both parameters
