@@ -15,7 +15,7 @@ import std.exception;
 import std.range.interfaces;
 import dcell.coord;
 
-/** 
+/**
  * TtyImpl is the interface that implementations should
  * override or supply to support terminal I/O ioctls or
  * equivalent functionality.  It is provided in this form, as
@@ -48,7 +48,7 @@ interface TtyImpl
      * Make input blocking or non-blocking.  Blocking input
      * will cause reads against the terminal to block forever
      * until at least one character is returned.  Otherwise it
-     * will return in at most 
+     * will return in at most
      */
     void blocking(bool b);
 
@@ -260,7 +260,7 @@ version (Posix)
 }
 else
 {
-    TtyImpl newDevTty(string p = "/dev/tty")
+    TtyImpl newDevTty(string _ = "/dev/tty")
     {
         throw new Exception("not supported");
     }
@@ -273,7 +273,7 @@ version (Posix)
 
     private __gshared int sigRaised = 0;
     private __gshared int sigFd = -1;
-    private extern (C) void handleSigWinCh(int sig) nothrow
+    private extern (C) void handleSigWinCh(int _) nothrow
     {
         int fd = sigFd;
         atomicStore(sigRaised, 1);
