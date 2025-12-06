@@ -2,7 +2,7 @@
  * Parser module for dcell contains the code for parsing terminfo escapes
  * as they arrive on /dev/tty.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.

@@ -1,7 +1,7 @@
 /**
  * Termcap module for dcell, contains the structure used to define terminal capabilities.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -10,7 +10,6 @@
  */
 module dcell.termcap;
 
-import core.thread;
 import std.conv;
 import std.algorithm;
 import std.functional;
