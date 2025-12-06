@@ -354,7 +354,7 @@ class Parser
             partial = false;
 
             // we have to parse the paste bit first
-            if (parsePaste() || parseRune() || parseFnKey() || parseSgrMouse() || parseLegacyMouse())
+            if (parsePaste() || parseRune() || parseFnKey() || parseSgrMouse())
             {
                 keyStart = now;
                 continue;
@@ -732,155 +732,101 @@ private:
         return false;
     }
 
-    bool parseLegacyMouse()
+    unittest
     {
-        int x, y, btn;
+        import core.thread;
+        import dcell.database;
 
-        enum State
-        {
-            start,
-            bracket,
-            end
-        }
+        // taken from xterm, but pared down
+        static immutable Termcap term = {
+            name: "test-term",
+            enterKeypad: "\x1b[?1h\x1b=",
+            exitKeypad: "\x1b[?1l\x1b>",
+            cursorBack1: "\x08",
+            cursorUp1: "\x1b[A",
+            keyBackspace: "\x08",
+            keyF1: "\x1bOP",
+            keyF2: "\x1bOQ",
+            keyF3: "\x1bOR",
+            keyInsert: "\x1b[2~",
+            keyDelete: "\x1b[3~",
+            keyHome: "\x1bOH",
+            keyEnd: "\x1bOF",
+            keyPgUp: "\x1b[5~",
+            keyPgDn: "\x1b[6~",
+            keyUp: "\x1bOA",
+            keyDown: "\x1bOB",
+            keyLeft: "\x1bOD",
+            keyRight: "\x1bOC",
+            keyBacktab: "\x1b[Z",
+            keyShfRight: "\x1b[1;2C",
+            mouse: "\x1b[M",
+        };
+        Database.put(&term);
+        auto tc = Database.get("test-term");
+        assert(tc !is null);
+        Parser p = new Parser(ParseKeys(tc));
+        assert(p.empty());
+        assert(p.parse("")); // no data, is fine
+        assert(p.parse("\x1bOC"));
+        auto ev = p.events();
 
-        State state;
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.right);
 
-        for (int i = 0; i < buf.length; i++)
-        {
-            final switch (state)
-            {
-            case State.start:
-                switch (buf[i])
-                {
-                case '\x1b':
-                    state = State.bracket;
-                    break;
-                case '\x9b':
-                    state = State.end;
-                    break;
-                default:
-                    return false;
-                }
-                break;
-            case State.bracket:
-                if (buf[i] != '[')
-                    return false;
-                state++;
-                break;
-            case State.end:
-                if (buf[i] != 'M')
-                    return false;
-                if (buf.length < i + 4)
-                    break;
-                buf = buf[i + 1 .. $];
-                btn = int(buf[0]);
-                x = int(buf[1]) - 32 - 1;
-                y = int(buf[2]) - 32 - 1;
-                buf = buf[3 .. $];
-                evs ~= newMouseEvent(x, y, btn);
-                return true;
-            }
-        }
-        if (state > 0)
-            partial = true;
-        return false;
+        // this tests that the timed pase parsing works -
+        // escape sequences are kept partially until we
+        // have a match or we have waited long enough.
+        assert(p.parse(['\x1b', 'O']) == false);
+        ev = p.events();
+        assert(ev.length == 0);
+        Thread.sleep(msecs(100));
+        assert(p.parse([]) == true);
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.rune);
+        assert(ev[0].key.mod == Modifiers.alt);
+
+        // lone escape
+        assert(p.parse(['\x1b']) == false);
+        ev = p.events();
+        assert(ev.length == 0);
+        Thread.sleep(msecs(100));
+        assert(p.parse([]) == true);
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.esc);
+        assert(ev[0].key.mod == Modifiers.none);
+
+        // try injecting paste events
+        assert(tc.enablePaste != "");
+        assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
+        assert(p.parse(['A']));
+        assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.paste);
+        assert(ev[0].paste.content == "A");
+
+        // mouse events
+        assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.mouse);
+        assert(ev[0].mouse.pos.x == 1);
+        assert(ev[0].mouse.pos.y == 2);
+
+        // unicode
+        string b = [0xe2, 0x82, 0xac];
+        assert(p.parse(b));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.rune);
+        assert(ev[0].key.ch == '€');
     }
-}
-
-unittest
-{
-    import core.thread;
-    import dcell.database;
-
-    // taken from xterm, but pared down
-    static immutable Termcap term = {
-        name: "test-term",
-        enterKeypad: "\x1b[?1h\x1b=",
-        exitKeypad: "\x1b[?1l\x1b>",
-        cursorBack1: "\x08",
-        cursorUp1: "\x1b[A",
-        keyBackspace: "\x08",
-        keyF1: "\x1bOP",
-        keyF2: "\x1bOQ",
-        keyF3: "\x1bOR",
-        keyInsert: "\x1b[2~",
-        keyDelete: "\x1b[3~",
-        keyHome: "\x1bOH",
-        keyEnd: "\x1bOF",
-        keyPgUp: "\x1b[5~",
-        keyPgDn: "\x1b[6~",
-        keyUp: "\x1bOA",
-        keyDown: "\x1bOB",
-        keyLeft: "\x1bOD",
-        keyRight: "\x1bOC",
-        keyBacktab: "\x1b[Z",
-        keyShfRight: "\x1b[1;2C",
-        mouse: "\x1b[M",
-    };
-    Database.put(&term);
-    auto tc = Database.get("test-term");
-    assert(tc !is null);
-    Parser p = new Parser(ParseKeys(tc));
-    assert(p.empty());
-    assert(p.parse("")); // no data, is fine
-    assert(p.parse("\x1bOC"));
-    auto ev = p.events();
-
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.key);
-    assert(ev[0].key.key == Key.right);
-
-    // this tests that the timed pase parsing works -
-    // escape sequences are kept partially until we
-    // have a match or we have waited long enough.
-    assert(p.parse(['\x1b', 'O']) == false);
-    ev = p.events();
-    assert(ev.length == 0);
-    Thread.sleep(msecs(100));
-    assert(p.parse([]) == true);
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.key);
-    assert(ev[0].key.key == Key.rune);
-    assert(ev[0].key.mod == Modifiers.alt);
-
-    // lone escape
-    assert(p.parse(['\x1b']) == false);
-    ev = p.events();
-    assert(ev.length == 0);
-    Thread.sleep(msecs(100));
-    assert(p.parse([]) == true);
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.key);
-    assert(ev[0].key.key == Key.esc);
-    assert(ev[0].key.mod == Modifiers.none);
-
-    // try injecting paste events
-    assert(tc.enablePaste != "");
-    assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
-    assert(p.parse(['A']));
-    assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
-
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.paste);
-    assert(ev[0].paste.content == "A");
-
-    // mouse events
-    assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.mouse);
-    assert(ev[0].mouse.pos.x == 1);
-    assert(ev[0].mouse.pos.y == 2);
-
-    // unicode
-    string b = [0xe2, 0x82, 0xac];
-    assert(p.parse(b));
-    ev = p.events();
-    assert(ev.length == 1);
-    assert(ev[0].type == EventType.key);
-    assert(ev[0].key.key == Key.rune);
-    assert(ev[0].key.ch == '€');
 }
