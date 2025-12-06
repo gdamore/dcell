@@ -244,53 +244,16 @@ struct Termcap
                 cast(void) copy(s, output);
                 return;
             }
-            auto val = s[2 .. end];
+
+            // Drop the delay specification entirely; we no longer sleep or flush here.
             s = s[end + 1 .. $];
-            int usec = 0;
-            int mult = 1000; // 1 ms
-            bool dot = false;
-            bool valid = true;
-
-            while (valid && val.length > 0)
-            {
-                switch (val[0])
-                {
-                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-                    usec *= 10;
-                    usec += val[0] - '0';
-                    if (dot && mult > 1)
-                    {
-                        mult /= 10;
-                    }
-                    break;
-
-                case '.':
-                    if (!dot)
-                    {
-                        dot = true;
-                    }
-                    else
-                    {
-                        valid = false;
-                    }
-                    break;
-
-                default:
-                    valid = false;
-                    break;
-                }
-                val = val[1 .. $];
-            }
         }
     }
 
     unittest
     {
-        import std.datetime : Clock;
-        import core.time : seconds;
         import std.outbuffer;
 
-        auto now = Clock.currTime();
         auto ob = new OutBuffer();
 
         puts(ob, "AB$<1000>C");
@@ -305,15 +268,12 @@ struct Termcap
 
     unittest
     {
-        import std.datetime;
         import std.outbuffer;
 
-        auto now = Clock.currTime();
         auto ob = new OutBuffer();
 
         puts(ob, "AB$<100>C");
         puts(ob, "DEF$<100.5>\n");
-        auto end = Clock.currTime();
 
         assert(ob.toString() == "ABCDEF\n");
     }
@@ -321,7 +281,6 @@ struct Termcap
     unittest
     {
         import std.outbuffer;
-        import std.datetime;
 
         class Flusher : OutBuffer
         {
@@ -334,7 +293,6 @@ struct Termcap
 
         auto f = new Flusher();
         puts(f, "ABC$<100>DEF", &f.flush);
-        auto end = Clock.currTime();
         assert(f.toString() == "ABCDEF");
     }
 
