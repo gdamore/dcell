@@ -1,4 +1,4 @@
-// Copyright 2022 Garrett D'Amore
+// Copyright 2025 Garrett D'Amore
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
@@ -301,7 +301,7 @@ private Termcap* convertCaps(Caps* caps)
 {
     auto tc = new Termcap;
     tc.name = caps.name;
-    tc.aliases = cast(immutable(string)[])caps.aliases;
+    tc.aliases = cast(immutable(string)[]) caps.aliases;
     tc.colors = caps.getInt("colors");
     tc.columns = caps.getInt("columns");
     tc.lines = caps.getInt("lines");
@@ -329,121 +329,12 @@ private Termcap* convertCaps(Caps* caps)
     tc.cursorUp1 = caps.getStr("cuu1");
     tc.insertChar = caps.getStr("ich1");
     tc.automargin = caps.getBool("am");
-    tc.keyF1 = caps.getStr("kf1");
-    tc.keyF2 = caps.getStr("kf2");
-    tc.keyF3 = caps.getStr("kf3");
-    tc.keyF4 = caps.getStr("kf4");
-    tc.keyF5 = caps.getStr("kf5");
-    tc.keyF6 = caps.getStr("kf6");
-    tc.keyF7 = caps.getStr("kf7");
-    tc.keyF8 = caps.getStr("kf8");
-    tc.keyF9 = caps.getStr("kf9");
-    tc.keyF10 = caps.getStr("kf10");
-    tc.keyF11 = caps.getStr("kf11");
-    tc.keyF12 = caps.getStr("kf12");
-    tc.keyInsert = caps.getStr("kich1");
-    tc.keyDelete = caps.getStr("kdch1");
-    tc.keyBackspace = caps.getStr("kbs");
-    tc.keyHome = caps.getStr("khome");
-    tc.keyEnd = caps.getStr("kend");
-    tc.keyUp = caps.getStr("kcuu1");
-    tc.keyDown = caps.getStr("kcud1");
-    tc.keyRight = caps.getStr("kcuf1");
-    tc.keyLeft = caps.getStr("kcub1");
-    tc.keyPgDn = caps.getStr("knp");
-    tc.keyPgUp = caps.getStr("kpp");
-    tc.keyBacktab = caps.getStr("kcbt");
-    tc.keyExit = caps.getStr("kext");
-    tc.keyCancel = caps.getStr("kcan");
-    tc.keyPrint = caps.getStr("kprt");
-    tc.keyHelp = caps.getStr("khlp");
-    tc.keyClear = caps.getStr("kclr");
     tc.altChars = caps.getStr("acsc");
     tc.enterACS = caps.getStr("smacs");
     tc.exitACS = caps.getStr("rmacs");
     tc.enableACS = caps.getStr("enacs");
     tc.strikethrough = caps.getStr("smxx");
     tc.mouse = caps.getStr("kmous");
-
-    // Lookup high level function keys.
-    tc.keyShfInsert = caps.getStr("kIC");
-    tc.keyShfDelete = caps.getStr("kDC");
-    tc.keyShfRight = caps.getStr("kRIT");
-    tc.keyShfLeft = caps.getStr("kLFT");
-    tc.keyShfHome = caps.getStr("kHOM");
-    tc.keyShfEnd = caps.getStr("kEND");
-    tc.keyF13 = caps.getStr("kf13");
-    tc.keyF14 = caps.getStr("kf14");
-    tc.keyF15 = caps.getStr("kf15");
-    tc.keyF16 = caps.getStr("kf16");
-    tc.keyF17 = caps.getStr("kf17");
-    tc.keyF18 = caps.getStr("kf18");
-    tc.keyF19 = caps.getStr("kf19");
-    tc.keyF20 = caps.getStr("kf20");
-    tc.keyF21 = caps.getStr("kf21");
-    tc.keyF22 = caps.getStr("kf22");
-    tc.keyF23 = caps.getStr("kf23");
-    tc.keyF24 = caps.getStr("kf24");
-    tc.keyF25 = caps.getStr("kf25");
-    tc.keyF26 = caps.getStr("kf26");
-    tc.keyF27 = caps.getStr("kf27");
-    tc.keyF28 = caps.getStr("kf28");
-    tc.keyF29 = caps.getStr("kf29");
-    tc.keyF30 = caps.getStr("kf30");
-    tc.keyF31 = caps.getStr("kf31");
-    tc.keyF32 = caps.getStr("kf32");
-    tc.keyF33 = caps.getStr("kf33");
-    tc.keyF34 = caps.getStr("kf34");
-    tc.keyF35 = caps.getStr("kf35");
-    tc.keyF36 = caps.getStr("kf36");
-    tc.keyF37 = caps.getStr("kf37");
-    tc.keyF38 = caps.getStr("kf38");
-    tc.keyF39 = caps.getStr("kf39");
-    tc.keyF40 = caps.getStr("kf40");
-    tc.keyF41 = caps.getStr("kf41");
-    tc.keyF42 = caps.getStr("kf42");
-    tc.keyF43 = caps.getStr("kf43");
-    tc.keyF44 = caps.getStr("kf44");
-    tc.keyF45 = caps.getStr("kf45");
-    tc.keyF46 = caps.getStr("kf46");
-    tc.keyF47 = caps.getStr("kf47");
-    tc.keyF48 = caps.getStr("kf48");
-    tc.keyF49 = caps.getStr("kf49");
-    tc.keyF50 = caps.getStr("kf50");
-    tc.keyF51 = caps.getStr("kf51");
-    tc.keyF52 = caps.getStr("kf52");
-    tc.keyF53 = caps.getStr("kf53");
-    tc.keyF54 = caps.getStr("kf54");
-    tc.keyF55 = caps.getStr("kf55");
-    tc.keyF56 = caps.getStr("kf56");
-    tc.keyF57 = caps.getStr("kf57");
-    tc.keyF58 = caps.getStr("kf58");
-    tc.keyF59 = caps.getStr("kf59");
-    tc.keyF60 = caps.getStr("kf60");
-    tc.keyF61 = caps.getStr("kf61");
-    tc.keyF62 = caps.getStr("kf62");
-    tc.keyF63 = caps.getStr("kf63");
-    tc.keyF64 = caps.getStr("kf64");
-
-    // And the same thing for rxvt.
-    // It seems that urxvt at least send ESC as ALT prefix for these,
-    // although some places seem to indicate a separate ALT key sequence.
-    // Users are encouraged to update to an emulator that more closely
-    // matches xterm for better functionality.
-    if (tc.keyShfRight == "\x1b[c" && tc.keyShfLeft == "\x1b[d")
-    {
-        tc.keyShfUp = "\x1b[a";
-        tc.keyShfDown = "\x1b[b";
-        tc.keyCtrlUp = "\x1b[Oa";
-        tc.keyCtrlDown = "\x1b[Ob";
-        tc.keyCtrlRight = "\x1b[Oc";
-        tc.keyCtrlLeft = "\x1b[Od";
-    }
-    if (tc.keyShfHome == "\x1b[7$" && tc.keyShfEnd == "\x1b[8$")
-    {
-        tc.keyCtrlHome = "\x1b[7^";
-        tc.keyCtrlEnd = "\x1b[8^";
-    }
 
     // Technically the RGB flag that is provided for xterm-direct is not
     // quite right.  The problem is that the -direct flag that was introduced
@@ -474,16 +365,6 @@ private Termcap* convertCaps(Caps* caps)
     if (tc.setCursor == "")
     {
         return null; // terminal is not addressable
-    }
-    // For padding, we lookup the pad char.  If that isn't present,
-    // and npc is *not* set, then we assume a null byte.
-    tc.padChar = caps.getStr("pad");
-    if (tc.padChar == "")
-    {
-        if (!caps.getBool("npc"))
-        {
-            tc.padChar = "\u0000";
-        }
     }
 
     return tc;
@@ -551,7 +432,7 @@ OutBuffer mkTermSource(Termcap*[] tcs, string modname)
         }
     }
 
-    foreach (num, Termcap *tc; tcs)
+    foreach (num, Termcap* tc; tcs)
     {
         ob.writefln("");
         ob.writefln("// %s", tc.name);

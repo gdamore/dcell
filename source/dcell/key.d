@@ -1,7 +1,7 @@
 /**
  * Key module for dcell containing definitiosn for various key strokes.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -21,42 +21,9 @@ enum Key
 {
     none = 0,
 
-    // control keys are assigned their ASCII values
-    // these definitions should not be used by apps, but instead
-    // by using key rune, the character, and a modifier.
-    // TODO: consider just removing these.
-    ctrlSpace = 0,
-    ctrlA,
-    ctrlB,
-    ctrlC,
-    ctrlD,
-    ctrlE,
-    ctrlF,
-    ctrlG,
-    ctrlH,
-    ctrlI,
-    ctrlJ,
-    ctrlK,
-    ctrlL,
-    ctrlM,
-    ctrlN,
-    ctrlO,
-    ctrlP,
-    ctrlQ,
-    ctrlR,
-    ctrlS,
-    ctrlT,
-    ctrlU,
-    ctrlV,
-    ctrlW,
-    ctrlX,
-    ctrlY,
-    ctrlZ,
-    ctrlLeftSq, // Escape
-    ctrlBackslash,
-    ctrlRightSq,
-    ctrlCarat,
-    ctrlUnderscore,
+    // NB: the low keys are empty because they are used for control
+    // encodings.  But we translate them to rune with a payload char.
+    // and ctrl modifier.
 
     rune = 256, // start of defined keys, numbered high to avoid conflicts
     up,
@@ -147,10 +114,10 @@ enum Key
     f64,
 
     // convenience aliases
-    backspace = ctrlH,
-    tab = ctrlI,
-    esc = ctrlLeftSq,
-    enter = ctrlM,
+    backspace = 0x08,
+    tab = 0x09,
+    esc = 0x1B,
+    enter = 0x0A,
     del = 0x7F, // Note del2 has a different value
 }
 
@@ -247,37 +214,9 @@ shared static this()
     keyNames[Key.f62] = "F62";
     keyNames[Key.f63] = "F63";
     keyNames[Key.f64] = "F64";
-    keyNames[Key.ctrlA] = "Ctrl-A";
-    keyNames[Key.ctrlB] = "Ctrl-B";
-    keyNames[Key.ctrlC] = "Ctrl-C";
-    keyNames[Key.ctrlD] = "Ctrl-D";
-    keyNames[Key.ctrlE] = "Ctrl-E";
-    keyNames[Key.ctrlF] = "Ctrl-F";
-    keyNames[Key.ctrlG] = "Ctrl-G";
-    keyNames[Key.ctrlJ] = "Ctrl-J";
-    keyNames[Key.ctrlK] = "Ctrl-K";
-    keyNames[Key.ctrlL] = "Ctrl-L";
-    keyNames[Key.ctrlN] = "Ctrl-N";
-    keyNames[Key.ctrlO] = "Ctrl-O";
-    keyNames[Key.ctrlP] = "Ctrl-P";
-    keyNames[Key.ctrlQ] = "Ctrl-Q";
-    keyNames[Key.ctrlR] = "Ctrl-R";
-    keyNames[Key.ctrlS] = "Ctrl-S";
-    keyNames[Key.ctrlT] = "Ctrl-T";
-    keyNames[Key.ctrlU] = "Ctrl-U";
-    keyNames[Key.ctrlV] = "Ctrl-V";
-    keyNames[Key.ctrlW] = "Ctrl-W";
-    keyNames[Key.ctrlX] = "Ctrl-X";
-    keyNames[Key.ctrlY] = "Ctrl-Y";
-    keyNames[Key.ctrlZ] = "Ctrl-Z";
-    keyNames[Key.ctrlSpace] = "Ctrl-Space";
-    keyNames[Key.ctrlUnderscore] = "Ctrl-_";
-    keyNames[Key.ctrlRightSq] = "Ctrl-]";
-    keyNames[Key.ctrlBackslash] = "Ctrl-\\";
-    keyNames[Key.ctrlCarat] = "Ctrl-^";
 }
 
-/** 
+/**
  * Modifiers are special keys that when combined with other keys
  * change their meaning.
  */
@@ -288,6 +227,7 @@ enum Modifiers
     ctrl = 1 << 1,
     alt = 1 << 2,
     meta = 1 << 3,
+    hyper = 1 << 4,
 }
 
 /**
@@ -302,6 +242,14 @@ struct KeyEvent
     dstring toString() const pure
     {
         dstring s = "";
+        if (mod & Modifiers.ctrl)
+        {
+            s ~= "Ctrl-";
+        }
+        if (mod & Modifiers.shift)
+        {
+            s ~= "Shift-";
+        }
         if (mod & Modifiers.meta)
         {
             s ~= "Meta-";
@@ -310,6 +258,10 @@ struct KeyEvent
         {
             s ~= "Alt-";
         }
+        if (mod & Modifiers.hyper)
+        {
+            s ~= "Hyper-";
+        }
         dstring kn = "";
         if (key in keyNames)
         {
@@ -317,16 +269,22 @@ struct KeyEvent
         }
         else if (key == Key.rune)
         {
-            kn = [ch];
+            if (mod == Modifiers.none)
+            {
+                kn = [ch];
+            }
+            else if (ch == ' ')
+            {
+                kn = "Space";
+            }
+            else
+            {
+                kn = [ch.toUpper];
+            }
         }
         else
         {
-
             kn = format("Key[%02X]"d, key);
-        }
-        if ((mod & Modifiers.ctrl) && !startsWith(kn, "Ctrl-"))
-        {
-            s ~= "Ctrl-";
         }
 
         return s ~ kn;

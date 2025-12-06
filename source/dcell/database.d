@@ -177,26 +177,6 @@ synchronized class Database
             }
         }
 
-        // Amend some sequences for URXVT.
-        // It seems that urxvt at least send ESC as ALT prefix for these,
-        // although some places seem to indicate a separate ALT key sequence.
-        // Users are encouraged to update to an emulator that more closely
-        // matches xterm for better functionality.
-        if (tc.keyShfRight == "\x1b[c" && tc.keyShfLeft == "\x1b[d")
-        {
-            tc.keyShfUp = "\x1b[a";
-            tc.keyShfDown = "\x1b[b";
-            tc.keyCtrlUp = "\x1b[Oa";
-            tc.keyCtrlDown = "\x1b[Ob";
-            tc.keyCtrlRight = "\x1b[Oc";
-            tc.keyCtrlLeft = "\x1b[Od";
-        }
-        if (tc.keyShfHome == "\x1b[7$" && tc.keyShfEnd == "\x1b[8$")
-        {
-            tc.keyCtrlHome = "\x1b[7^";
-            tc.keyCtrlEnd = "\x1b[8^";
-        }
-
         // likewise, if we have mouse support, let's try to add backeted
         // paste support.
         return tc;
