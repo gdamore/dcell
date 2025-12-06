@@ -5,3 +5,6 @@
 .dub
 bin
 dub.selections.json
+.idea
+.nova
+.zed
