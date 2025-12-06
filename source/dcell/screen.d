@@ -1,7 +1,7 @@
 /**
  * Screen module for dcell provides the common interface for different implementations of KVM type devices.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -50,7 +50,6 @@ interface Screen
      */
     void opIndexAssign(Cell, size_t x, size_t y);
 
-
     /** Convenience for indexing. */
     final void opIndexAssign(Cell c, Coord pos)
     {
@@ -58,10 +57,14 @@ interface Screen
     }
 
     /** Support $ operation in indices. */
-    size_t opDollar(size_t dim)() {
-        static if (dim == 0) {
+    size_t opDollar(size_t dim)()
+    {
+        static if (dim == 0)
+        {
             return size().x;
-        } else {
+        }
+        else
+        {
             return size().y;
         }
     }
@@ -80,17 +83,6 @@ interface Screen
      *  cur = cursor style
      */
     void showCursor(Coord pos, Cursor cur = Cursor.current);
-
-    /**
-     * It would be nice to know if a given key is supported by
-     * a terminal.  Note that this is best-effort, and some terminals
-     * may present the ability to support a key, without actually having
-     * such a physical key and some combinations may be suppressed by
-     * the emulator or the environment the emulator runs in.
-     *
-     * Returns: true if the key appears to be supported on the terminal.
-     */
-    bool hasKey(Key);
 
     /**
      * Obtain the terminal window size.
@@ -127,6 +119,15 @@ interface Screen
      *   b = true to enable bracketed paste, false for disable
      */
     void enablePaste(bool b);
+
+    /**
+     * Enable focus reporting. This will cause focus events to be sent
+     * when the window focus changes.
+     *
+     * Params:
+     *   b = true to enable focus reporting, false to disable
+     */
+    void enableFocus(bool b);
 
     /**
      * Do we have a mouse? This may be overly optimistic for some

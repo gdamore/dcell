@@ -42,7 +42,6 @@ class TtyScreen : Screen
         ti = tt;
         ti.start();
         cells = new CellBuffer(ti.windowSize());
-        keys = ParseKeys(tc);
         ob = new OutBuffer();
         stopping = new Turnstile();
         defStyle.bg = Color.reset;
@@ -64,8 +63,8 @@ class TtyScreen : Screen
         puts(caps.clear);
         resize();
         draw();
-        spawn(&inputLoop, cast(shared TtyImpl) ti, keys, tid,
-                cast(shared EventQueue) eq, cast(shared Turnstile) stopping);
+        spawn(&inputLoop, cast(shared TtyImpl) ti, tid,
+            cast(shared EventQueue) eq, cast(shared Turnstile) stopping);
         started = true;
     }
 
@@ -92,6 +91,7 @@ class TtyScreen : Screen
         puts(caps.clear);
         puts(caps.disablePaste);
         enableMouse(MouseEnable.disable);
+        enableFocus(false);
         flush();
         stopping.set(true);
         ti.blocking(false);
@@ -212,11 +212,6 @@ class TtyScreen : Screen
         }
     }
 
-    bool hasKey(Key k) const pure
-    {
-        return (keys.hasKey(k));
-    }
-
     void enableMouse(MouseEnable en)
     {
         // we rely on the fact that all known implementations adhere
@@ -228,6 +223,12 @@ class TtyScreen : Screen
             mouseEn = en; // save this so we can restore after a suspend
             sendMouseEnable(en);
         }
+    }
+
+    void enableFocus(bool enabled)
+    {
+        puts("\x1b[?1004%s", enabled ? "h" : "l");
+        flush();
     }
 
     Event receiveEvent(Duration dur)
@@ -266,7 +267,6 @@ private:
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
-    ParseKeys keys;
     TtyImpl ti;
     OutBuffer ob;
     Turnstile stopping;
@@ -463,7 +463,7 @@ private:
         // that character in place, to avoid the scroll of doom.
         auto size = cells.size();
         if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && caps.automargin
-                && (caps.insertChar != ""))
+            && (caps.insertChar != ""))
         {
             auto pp = pos;
             pp.x--;
@@ -588,12 +588,11 @@ private:
         flush();
     }
 
-    static void inputLoop(shared TtyImpl tin, ParseKeys keys, Tid tid,
-            shared EventQueue eq, shared Turnstile stopping)
+    static void inputLoop(shared TtyImpl tin, Tid tid,
+        shared EventQueue eq, shared Turnstile stopping)
     {
         TtyImpl f = cast(TtyImpl) tin;
-        Parser p = new Parser(keys);
-        bool poll = false;
+        Parser p = new Parser();
 
         f.blocking(true);
 
@@ -607,7 +606,7 @@ private:
             catch (Exception e)
             {
             }
-            p.parse(s);
+            bool finished = p.parse(s);
             auto evs = p.events();
             if (f.resized())
             {
@@ -622,21 +621,17 @@ private:
                     send(ownerTid(), ev);
                 else
                 {
-                    import std.stdio;
-
                     eq.send(ev);
                 }
             }
-            if (!p.empty())
+            if (!p.empty() || !finished)
             {
                 f.blocking(false);
-                poll = true;
             }
             else
             {
                 // No data, so we can sleep until some arrives.
                 f.blocking(true);
-                poll = false;
             }
 
             if (stopping.get())

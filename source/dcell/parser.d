@@ -12,9 +12,12 @@
 module dcell.parser;
 
 import core.time;
+import std.algorithm : max;
 import std.ascii;
+import std.conv : to;
+import std.process : environment;
 import std.string;
-import std.utf;
+import std.utf : decode, UTFException;
 
 import dcell.event;
 import dcell.key;
@@ -29,308 +32,284 @@ struct KeyCode
     Modifiers mod;
 }
 
-struct ParseKeys
+struct CsiKey
 {
-
-    immutable bool[Key] exist;
-    immutable KeyCode[string] keys;
-    string pasteStart;
-    string pasteEnd;
-
-    this(const Termcap* caps)
-    {
-
-        bool[Key] ex;
-        KeyCode[string] kc;
-
-        void addKey(Key key, string val, Modifiers mod = Modifiers.none, Key replace = cast(Key) 0)
-        {
-            if (val == "")
-                return;
-            if ((val !in kc) || kc[val].key == replace)
-            {
-                ex[key] = true;
-                kc[val] = KeyCode(key, mod);
-            }
-        }
-
-        void addXTermKey(Key key, string val)
-        {
-            if (val.length > 2 && val[0] == '\x1b' && val[1] == '[' && val[$ - 1] == '~')
-            {
-                // These suffixes are calculated assuming Xterm style modifier suffixes.
-                // Please see https://invisible-island.net/xterm/ctlseqs/ctlseqs.pdf for
-                // more information (specifically "PC-Style Function Keys").
-                val = val[0 .. $ - 1]; // drop trailing ~
-                addKey(key, val ~ ";2~", Modifiers.shift, cast(Key)(key + 12));
-                addKey(key, val ~ ";3~", Modifiers.alt, cast(Key)(key + 48));
-                addKey(key, val ~ ";4~", Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
-                addKey(key, val ~ ";5~", Modifiers.ctrl, cast(Key)(key + 24));
-                addKey(key, val ~ ";6~", Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
-                addKey(key, val ~ ";7~", Modifiers.alt | Modifiers.ctrl);
-                addKey(key, val ~ ";8~", Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
-                addKey(key, val ~ ";9~", Modifiers.meta);
-                addKey(key, val ~ ";10~", Modifiers.meta | Modifiers.shift);
-                addKey(key, val ~ ";11~", Modifiers.meta | Modifiers.alt);
-                addKey(key, val ~ ";12~", Modifiers.meta | Modifiers.shift | Modifiers.alt);
-                addKey(key, val ~ ";13~", Modifiers.meta | Modifiers.ctrl);
-                addKey(key, val ~ ";14~", Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
-                addKey(key, val ~ ";15~", Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
-                addKey(key, val ~ ";16~",
-                    Modifiers.meta | Modifiers.ctrl | Modifiers.shift | Modifiers.alt);
-            }
-            else if (val.length == 3 && val[0] == '\x1b' && val[1] == 'O')
-            {
-                val = val[2 .. $];
-                addKey(key, "\x1b[1;2" ~ val, Modifiers.shift, cast(Key)(key + 12));
-                addKey(key, "\x1b[1;3" ~ val, Modifiers.alt, cast(Key)(key + 48));
-                addKey(key, "\x1b[1;5" ~ val, Modifiers.ctrl, cast(Key)(key + 24));
-                addKey(key, "\x1b[1;6" ~ val, Modifiers.ctrl | Modifiers.shift, cast(Key)(key + 36));
-                addKey(key, "\x1b[1;4" ~ val, Modifiers.alt | Modifiers.shift, cast(Key)(key + 60));
-                addKey(key, "\x1b[1;7" ~ val, Modifiers.alt | Modifiers.ctrl);
-                addKey(key, "\x1b[1;8" ~ val, Modifiers.shift | Modifiers.alt | Modifiers.ctrl);
-                addKey(key, "\x1b[1;9" ~ val, Modifiers.meta,);
-                addKey(key, "\x1b[1;10" ~ val, Modifiers.meta | Modifiers.shift);
-                addKey(key, "\x1b[1;11" ~ val, Modifiers.meta | Modifiers.alt);
-                addKey(key, "\x1b[1;12" ~ val, Modifiers.meta | Modifiers.alt | Modifiers.shift);
-                addKey(key, "\x1b[1;13" ~ val, Modifiers.meta | Modifiers.ctrl);
-                addKey(key, "\x1b[1;14" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.shift);
-                addKey(key, "\x1b[1;15" ~ val, Modifiers.meta | Modifiers.ctrl | Modifiers.alt);
-                addKey(key, "\x1b[1;16" ~ val,
-                    Modifiers.meta | Modifiers.ctrl | Modifiers.alt | Modifiers.shift);
-            }
-        }
-
-        void addXTermKeys(const Termcap* caps)
-        {
-            if (caps.keyShfRight != "\x1b[1;2C") // does this look "xtermish"?
-                return;
-            addXTermKey(Key.right, caps.keyRight);
-            addXTermKey(Key.left, caps.keyLeft);
-            addXTermKey(Key.up, caps.keyUp);
-            addXTermKey(Key.down, caps.keyDown);
-            addXTermKey(Key.insert, caps.keyInsert);
-            addXTermKey(Key.del, caps.keyDelete);
-            addXTermKey(Key.pgUp, caps.keyPgUp);
-            addXTermKey(Key.pgDn, caps.keyPgDn);
-            addXTermKey(Key.home, caps.keyHome);
-            addXTermKey(Key.end, caps.keyEnd);
-            addXTermKey(Key.f1, caps.keyF1);
-            addXTermKey(Key.f2, caps.keyF2);
-            addXTermKey(Key.f3, caps.keyF3);
-            addXTermKey(Key.f4, caps.keyF4);
-            addXTermKey(Key.f5, caps.keyF5);
-            addXTermKey(Key.f6, caps.keyF6);
-            addXTermKey(Key.f7, caps.keyF7);
-            addXTermKey(Key.f8, caps.keyF8);
-            addXTermKey(Key.f9, caps.keyF9);
-            addXTermKey(Key.f10, caps.keyF10);
-            addXTermKey(Key.f11, caps.keyF11);
-            addXTermKey(Key.f12, caps.keyF12);
-        }
-
-        void addCtrlKeys()
-        {
-            // we look briefly at all the keyCodes we
-            // have, to find their starting character.
-            // the vast majority of these will be escape.
-            bool[char] initials;
-            foreach (esc, _; kc)
-            {
-                if (esc != "")
-                    initials[esc[0]] = true;
-            }
-            // Add key mappings for control keys.
-            for (char i = 0; i < ' '; i++)
-            {
-
-                // If this is starting character (typically esc) of other sequences,
-                // then do not set up the fast path mapping for it.
-                // We need to let the read do the whole timeout thing.
-                if (i in initials)
-                    continue;
-
-                Key k = cast(Key) i;
-                ex[k] = true;
-                switch (k)
-                {
-                case Key.backspace, Key.tab, Key.esc, Key.enter:
-                    // these are directly typeable
-                    kc["" ~ i] = KeyCode(k, Modifiers.none);
-                    break;
-                default:
-                    // these are generally represented as a control sequence
-                    kc["" ~ i] = KeyCode(k, Modifiers.ctrl);
-                    break;
-                }
-            }
-
-        }
-
-        addKey(Key.backspace, caps.keyBackspace);
-        addKey(Key.f1, caps.keyF1);
-        addKey(Key.f2, caps.keyF2);
-        addKey(Key.f3, caps.keyF3);
-        addKey(Key.f4, caps.keyF4);
-        addKey(Key.f5, caps.keyF5);
-        addKey(Key.f6, caps.keyF6);
-        addKey(Key.f7, caps.keyF7);
-        addKey(Key.f8, caps.keyF8);
-        addKey(Key.f9, caps.keyF9);
-        addKey(Key.f10, caps.keyF10);
-        addKey(Key.f11, caps.keyF11);
-        addKey(Key.f12, caps.keyF12);
-        addKey(Key.f13, caps.keyF13);
-        addKey(Key.f14, caps.keyF14);
-        addKey(Key.f15, caps.keyF15);
-        addKey(Key.f16, caps.keyF16);
-        addKey(Key.f17, caps.keyF17);
-        addKey(Key.f18, caps.keyF18);
-        addKey(Key.f19, caps.keyF19);
-        addKey(Key.f20, caps.keyF20);
-        addKey(Key.f21, caps.keyF21);
-        addKey(Key.f22, caps.keyF22);
-        addKey(Key.f23, caps.keyF23);
-        addKey(Key.f24, caps.keyF24);
-        addKey(Key.f25, caps.keyF25);
-        addKey(Key.f26, caps.keyF26);
-        addKey(Key.f27, caps.keyF27);
-        addKey(Key.f28, caps.keyF28);
-        addKey(Key.f29, caps.keyF29);
-        addKey(Key.f30, caps.keyF30);
-        addKey(Key.f31, caps.keyF31);
-        addKey(Key.f32, caps.keyF32);
-        addKey(Key.f33, caps.keyF33);
-        addKey(Key.f34, caps.keyF34);
-        addKey(Key.f35, caps.keyF35);
-        addKey(Key.f36, caps.keyF36);
-        addKey(Key.f37, caps.keyF37);
-        addKey(Key.f38, caps.keyF38);
-        addKey(Key.f39, caps.keyF39);
-        addKey(Key.f40, caps.keyF40);
-        addKey(Key.f41, caps.keyF41);
-        addKey(Key.f42, caps.keyF42);
-        addKey(Key.f43, caps.keyF43);
-        addKey(Key.f44, caps.keyF44);
-        addKey(Key.f45, caps.keyF45);
-        addKey(Key.f46, caps.keyF46);
-        addKey(Key.f47, caps.keyF47);
-        addKey(Key.f48, caps.keyF48);
-        addKey(Key.f49, caps.keyF49);
-        addKey(Key.f50, caps.keyF50);
-        addKey(Key.f51, caps.keyF51);
-        addKey(Key.f52, caps.keyF52);
-        addKey(Key.f53, caps.keyF53);
-        addKey(Key.f54, caps.keyF54);
-        addKey(Key.f55, caps.keyF55);
-        addKey(Key.f56, caps.keyF56);
-        addKey(Key.f57, caps.keyF57);
-        addKey(Key.f58, caps.keyF58);
-        addKey(Key.f59, caps.keyF59);
-        addKey(Key.f60, caps.keyF60);
-        addKey(Key.f61, caps.keyF61);
-        addKey(Key.f62, caps.keyF62);
-        addKey(Key.f63, caps.keyF63);
-        addKey(Key.f64, caps.keyF64);
-        addKey(Key.insert, caps.keyInsert);
-        addKey(Key.del, caps.keyDelete);
-        addKey(Key.home, caps.keyHome);
-        addKey(Key.end, caps.keyEnd);
-        addKey(Key.up, caps.keyUp);
-        addKey(Key.down, caps.keyDown);
-        addKey(Key.left, caps.keyLeft);
-        addKey(Key.right, caps.keyRight);
-        addKey(Key.pgUp, caps.keyPgUp);
-        addKey(Key.pgDn, caps.keyPgDn);
-        addKey(Key.help, caps.keyHelp);
-        addKey(Key.print, caps.keyPrint);
-        addKey(Key.cancel, caps.keyCancel);
-        addKey(Key.exit, caps.keyExit);
-        addKey(Key.backtab, caps.keyBacktab);
-
-        addKey(Key.right, caps.keyShfRight, Modifiers.shift);
-        addKey(Key.left, caps.keyShfLeft, Modifiers.shift);
-        addKey(Key.up, caps.keyShfUp, Modifiers.shift);
-        addKey(Key.down, caps.keyShfDown, Modifiers.shift);
-        addKey(Key.home, caps.keyShfHome, Modifiers.shift);
-        addKey(Key.end, caps.keyShfEnd, Modifiers.shift);
-        addKey(Key.pgUp, caps.keyShfPgUp, Modifiers.shift);
-        addKey(Key.pgDn, caps.keyShfPgDn, Modifiers.shift);
-
-        addKey(Key.right, caps.keyCtrlRight, Modifiers.ctrl);
-        addKey(Key.left, caps.keyCtrlLeft, Modifiers.ctrl);
-        addKey(Key.up, caps.keyCtrlUp, Modifiers.ctrl);
-        addKey(Key.down, caps.keyCtrlDown, Modifiers.ctrl);
-        addKey(Key.home, caps.keyCtrlHome, Modifiers.ctrl);
-        addKey(Key.end, caps.keyCtrlEnd, Modifiers.ctrl);
-
-        // Sadly, xterm handling of keycodes is somewhat erratic.  In
-        // particular, different codes are sent depending on application
-        // mode is in use or not, and the entries for many of these are
-        // simply absent from terminfo on many systems.  So we insert
-        // a number of escape sequences if they are not already used, in
-        // order to have the widest correct usage.  Note that prepareKey
-        // will not inject codes if the escape sequence is already known.
-        // We also only do this for terminals that have the application
-        // mode present.
-
-        if (caps.enterKeypad != "")
-        {
-            addKey(Key.up, "\x1b[A");
-            addKey(Key.down, "\x1b[B");
-            addKey(Key.right, "\x1b[C");
-            addKey(Key.left, "\x1b[D");
-            addKey(Key.end, "\x1b[F");
-            addKey(Key.home, "\x1b[H");
-            addKey(Key.del2, "\x1b[3~");
-            addKey(Key.home, "\x1b[1~");
-            addKey(Key.end, "\x1b[4~");
-            addKey(Key.pgUp, "\x1b[5~");
-            addKey(Key.pgDn, "\x1b[6~");
-
-            // Application mode
-            addKey(Key.up, "\x1bOA");
-            addKey(Key.down, "\x1bOB");
-            addKey(Key.right, "\x1bOC");
-            addKey(Key.left, "\x1bOD");
-            addKey(Key.home, "\x1bOH");
-        }
-
-        addXTermKeys(caps);
-
-        pasteStart = caps.pasteStart;
-        pasteEnd = caps.pasteEnd;
-
-        addCtrlKeys(); // do this one last
-
-        // if DELETE didn't make it at 0x7F, add it - seems to be missing
-        // from some of the sequences.
-        addKey(Key.del2, "\x7F");
-
-        exist = cast(immutable(bool[Key])) ex;
-        keys = cast(immutable(KeyCode[string])) kc;
-
-    }
-
-    bool hasKey(Key k) const pure
-    {
-        if (k == Key.rune)
-        {
-            return true;
-        }
-        return (k in exist ? true : false);
-    }
+    char M; // Mode
+    int P; // Parameter (first)
 }
+
+// Fixed set of keys that are returned as CSI sequences (apart from Csi-U and Csi-_)
+// All terminals we support use some of these, and they do not overlap/collide.
+immutable KeyCode[CsiKey] csiAllKeys = [
+    CsiKey('A'): KeyCode(Key.up),
+    CsiKey('B'): KeyCode(Key.down),
+    CsiKey('C'): KeyCode(Key.right),
+    CsiKey('D'): KeyCode(Key.left),
+    CsiKey('F'): KeyCode(Key.end),
+    CsiKey('H'): KeyCode(Key.home),
+    CsiKey('L'): KeyCode(Key.insert),
+    CsiKey('P'): KeyCode(Key.f1),
+    CsiKey('Q'): KeyCode(Key.f2),
+    CsiKey('S'): KeyCode(Key.f4),
+    CsiKey('Z'): KeyCode(Key.backtab),
+    CsiKey('a'): KeyCode(Key.up, Modifiers.shift),
+    CsiKey('b'): KeyCode(Key.down, Modifiers.shift),
+    CsiKey('c'): KeyCode(Key.right, Modifiers.shift),
+    CsiKey('d'): KeyCode(Key.left, Modifiers.shift),
+    CsiKey('q', 1): KeyCode(Key.f1), // all these 'q' are for aixterm
+    CsiKey('q', 2): KeyCode(Key.f2),
+    CsiKey('q', 3): KeyCode(Key.f3),
+    CsiKey('q', 4): KeyCode(Key.f4),
+    CsiKey('q', 5): KeyCode(Key.f5),
+    CsiKey('q', 6): KeyCode(Key.f6),
+    CsiKey('q', 7): KeyCode(Key.f7),
+    CsiKey('q', 8): KeyCode(Key.f8),
+    CsiKey('q', 9): KeyCode(Key.f9),
+    CsiKey('q', 10): KeyCode(Key.f10),
+    CsiKey('q', 11): KeyCode(Key.f11),
+    CsiKey('q', 12): KeyCode(Key.f12),
+    CsiKey('q', 13): KeyCode(Key.f13),
+    CsiKey('q', 14): KeyCode(Key.f14),
+    CsiKey('q', 15): KeyCode(Key.f15),
+    CsiKey('q', 16): KeyCode(Key.f16),
+    CsiKey('q', 17): KeyCode(Key.f17),
+    CsiKey('q', 18): KeyCode(Key.f18),
+    CsiKey('q', 19): KeyCode(Key.f19),
+    CsiKey('q', 20): KeyCode(Key.f20),
+    CsiKey('q', 21): KeyCode(Key.f21),
+    CsiKey('q', 22): KeyCode(Key.f22),
+    CsiKey('q', 23): KeyCode(Key.f23),
+    CsiKey('q', 24): KeyCode(Key.f24),
+    CsiKey('q', 25): KeyCode(Key.f25),
+    CsiKey('q', 26): KeyCode(Key.f26),
+    CsiKey('q', 27): KeyCode(Key.f27),
+    CsiKey('q', 28): KeyCode(Key.f28),
+    CsiKey('q', 29): KeyCode(Key.f29),
+    CsiKey('q', 30): KeyCode(Key.f30),
+    CsiKey('q', 31): KeyCode(Key.f31),
+    CsiKey('q', 32): KeyCode(Key.f32),
+    CsiKey('q', 33): KeyCode(Key.f33),
+    CsiKey('q', 34): KeyCode(Key.f34),
+    CsiKey('q', 35): KeyCode(Key.f35),
+    CsiKey('q', 36): KeyCode(Key.f36),
+    CsiKey('q', 144): KeyCode(Key.clear),
+    CsiKey('q', 146): KeyCode(Key.end),
+    CsiKey('q', 150): KeyCode(Key.pgUp),
+    CsiKey('q', 154): KeyCode(Key.pgDn),
+    CsiKey('z', 214): KeyCode(Key.home),
+    CsiKey('z', 216): KeyCode(Key.pgUp),
+    CsiKey('z', 220): KeyCode(Key.end),
+    CsiKey('z', 222): KeyCode(Key.pgDn),
+    CsiKey('z', 224): KeyCode(Key.f1),
+    CsiKey('z', 225): KeyCode(Key.f2),
+    CsiKey('z', 226): KeyCode(Key.f3),
+    CsiKey('z', 227): KeyCode(Key.f4),
+    CsiKey('z', 228): KeyCode(Key.f5),
+    CsiKey('z', 229): KeyCode(Key.f6),
+    CsiKey('z', 230): KeyCode(Key.f7),
+    CsiKey('z', 231): KeyCode(Key.f8),
+    CsiKey('z', 232): KeyCode(Key.f9),
+    CsiKey('z', 233): KeyCode(Key.f10),
+    CsiKey('z', 234): KeyCode(Key.f11),
+    CsiKey('z', 235): KeyCode(Key.f12),
+    CsiKey('z', 247): KeyCode(Key.insert),
+    CsiKey('^', 1): KeyCode(Key.home, Modifiers.ctrl),
+    CsiKey('^', 2): KeyCode(Key.insert, Modifiers.ctrl),
+    CsiKey('^', 3): KeyCode(Key.del, Modifiers.ctrl),
+    CsiKey('^', 4): KeyCode(Key.end, Modifiers.ctrl),
+    CsiKey('^', 5): KeyCode(Key.pgUp, Modifiers.ctrl),
+    CsiKey('^', 6): KeyCode(Key.pgDn, Modifiers.ctrl),
+    CsiKey('^', 7): KeyCode(Key.home, Modifiers.ctrl),
+    CsiKey('^', 8): KeyCode(Key.end, Modifiers.ctrl),
+    CsiKey('^', 11): KeyCode(Key.f23),
+    CsiKey('^', 12): KeyCode(Key.f24),
+    CsiKey('^', 13): KeyCode(Key.f25),
+    CsiKey('^', 14): KeyCode(Key.f26),
+    CsiKey('^', 15): KeyCode(Key.f27),
+    CsiKey('^', 17): KeyCode(Key.f28), // 16 is a gap
+    CsiKey('^', 18): KeyCode(Key.f29),
+    CsiKey('^', 19): KeyCode(Key.f30),
+    CsiKey('^', 20): KeyCode(Key.f31),
+    CsiKey('^', 21): KeyCode(Key.f32),
+    CsiKey('^', 23): KeyCode(Key.f33), // 22 is a gap
+    CsiKey('^', 24): KeyCode(Key.f34),
+    CsiKey('^', 25): KeyCode(Key.f35),
+    CsiKey('^', 26): KeyCode(Key.f36),
+    CsiKey('^', 28): KeyCode(Key.f37), // 27 is a gap
+    CsiKey('^', 29): KeyCode(Key.f38),
+    CsiKey('^', 31): KeyCode(Key.f39), // 30 is a gap
+    CsiKey('^', 32): KeyCode(Key.f40),
+    CsiKey('^', 33): KeyCode(Key.f41),
+    CsiKey('^', 34): KeyCode(Key.f42),
+    CsiKey('@', 23): KeyCode(Key.f43),
+    CsiKey('@', 24): KeyCode(Key.f44),
+    CsiKey('@', 1): KeyCode(Key.home, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 2): KeyCode(Key.insert, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 3): KeyCode(Key.del, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 4): KeyCode(Key.end, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 5): KeyCode(Key.pgUp, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 6): KeyCode(Key.pgDn, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 7): KeyCode(Key.home, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('@', 8): KeyCode(Key.end, Modifiers.shift | Modifiers.ctrl),
+    CsiKey('$', 1): KeyCode(Key.home, Modifiers.shift),
+    CsiKey('$', 2): KeyCode(Key.insert, Modifiers.shift),
+    CsiKey('$', 3): KeyCode(Key.del, Modifiers.shift),
+    CsiKey('$', 4): KeyCode(Key.end, Modifiers.shift),
+    CsiKey('$', 5): KeyCode(Key.pgUp, Modifiers.shift),
+    CsiKey('$', 6): KeyCode(Key.pgDn, Modifiers.shift),
+    CsiKey('$', 7): KeyCode(Key.home, Modifiers.shift),
+    CsiKey('$', 8): KeyCode(Key.end, Modifiers.shift),
+    CsiKey('$', 23): KeyCode(Key.f21),
+    CsiKey('$', 24): KeyCode(Key.f22),
+    CsiKey('~', 1): KeyCode(Key.home),
+    CsiKey('~', 2): KeyCode(Key.insert),
+    CsiKey('~', 3): KeyCode(Key.del),
+    CsiKey('~', 4): KeyCode(Key.end),
+    CsiKey('~', 5): KeyCode(Key.pgUp),
+    CsiKey('~', 6): KeyCode(Key.pgDn),
+    CsiKey('~', 7): KeyCode(Key.home),
+    CsiKey('~', 8): KeyCode(Key.end),
+    CsiKey('~', 11): KeyCode(Key.f1),
+    CsiKey('~', 12): KeyCode(Key.f2),
+    CsiKey('~', 13): KeyCode(Key.f3),
+    CsiKey('~', 14): KeyCode(Key.f4),
+    CsiKey('~', 15): KeyCode(Key.f5),
+    CsiKey('~', 16): KeyCode(Key.f6),
+    CsiKey('~', 18): KeyCode(Key.f7),
+    CsiKey('~', 19): KeyCode(Key.f8),
+    CsiKey('~', 20): KeyCode(Key.f9),
+    CsiKey('~', 21): KeyCode(Key.f10),
+    CsiKey('~', 23): KeyCode(Key.f11),
+    CsiKey('~', 24): KeyCode(Key.f12),
+    CsiKey('~', 25): KeyCode(Key.f13),
+    CsiKey('~', 26): KeyCode(Key.f14),
+    CsiKey('~', 28): KeyCode(Key.f15),
+    CsiKey('~', 29): KeyCode(Key.f16),
+    CsiKey('~', 31): KeyCode(Key.f17),
+    CsiKey('~', 32): KeyCode(Key.f18),
+    CsiKey('~', 33): KeyCode(Key.f19),
+    CsiKey('~', 34): KeyCode(Key.f20),
+    // CsiKey('~', 200): KeyCode(keyPasteStart),
+    // CsiKey('~', 201): KeyCode(keyPasteEnd),
+];
+
+// keys by their SS3 - used in application mode usually (legacy VT-style)
+immutable KeyCode[char] ss3Keys = [
+    'A': KeyCode(Key.up),
+    'B': KeyCode(Key.down),
+    'C': KeyCode(Key.right),
+    'D': KeyCode(Key.left),
+    'F': KeyCode(Key.end),
+    'H': KeyCode(Key.home),
+    'P': KeyCode(Key.f1),
+    'Q': KeyCode(Key.f2),
+    'R': KeyCode(Key.f3),
+    'S': KeyCode(Key.f4),
+    't': KeyCode(Key.f5),
+    'u': KeyCode(Key.f6),
+    'v': KeyCode(Key.f7),
+    'l': KeyCode(Key.f8),
+    'w': KeyCode(Key.f9),
+    'x': KeyCode(Key.f10),
+];
+
+// linux terminal uses these non ECMA keys prefixed by CSI-[
+immutable KeyCode[char] linuxFKeys = [
+    'A': KeyCode(Key.f1),
+    'B': KeyCode(Key.f2),
+    'C': KeyCode(Key.f3),
+    'D': KeyCode(Key.f4),
+    'E': KeyCode(Key.f5),
+];
+
+immutable KeyCode[int] csiUKeys = [
+    27: KeyCode(Key.esc),
+    9: KeyCode(Key.tab),
+    13: KeyCode(Key.enter),
+    127: KeyCode(Key.backspace),
+    // 57_358: KeyCode(KeyCapsLock),
+    // 57_359: KeyCode(KeyScrollLock),
+    // 57_360: KeyCode(KeyNumLock),
+    57_361: KeyCode(Key.print),
+    57_362: KeyCode(Key.pause),
+    // 57_363: KeyCode(Key.menu),
+    57_376: KeyCode(Key.f13),
+    57_377: KeyCode(Key.f14),
+    57_378: KeyCode(Key.f15),
+    57_379: KeyCode(Key.f16),
+    57_380: KeyCode(Key.f17),
+    57_381: KeyCode(Key.f18),
+    57_382: KeyCode(Key.f19),
+    57_383: KeyCode(Key.f20),
+    57_384: KeyCode(Key.f21),
+    57_385: KeyCode(Key.f22),
+    57_386: KeyCode(Key.f23),
+    57_387: KeyCode(Key.f24),
+    57_388: KeyCode(Key.f25),
+    57_389: KeyCode(Key.f26),
+    57_390: KeyCode(Key.f27),
+    57_391: KeyCode(Key.f28),
+    57_392: KeyCode(Key.f29),
+    57_393: KeyCode(Key.f30),
+    57_394: KeyCode(Key.f31),
+    57_395: KeyCode(Key.f32),
+    57_396: KeyCode(Key.f33),
+    57_397: KeyCode(Key.f34),
+    57_398: KeyCode(Key.f35),
+    // TODO: KP keys
+    // TODO: Media keys
+];
+
+// windows virtual key codes per microsoft
+immutable KeyCode[int] winKeys = [
+    0x03: KeyCode(Key.cancel), // vkCancel
+    0x08: KeyCode(Key.backspace), // vkBackspace
+    0x09: KeyCode(Key.tab), // vkTab
+    0x0d: KeyCode(Key.enter), // vkReturn
+    0x12: KeyCode(Key.clear), // vClear
+    0x13: KeyCode(Key.pause), // vkPause
+    0x1b: KeyCode(Key.esc), // vkEscape
+    0x21: KeyCode(Key.pgUp), // vkPrior
+    0x22: KeyCode(Key.pgDn), // vkNext
+    0x23: KeyCode(Key.end), // vkEnd
+    0x24: KeyCode(Key.home), // vkHome
+    0x25: KeyCode(Key.left), // vkLeft
+    0x26: KeyCode(Key.up), // vkUp
+    0x27: KeyCode(Key.right), // vkRight
+    0x28: KeyCode(Key.down), // vkDown
+    0x2a: KeyCode(Key.print), // vkPrint
+    0x2c: KeyCode(Key.print), // vkPrtScr
+    0x2d: KeyCode(Key.insert), // vkInsert
+    0x2e: KeyCode(Key.del), // vkDelete
+    0x2f: KeyCode(Key.help), // vkHelp
+    0x70: KeyCode(Key.f1), // vkF1
+    0x71: KeyCode(Key.f2), // vkF2
+    0x72: KeyCode(Key.f3), // vkF3
+    0x73: KeyCode(Key.f4), // vkF4
+    0x74: KeyCode(Key.f5), // vkF5
+    0x75: KeyCode(Key.f6), // vkF6
+    0x76: KeyCode(Key.f7), // vkF7
+    0x77: KeyCode(Key.f8), // vkF8
+    0x78: KeyCode(Key.f9), // vkF9
+    0x79: KeyCode(Key.f10), // vkF10
+    0x7a: KeyCode(Key.f11), // vkF11
+    0x7b: KeyCode(Key.f12), // vkF12
+    0x7c: KeyCode(Key.f13), // vkF13
+    0x7d: KeyCode(Key.f14), // vkF14
+    0x7e: KeyCode(Key.f15), // vkF15
+    0x7f: KeyCode(Key.f16), // vkF16
+    0x80: KeyCode(Key.f17), // vkF17
+    0x81: KeyCode(Key.f18), // vkF18
+    0x82: KeyCode(Key.f19), // vkF19
+    0x83: KeyCode(Key.f20), // vkF20
+    0x84: KeyCode(Key.f21), // vkF21
+    0x85: KeyCode(Key.f22), // vkF22
+    0x86: KeyCode(Key.f23), // vkF23
+    0x87: KeyCode(Key.f24), // vkF24
+];
 
 class Parser
 {
-
-    this(const ParseKeys pk)
-    {
-        keyCodes = pk.keys;
-        pasteStart = pk.pasteStart;
-        pasteEnd = pk.pasteEnd;
-    }
 
     Event[] events() pure
     {
@@ -341,54 +320,9 @@ class Parser
 
     bool parse(string b)
     {
-        auto now = MonoTime.currTime();
-        if (b.length != 0)
-        {
-            // if we are adding to it, restart the timer
-            keyStart = now;
-        }
         buf ~= b;
-
-        while (buf.length != 0)
-        {
-            partial = false;
-
-            // we have to parse the paste bit first
-            if (parsePaste() || parseRune() || parseFnKey() || parseSgrMouse())
-            {
-                keyStart = now;
-                continue;
-            }
-            auto expire = ((now - keyStart) > seqTime);
-
-            if (!partial || expire)
-            {
-                if (buf[0] == '\x1b')
-                {
-                    if (buf.length == 1)
-                    {
-                        evs ~= newKeyEvent(Key.esc);
-                        escaped = false;
-                    }
-                    else
-                    {
-                        escaped = true;
-                    }
-                    buf = buf[1 .. $];
-                    keyStart = now;
-                    continue;
-                }
-                // no matches or timeout waiting for data, yank off the first byte
-                evs ~= newKeyEvent(Key.rune, buf[0], escaped ? Modifiers.alt : Modifiers.none);
-                escaped = false;
-                keyStart = now;
-                continue;
-            }
-            // we must have partial data, so wait and come back in a bit
-            return false;
-        }
-
-        return true;
+        scan();
+        return parseState == ParseState.ini;
     }
 
     bool empty() const pure
@@ -397,10 +331,36 @@ class Parser
     }
 
 private:
+    enum ParseState
+    {
+        ini, // initial state
+        esc, // escaped
+        utf, // inside a UTF-8
+        csi, // control sequence introducer
+        osc, // operating system command
+        dcs, // device control string
+        sos, // start of string (unused)
+        pm, // privacy message (unused)
+        apc, // application program command
+        str, // string terminator
+        ss2, // single shift 2
+        ss3, // single shift 3
+        lnx, // linux F-key (not ECMA-48 compliant - bogus CSI)
+    }
+
+    ParseState parseState;
+    ParseState strState;
+    Parser nested; // nested parser, required for Windows key processing with 3rd party terminals
+    string csiParams;
+    string csiInterm;
+    string scratch;
 
     bool escaped;
     ubyte[] buf;
+    ubyte[] accum;
     Event[] evs;
+    int utfLen; // how many UTF bytes are expected
+    ubyte escChar; // character immediately following escape (zero if none)
     const KeyCode[string] keyCodes;
     bool partial; // record partially parsed sequences
     MonoTime keyStart; // when the timer started
@@ -412,11 +372,751 @@ private:
     string pasteStart;
     string pasteEnd;
 
+    void postKey(Key k, dchar dch, Modifiers mod)
+    {
+        if (pasting)
+        {
+            if (dch != 0)
+            {
+                pasteBuf ~= dch;
+            }
+        }
+        else
+        {
+            evs ~= newKeyEvent(k, dch, mod);
+        }
+    }
+
+    void scan()
+    {
+        while (!buf.empty)
+        {
+            ubyte ch = buf[0];
+            buf = buf[1 .. $];
+            escChar = 0;
+
+            final switch (parseState)
+            {
+            case ParseState.utf:
+                accum ~= ch;
+                if (accum.length >= utfLen)
+                {
+                    parseState = ParseState.ini;
+                    size_t index = 0;
+                    dchar dch = decode(cast(string) accum, index);
+                    accum = null;
+                    postKey(Key.rune, dch, Modifiers.none);
+                }
+                break;
+            case ParseState.ini:
+                if (ch >= 0x80)
+                {
+                    accum = null;
+                    parseState = ParseState.utf;
+                    accum ~= ch;
+                    if ((ch & 0xE0) == 0xC0)
+                    {
+                        utfLen = 2;
+                    }
+                    else if ((ch & 0xF0) == 0xE0)
+                    {
+                        utfLen = 3;
+                    }
+                    else if ((ch & 0xF0) == 0xF0)
+                    {
+                        utfLen = 4;
+                    }
+                    else
+                    {
+                        // garbled - got a non-leading byte (e.g. 0x80 through 0xBF)
+                        parseState = ParseState.ini;
+                        accum = null;
+                    }
+                    continue;
+                }
+                switch (ch)
+                {
+                case '\x1b':
+                    parseState = ParseState.esc;
+                    keyStart = MonoTime.currTime();
+                    continue;
+                case '\t':
+                    postKey(Key.tab, ch, Modifiers.none);
+                    break;
+                case '\b', '\x7F':
+                    postKey(Key.backspace, ch, Modifiers.none);
+                    break;
+                case '\n', '\r':
+                    // will be converted by postKey
+                    postKey(Key.enter, ch, Modifiers.none);
+                    break;
+                default:
+                    // simple runes
+                    if (ch >= ' ')
+                    {
+                        postKey(Key.rune, ch, Modifiers.none);
+                    }
+                    // Control keys below here - legacy handling
+                    else if (ch == 0)
+                    {
+                        postKey(Key.rune, ' ', Modifiers.ctrl);
+                    }
+                    else if (ch < '\x1b')
+                    {
+                        postKey(Key.rune, ch + 0x60, Modifiers.ctrl);
+                    }
+                    else
+                    {
+                        // control keys
+                        postKey(Key.rune, ch + 0x40, Modifiers.ctrl);
+                    }
+                    break;
+                }
+                break;
+            case ParseState.esc:
+                switch (ch)
+                {
+                case '[':
+                    parseState = ParseState.csi;
+                    csiInterm = null;
+                    csiParams = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case ']':
+                    parseState = ParseState.osc;
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case 'N':
+                    parseState = ParseState.ss2; // no known uses
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case 'O':
+                    parseState = ParseState.ss3;
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case 'X':
+                    parseState = ParseState.sos;
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case '^':
+                    parseState = ParseState.pm;
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case '_':
+                    parseState = ParseState.apc;
+                    scratch = null;
+                    escChar = ch; // save the escChar, it might be just esc as alt
+                    break;
+                case '\\': // string terminator reached, (orphaned?)
+                    parseState = ParseState.ini;
+                    break;
+                case '\t': // Linux console only, does not conform to ECMA
+                    parseState = ParseState.ini;
+                    postKey(Key.backtab, 0, Modifiers.none);
+                    break;
+                case '\x1b':
+                    // leading ESC to capture alt
+                    escaped = true;
+                    break;
+                default:
+                    // treat as alt-key ... legacy emulators only (no CSI-u or other)
+                    parseState = parseState.ini;
+                    escaped = false;
+                    if (ch >= ' ')
+                    {
+                        postKey(Key.rune, ch, Modifiers.meta);
+                    }
+                    else if (ch < '\x1b')
+                    {
+                        postKey(Key.rune, ch + 0x60, Modifiers.meta | Modifiers.ctrl);
+                    }
+                    else
+                    {
+                        postKey(Key.rune, ch + 0x40, Modifiers.meta | Modifiers.ctrl);
+                    }
+                }
+                break;
+            case ParseState.ss2:
+                // no known uses
+                parseState = ParseState.ini;
+                break;
+            case ParseState.ss3:
+                parseState = ParseState.ini;
+                if (ch in ss3Keys)
+                {
+                    auto k = ss3Keys[ch];
+                    postKey(k.key, 0, k.mod);
+                }
+                break;
+
+            case ParseState.apc, ParseState.pm, ParseState.sos, ParseState.dcs: // these we just eat
+                switch (ch)
+                {
+                case '\x1b':
+                    strState = parseState;
+                    parseState = ParseState.str;
+                    break;
+                case '\x07': // bell - some send this instead of ST
+                    parseState = ParseState.ini;
+                    break;
+                default:
+                    break;
+                }
+                break;
+            case ParseState.osc: // not sure if used
+                switch (ch)
+                {
+                case '\x1b':
+                    strState = parseState;
+                    parseState = ParseState.str;
+                    break;
+                case '\x07':
+                    handleOsc();
+                    break;
+                default:
+                    scratch ~= (ch & 0x7F);
+                    break;
+                }
+                break;
+            case ParseState.str:
+                if (ch == '\\' || ch == '\x07')
+                {
+                    parseState = ParseState.ini;
+                    if (strState == ParseState.osc)
+                    {
+                        handleOsc();
+                    }
+                    else
+                    {
+                        parseState = ParseState.ini;
+                    }
+                }
+                else
+                {
+                    scratch ~= '\x1b';
+                    scratch ~= ch;
+                    parseState = strState;
+                }
+                break;
+            case ParseState.lnx:
+                if (ch in linuxFKeys)
+                {
+                    auto k = linuxFKeys[ch];
+                    postKey(k.key, 0, Modifiers.none);
+                }
+                parseState = ParseState.ini;
+                break;
+
+            case ParseState.csi:
+                // usual case for incoming keys
+                // NB: rxvt uses terminating '$' which is not a legal CSI terminator,
+                // for certain shifted key sequences.  We special case this, and it's ok
+                // because no other terminal seems to use this for CSI intermediates from
+                // the terminal to the host (queries in the other direction can use it.)
+                if (ch >= 0x30 && ch <= 0x3F)
+                { // parameter bytes
+                    csiParams ~= ch;
+                }
+                else if (ch == '$' && !csiParams.empty)
+                {
+                    // rxvt $ terminator (not technically legal)
+                    handleCsi(ch, csiParams, csiInterm);
+                }
+                else if ((ch >= 0x20) && (ch <= 0x2F))
+                {
+                    // intermediate bytes, rarely used
+                    csiInterm ~= ch;
+                }
+                else if (ch >= 0x40 && ch <= 0x7F)
+                {
+                    // final byte
+                    handleCsi(ch, csiParams, csiInterm);
+                }
+                else
+                {
+                    // bad parse, just swallow it all
+                    parseState = ParseState.ini;
+                }
+                break;
+            }
+        }
+
+        auto now = MonoTime.currTime();
+        if ((now - keyStart) > seqTime)
+        {
+            if (parseState == ParseState.esc)
+            {
+                postKey(Key.esc, '\x1b', Modifiers.none);
+                parseState = ParseState.ini;
+            }
+            else if (escChar != 0)
+            {
+                postKey(Key.rune, escChar, Modifiers.alt);
+                escChar = 0;
+                parseState = ParseState.ini;
+            }
+        }
+    }
+
+    void handleOsc()
+    {
+        // TODO: OSC 52 is for clipboard
+        //   	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
+        // 	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
+        // 	if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
+        // 		ip.post(NewEventClipboard(decoded[:count]))
+        // 		return
+        // 	}
+        // }
+
+        // string is located in scratch.
+        parseState = ParseState.ini;
+    }
+
+    void handleCsi(ubyte mode, string params, string interm)
+    {
+        parseState = ParseState.ini;
+
+        if (!interm.empty)
+        {
+            // we don't know what to do with these for now
+            return;
+        }
+
+        auto hasLT = false;
+        int plen, p0, p1, p2, p3, p4, p5;
+
+        // extract numeric parameters
+        if (!params.empty && params[0] == '<')
+        {
+            hasLT = true;
+            params = params[1 .. $];
+        }
+        if ((!params.empty) && params[0] >= '0' && params[0] <= '9')
+        {
+            int[6] pints;
+            string[] parts = split(params, ";");
+            plen = cast(int) parts.length;
+            foreach (i, ps; parts)
+            {
+                if (i < 6 && !ps.empty)
+                {
+                    try
+                    {
+                        pints[i] = ps.to!int;
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
+
+            // None of the use cases use care about have more than three parameters.
+            p0 = pints[0];
+            p1 = pints[1];
+            p2 = pints[2];
+            p3 = pints[3];
+            p4 = pints[4];
+            p5 = pints[5];
+        }
+
+        // leading less than is only used for mouse reports.
+        if (hasLT)
+        {
+            if (mode == 'm' || mode == 'M')
+            {
+                handleMouse(mode, p0, p1, p2);
+            }
+            return;
+        }
+
+        switch (mode)
+        {
+        case 'I': // focus in
+            evs ~= newFocusEvent(true);
+            return;
+        case 'O': // focus out
+            evs ~= newFocusEvent(false);
+            return;
+        case '[': // linux console F-key - CSI-[ modifies next key
+            parseState = ParseState.lnx;
+            return;
+        case 'u': // CSI-u kitty keyboard protocol
+            if (plen > 0)
+            {
+                Modifiers mod = Modifiers.none;
+                Key key = Key.rune;
+                dchar chr = 0;
+                if (p0 in csiUKeys)
+                {
+                    auto k = csiUKeys[p0];
+                    key = k.key;
+                }
+                else
+                {
+                    chr = cast(dchar) p0;
+                }
+
+                evs ~= newKeyEvent(key, chr, plen > 1 ? calcModifier(p1) : Modifiers.none);
+            }
+            return;
+
+        case '_':
+            if (plen > 0)
+            {
+                handleWinKey(p0, p1, p2, p3, p4, p5);
+            }
+            return;
+
+        case 't':
+            // if (P.length == 3 && P[0] == 8)
+            // {
+            //     // window size report
+            //     auto h = p1;
+            //     auto w = p2;
+            //     if (h != rows || w != cols)
+            //     {
+            //         setSize(w, h);
+            //     }
+            // }
+            return;
+
+        case '~':
+
+            // look for modified keys (note that unmodified keys are handled below)
+            auto ck = CsiKey(mode, p0);
+            auto mod = plen > 1 ? calcModifier(p1) : Modifiers.none;
+
+            if (ck in csiAllKeys)
+            {
+                auto kc = csiAllKeys[ck];
+                evs ~= newKeyEvent(kc.key, 0, mod);
+                return;
+            }
+
+            // this might be XTerm modifyOtherKeys protocol
+            // CSI 27; modifiers; chr; ~
+            if (p0 == 27 && p2 > 0 && p2 <= 0xff)
+            {
+                if (p2 < ' ' || p2 == 0x7F)
+                {
+                    evs ~= newKeyEvent(cast(Key) p2, 0, mod);
+                }
+                else
+                {
+                    evs ~= newKeyEvent(Key.rune, p2, mod);
+                }
+                return;
+            }
+
+            if (p0 == 200) {
+                pasting = true;
+                pasteBuf = null;
+            } else if (p0 == 201) {
+                if (pasting) {
+                    evs ~= newPasteEvent(pasteBuf);
+                    pasting = false;
+                    pasteBuf = null;
+                }
+            }
+
+            break;
+
+        case 'P':
+            // aixterm uses this for KeyDelete, but it is F1 for others
+            if (environment.get("TERM") == "aixterm")
+            {
+                evs ~= newKeyEvent(Key.del, 0, Modifiers.none);
+                return;
+            }
+            // other cases we use the lookup (P is an SS3 key)
+            goto default;
+
+        default:
+
+            if ((mode in ss3Keys) && p0 == 1 && plen > 1)
+            {
+                auto kc = ss3Keys[mode];
+                evs ~= newKeyEvent(kc.key, 0, calcModifier(p1));
+            }
+            else
+            {
+                auto ck = CsiKey(mode, p0);
+                if (ck in csiAllKeys)
+                {
+                    auto kc = csiAllKeys[ck];
+                    evs ~= newKeyEvent(kc.key, 0, kc.mod);
+                }
+            }
+            return;
+        }
+    }
+
+    void handleMouse(ubyte mode, int p0, int p1, int p2)
+    {
+        // XTerm mouse events only report at most one button at a time,
+        // which may include a wheel button.  Wheel motion events are
+        // reported as single impulses, while other button events are reported
+        // as separate press & release events.
+        //
+        auto btn = p0;
+        auto x = p1 - 1;
+        auto y = p2 - 1;
+        bool motion = (btn & 0x20) != 0;
+        bool scroll = (btn & 0x42) == 0x40;
+        btn &= ~0x20;
+        if (mode == 'm')
+        {
+            // mouse release, clear all buttons
+            btn |= 0x03;
+            btn &= ~0x40;
+            buttonDown = false;
+        }
+        else if (motion)
+        {
+            // Some broken terminals appear to send
+            // mouse button one motion events, instead of
+            // encoding 35 (no buttons) into these events.
+            // We resolve these by looking for a non-motion
+            // event first.
+            if (!buttonDown)
+            {
+                btn |= 0x03;
+                btn &= ~0x40;
+            }
+        }
+        else if (!scroll)
+        {
+            buttonDown = true;
+        }
+
+        auto button = Buttons.none;
+        auto mod = Modifiers.none;
+
+        // Mouse wheel has bit 6 set, no release events.  It should be noted
+        // that wheel events are sometimes misdelivered as mouse button events
+        // during a click-drag, so we debounce these, considering them to be
+        // button press events unless we see an intervening release event.
+        final switch (btn & 0x43)
+        {
+        case 0:
+            button = Buttons.button1;
+            break;
+        case 1:
+            button = Buttons.button3; // Note we prefer to treat right as button 2
+            break;
+        case 2:
+            button = Buttons.button2; // And the middle button as button 3
+            break;
+        case 3:
+            button = Buttons.none;
+            break;
+        case 0x40:
+            button = Buttons.wheelUp;
+            break;
+        case 0x41:
+            button = Buttons.wheelDown;
+            break;
+        case 0x42:
+            button = Buttons.wheelLeft;
+            break;
+        case 0x43:
+            button = Buttons.wheelRight;
+            break;
+        }
+
+        if ((btn & 0x4) != 0)
+        {
+            mod |= Modifiers.shift;
+        }
+        if ((btn & 0x8) != 0)
+        {
+            mod |= Modifiers.alt;
+        }
+        if ((btn & 0x10) != 0)
+        {
+            mod |= Modifiers.ctrl;
+        }
+
+        evs ~= newMouseEvent(x, y, button, mod);
+    }
+
+    void handleWinKey(int p0, int p1, int p2, int p3, int p4, int p5)
+    {
+        // win32-input-mode
+        //  ^[ [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
+        // Vk: the value of wVirtualKeyCode - any number. If omitted, defaults to '0'.
+        // Sc: the value of wVirtualScanCode - any number. If omitted, defaults to '0'.
+        // Uc: the decimal value of UnicodeChar - for example, NUL is "0", LF is
+        //     "10", the character 'A' is "65". If omitted, defaults to '0'.
+        // Kd: the value of bKeyDown - either a '0' or '1'. If omitted, defaults to '0'.
+        // Cs: the value of dwControlKeyState - any number. If omitted, defaults to '0'.
+        // Rc: the value of wRepeatCount - any number. If omitted, defaults to '1'.
+        //
+        // Note that some 3rd party terminal emulators (not Terminal) suffer from a bug
+        // where other events, such as mouse events, are doubly encoded, using Vk 0
+        // for each character.  (So a CSI-M sequence is encoded as a series of CSI-_
+        // sequences.)  We consider this a bug in those terminal emulators -- Windows 11
+        // Terminal does not suffer this brain damage. (We've observed this with both Alacritty
+        // and WezTerm.)
+        //
+        if (p3 == 0)
+        {
+            // key up event ignore ignore
+            return;
+        }
+        if (p0 == 0 && p2 == 27 && nested is null)
+        {
+            nested = new Parser();
+        }
+
+        if (nested !is null && p2 > 0 && p2 < 0x80)
+        {
+            // only ASCII in win32-input-mode
+            nested.buf ~= cast(ubyte) p2;
+            nested.scan();
+            foreach (ev; nested.evs)
+            {
+                evs ~= ev;
+            }
+            nested.evs = null;
+            return;
+        }
+
+        auto key = Key.rune;
+        auto chr = p2;
+        auto mod = Modifiers.none;
+        auto rpt = max(1, p5);
+
+        if (p0 in winKeys)
+        {
+            auto kc = winKeys[p0];
+            key = kc.key;
+            chr = 0;
+        }
+        else if (chr == 0 && p0 >= 0x30 && p0 <= 0x39)
+        {
+            chr = p0;
+        }
+        else if (chr < ' ' && p0 >= 0x41 && p0 <= 0x5a)
+        {
+            key = cast(Key) p0;
+            chr = 0;
+        }
+        else if (key == 0x11 || key == 0x13 || key == 0x14)
+        {
+            // lone modifiers
+            return;
+        }
+
+        // Modifiers
+        if ((p4 & 0x010) != 0)
+        {
+            mod |= Modifiers.shift;
+        }
+        if ((p4 & 0x000c) != 0)
+        {
+            mod |= Modifiers.ctrl;
+        }
+        if ((p4 & 0x0003) != 0)
+        {
+            mod |= Modifiers.alt;
+        }
+        if (key == Key.rune && chr > ' ' && mod == Modifiers.shift)
+        {
+            // filter out lone shift for printable chars
+            mod = Modifiers.none;
+        }
+        if (((mod & (Modifiers.ctrl | Modifiers.alt)) == (Modifiers.ctrl | Modifiers.alt)) && (
+                chr != 0))
+        {
+            // Filter out ctrl+alt (it means AltGr)
+            mod = Modifiers.none;
+        }
+
+        for (; rpt > 0; rpt--)
+        {
+            if (key != key.rune || chr != 0)
+            {
+                evs ~= newKeyEvent(key, chr, mod);
+            }
+        }
+    }
+
+    // calculate the modifiers from the CSI modifier parameter.
+    Modifiers calcModifier(int n)
+    {
+        n--;
+        Modifiers m;
+        if ((n & 1) != 0)
+        {
+            m |= Modifiers.shift;
+        }
+        if ((n & 2) != 0)
+        {
+            m |= Modifiers.alt;
+        }
+        if ((n & 4) != 0)
+        {
+            m |= Modifiers.ctrl;
+        }
+        if ((n & 8) != 0)
+        {
+            m |= Modifiers.meta; // kitty calls this Super
+        }
+        if ((n & 16) != 0)
+        {
+            m |= Modifiers.hyper;
+        }
+        if ((n & 32) != 0)
+        {
+            m |= Modifiers.meta; // for now not separating from Super
+        }
+        // Not doing (kitty only):
+        // caps_lock 0b1000000   (64)
+        // num_lock  0b10000000  (128)
+
+        return m;
+    }
+
+    Event newFocusEvent(bool focused)
+    {
+        Event ev =
+        {
+            type: EventType.focus, when: MonoTime.currTime(), focus: {
+                focused: focused
+            }
+        };
+        return ev;
+    }
+
     Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none)
     {
+        if (escaped)
+        {
+            mod |= Modifiers.alt;
+            escaped = false;
+        }
         Event ev = {
             type: EventType.key, when: MonoTime.currTime(), key: {
                 key: k, ch: dch, mod: mod
+            }
+        };
+        return ev;
+    }
+
+    Event newMouseEvent(int x, int y, Buttons btn, Modifiers mod)
+    {
+        Event ev = {
+            type: EventType.mouse, when: MonoTime.currTime, mouse: {
+                pos: Coord(x, y),
+                btn: btn,
+                mod: mod,
             }
         };
         return ev;
@@ -478,7 +1178,6 @@ private:
             }
         };
         return ev;
-
     }
 
     bool parseSequence(string seq)
@@ -582,156 +1281,6 @@ private:
         return true;
     }
 
-    bool parseFnKey()
-    {
-        Modifiers mod = Modifiers.none;
-        if (buf.length == 0)
-        {
-            return false;
-        }
-        foreach (seq, kc; keyCodes)
-        {
-            // ideally we'd use a trie to isolate
-            // duplicates for this.  for now, we just handle esc.
-            if (seq.length == 1 && seq[0] == '\x1b')
-            {
-                continue;
-            }
-            if (parseSequence(seq))
-            {
-                mod = kc.mod;
-                if (escaped)
-                {
-                    escaped = false;
-                    mod = Modifiers.alt;
-                }
-                evs ~= newKeyEvent(kc.key, seq.length == 1 ? seq[0] : 0, mod);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // look for an SGR mouse record, using a state machine
-    bool parseSgrMouse()
-    {
-        int x, y, btn, mov, state, val;
-        bool dig, neg;
-
-        for (int i = 0; i < buf.length; i++)
-        {
-            switch (buf[i])
-            {
-            case '\x1b':
-                if (state != 0)
-                    return false;
-                state = 1;
-                break;
-            case '\x9b': // 8-bit mode CSI
-                if (state != 0)
-                    return false;
-                state = 2;
-                break;
-            case '[':
-                if (state != 1)
-                    return false;
-                state = 2;
-                break;
-            case '<':
-                if (state != 2)
-                    return false;
-                val = 0;
-                dig = false;
-                neg = false;
-                state = 3;
-                break;
-            case '-':
-                if (state < 3 || state > 5 || dig || neg)
-                    return false;
-                neg = true; // no state change
-                break;
-            case '0': .. case '9':
-                if (state < 3 || state > 5)
-                    return false;
-                val *= 10;
-                val += cast(int)(buf[i] - '0');
-                dig = true; // no state change
-                break;
-            case ';':
-                if (state != 3 && state != 4)
-                    return false;
-                if (neg)
-                    val = -val;
-                switch (state)
-                {
-                case 3:
-                    btn = val;
-                    val = 0;
-                    neg = false;
-                    dig = false;
-                    state = 4;
-                    break;
-                case 4:
-                    x = val - 1;
-                    val = 0;
-                    neg = false;
-                    dig = false;
-                    state = 5;
-                    break;
-                default:
-                    return false;
-                }
-                break;
-            case 'm', 'M':
-                if (state != 5)
-                    return false;
-                if (neg)
-                {
-                    val = -val;
-                }
-                y = val - 1;
-                mov = (btn & 0x20) != 0;
-                btn &= ~0x20;
-                if (buf[i] == 'm')
-                {
-                    // release
-                    btn |= 0x3;
-                    btn &= ~0x40;
-                    buttonDown = false;
-                }
-                else if (mov)
-                {
-                    // Some broken terminals appear to send
-                    // mouse button one motion events, instead of
-                    // encoding 35 (no buttons) into these events.
-                    // We resolve these by looking for a non-motion
-                    // event first.
-                    if (!buttonDown)
-                    {
-                        btn |= 0x3;
-                        btn &= ~0x40;
-                    }
-                }
-                else
-                {
-                    buttonDown = true;
-                }
-                buf = buf[i + 1 .. $];
-                import std.stdio;
-
-                evs ~= newMouseEvent(x, y, btn);
-                return true;
-            default:
-                // definitely not ours
-                return false;
-            }
-        }
-        // might be ours, inconclusive
-        if (state > 0)
-            partial = true;
-        return false;
-    }
-
     unittest
     {
         import core.thread;
@@ -744,28 +1293,12 @@ private:
             exitKeypad: "\x1b[?1l\x1b>",
             cursorBack1: "\x08",
             cursorUp1: "\x1b[A",
-            keyBackspace: "\x08",
-            keyF1: "\x1bOP",
-            keyF2: "\x1bOQ",
-            keyF3: "\x1bOR",
-            keyInsert: "\x1b[2~",
-            keyDelete: "\x1b[3~",
-            keyHome: "\x1bOH",
-            keyEnd: "\x1bOF",
-            keyPgUp: "\x1b[5~",
-            keyPgDn: "\x1b[6~",
-            keyUp: "\x1bOA",
-            keyDown: "\x1bOB",
-            keyLeft: "\x1bOD",
-            keyRight: "\x1bOC",
-            keyBacktab: "\x1b[Z",
-            keyShfRight: "\x1b[1;2C",
             mouse: "\x1b[M",
         };
         Database.put(&term);
         auto tc = Database.get("test-term");
         assert(tc !is null);
-        Parser p = new Parser(ParseKeys(tc));
+        Parser p = new Parser();
         assert(p.empty());
         assert(p.parse("")); // no data, is fine
         assert(p.parse("\x1bOC"));
@@ -781,7 +1314,7 @@ private:
         assert(p.parse(['\x1b', 'O']) == false);
         ev = p.events();
         assert(ev.length == 0);
-        Thread.sleep(msecs(100));
+        Thread.sleep(msecs(200));
         assert(p.parse([]) == true);
         ev = p.events();
         assert(ev.length == 1);
@@ -802,7 +1335,6 @@ private:
         assert(ev[0].key.mod == Modifiers.none);
 
         // try injecting paste events
-        assert(tc.enablePaste != "");
         assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
         assert(p.parse(['A']));
         assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));

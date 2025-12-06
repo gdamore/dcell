@@ -1,7 +1,7 @@
 /**
  * Events module for dcell.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -24,6 +24,7 @@ enum EventType
     mouse, /// a mouse event
     paste, /// a paste event
     resize, /// window was resized
+    focus, /// focus changed
 }
 
 /**
@@ -42,6 +43,7 @@ struct Event
         KeyEvent key;
         ResizeEvent resize;
         PasteEvent paste;
+        FocusEvent focus;
     }
 }
 
@@ -60,4 +62,10 @@ struct ResizeEvent
 struct PasteEvent
 {
     dstring content;
+}
+
+/// Focus event.
+struct FocusEvent
+{
+    bool focused;
 }
