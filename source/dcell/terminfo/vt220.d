@@ -47,8 +47,8 @@ static immutable Termcap term0 = {
     keyLeft: "\x1b[D",
     keyRight: "\x1b[C",
     altChars: "``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x1b(0$<2>",
-    exitACS: "\x1b(B$<4>",
+    enterACS: "\x1b(0",
+    exitACS: "\x1b(B",
     enableACS: "\x1b)0",
     automargin: true,
 };

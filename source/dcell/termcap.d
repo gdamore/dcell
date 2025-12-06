@@ -221,9 +221,9 @@ struct Termcap
      * to an interactive terminal like /dev/tty or stdin, while
      * interpreting embedded delay sequences of the form
      * $<DELAY> (where DELAY is given in milliseconds, and must
-     * be a positive rational number of milliseconds). When these
-     * are encountered, the flush delegate is called (if not null),
-     * and the function sleeps for the indicated amount of time.
+     * be a positive rational number of milliseconds).  However,
+     * we no longer need to delay as no terminal actually needs
+     * this (sorry ancient physical vt100 terminals), so we drop it.
      */
     static void puts(R)(R output, string s, void delegate() flush = null)
             if (isOutputRange!(R, ubyte))
@@ -282,15 +282,6 @@ struct Termcap
                 }
                 val = val[1 .. $];
             }
-
-            if (valid)
-            {
-                if (flush !is null)
-                {
-                    flush();
-                }
-                Thread.sleep(usecs(usec * mult));
-            }
         }
     }
 
@@ -305,10 +296,6 @@ struct Termcap
 
         puts(ob, "AB$<1000>C");
         puts(ob, "DEF$<100.5>\n");
-        auto end = Clock.currTime();
-        assert(end > now);
-        assert(now + seconds(1) <= end);
-        assert(now + seconds(2) > end);
 
         assert(ob.toString() == "ABCDEF\n");
         // negative tests -- we don't care what's in the file (UB), but it must not panic
@@ -328,9 +315,6 @@ struct Termcap
         puts(ob, "AB$<100>C");
         puts(ob, "DEF$<100.5>\n");
         auto end = Clock.currTime();
-        assert(end > now);
-        assert(now + msecs(200) <= end);
-        assert(now + msecs(300) > end);
 
         assert(ob.toString() == "ABCDEF\n");
     }
@@ -350,12 +334,8 @@ struct Termcap
         }
 
         auto f = new Flusher();
-        auto now = Clock.currTime();
         puts(f, "ABC$<100>DEF", &f.flush);
         auto end = Clock.currTime();
-        assert(end > now);
-        assert(now + msecs(100) <= end);
-        assert(f.flushes == 1);
         assert(f.toString() == "ABCDEF");
     }
 
