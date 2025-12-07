@@ -352,7 +352,7 @@ private Termcap* convertCaps(Caps* caps)
         // This is for xterm-direct, which uses a different scheme entirely.
         // (ncurses went a very different direction from everyone else, and
         // so it's unlikely anything is using this definition.)
-        tc.colors = 1 < 24;
+        tc.colors = 1 << 24;
         tc.setBg = "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m";
         tc.setFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
     }
