@@ -247,6 +247,11 @@ struct Termcap
 
             // Drop the delay specification entirely; we no longer sleep or flush here.
             s = s[end + 1 .. $];
+
+            if (flush !is null)
+            {
+                flush();
+            }
         }
     }
 
