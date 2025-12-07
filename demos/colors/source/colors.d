@@ -101,7 +101,7 @@ class ColorBoxes
                 }
             }
             style.bg = fromHex(
-                int(r) << 15 | int(g) << 8 | int(b));
+                int(r) << 16 | int(g) << 8 | int(b));
         }
 
         // half the width and half the height
