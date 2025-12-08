@@ -19,6 +19,7 @@ import std.format;
 import std.concurrency;
 import std.exception;
 import std.outbuffer;
+import std.process;
 import std.range;
 import std.stdio;
 import std.string;
@@ -28,8 +29,6 @@ import dcell.cursor;
 import dcell.evqueue;
 import dcell.key;
 import dcell.mouse;
-import dcell.termcap;
-import dcell.database;
 import dcell.termio;
 import dcell.screen;
 import dcell.event;
@@ -78,6 +77,14 @@ class TtyScreen : Screen
         enum string endAltChars = "\x0f"; // aka Shift-In
         enum string enterKeypad = "\x1b[?1h\x1b="; // Note mode 1 might not be supported everywhere
         enum string exitKeypad = "\x1b[?1l\x1b>"; // Also mode 1
+        enum string setFg8 = "\x1b[3%dm"; // for colors less than 8
+        enum string setFg256 = "\x1b[38;5;%dm"; // for colors less than 256
+        enum string setFgRGB = "\x1b[38;2;%d;%d;%dm"; // for RGB
+        enum string setBg8 = "\x1b[4%dm"; // color colors less than 8
+        enum string setBg256 = "\x1b[48;5;%dm"; // for colors less than 256
+        enum string setBgRGB = "\x1b[48;2;%d;%d;%dm"; // for RGB
+        enum string setFgBgRGB = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm"; // for RGB, in one shot
+        enum string resetFgBg = "\x1b[39;49m"; // ECMA defined
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -87,6 +94,16 @@ class TtyScreen : Screen
         string restoreTitle = "\x1b[23;2t";
         string setTitle = "\x1b[>2t\x1b]2;%s\x1b\\";
 
+        // number of colors - again this can be overridden.
+        // Typical values are 0 (monochrome), 8, 16, 256, and 1<<24.
+        // There are some oddballs like xterm-88color.  The first
+        // 256 colors are from the xterm palette, but if something
+        // supports more, it is assumed to support direct RGB colors.
+        // Pretty much most modern terminals support 256, which is why
+        // we use it as a default.  (This can be affected by environment
+        // variables.)
+        int numColors = 256;
+
         // doubleUnder       = "\x1b[4:2m"
         // curlyUnder        = "\x1b[4:3m"
         // dottedUnder       = "\x1b[4:4m"
@@ -94,20 +111,11 @@ class TtyScreen : Screen
         // underColor        = "\x1b[58:5:%dm"
         // underRGB          = "\x1b[58:2::%d:%d:%dm"
         // underFg           = "\x1b[59m"
-        // setFg8            = "\x1b[3%dm"                         // for colors less than 8
-        // setFg256          = "\x1b[38;5;%dm"                     // for colors less than 256
-        // setFgRgb          = "\x1b[38;2;%d;%d;%dm"               // for RGB
-        // setBg8            = "\x1b[4%dm"                         // color colors less than 8
-        // setBg256          = "\x1b[48;5;%dm"                     // for colors less than 256
-        // setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
-        // setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
-        // resetFgBg         = "\x1b[39;49m"                       // ECMA defined
         // requestWindowSize = "\x1b[18t"                          // For modern terminals
     }
 
-    this(TtyImpl tt, const(Termcap)* tc, string term = "")
+    this(TtyImpl tt, string term = "")
     {
-        caps = tc;
         ti = tt;
         ti.start();
         cells = new CellBuffer(ti.windowSize());
@@ -116,6 +124,11 @@ class TtyScreen : Screen
         defStyle.bg = Color.reset;
         defStyle.fg = Color.reset;
 
+        if (term == "")
+        {
+            term = environment.get("TERM");
+        }
+
         legacy = false;
         if (term.startsWith("vt") || term.canFind("ansi") || term == "linux" || term == "sun" || term == "sun-color")
         {
@@ -123,7 +136,48 @@ class TtyScreen : Screen
             legacy = true;
         }
 
-        // for legacy terminals, disable functions we don't support
+        string cterm = environment.get("COLORTERM");
+        if (environment.get("NO_COLOR"))
+        {
+            vt.numColors = 0;
+        }
+        else if (cterm == "truecolor" || cterm == "24bit" || cterm == "24-bit")
+        {
+            vt.numColors = 1 << 24;
+        }
+        else if (term.endsWith("256color") || cterm.canFind("256"))
+        {
+            vt.numColors = 256;
+        }
+        else if (term.endsWith("88color"))
+        {
+            vt.numColors = 88;
+        }
+        else if (term.endsWith("16color"))
+        {
+            vt.numColors = 16;
+        }
+        else if (cterm != "")
+        {
+            vt.numColors = 8;
+        }
+        else if (term.endsWith("-m") || term.canFind("mono") || term.startsWith("vt"))
+        {
+            vt.numColors = 0;
+        }
+        else if (term.endsWith("color") || term.canFind("ansi"))
+        {
+            vt.numColors = 8;
+        }
+        else if (term == "dtterm" || term == "aixterm" || term == "linux")
+        {
+            vt.numColors = 8;
+        }
+        else if (term == "sun")
+        {
+            vt.numColors = 0;
+        }
+
         if (legacy)
         {
             vt.enterURL = "";
@@ -177,7 +231,7 @@ class TtyScreen : Screen
             return;
 
         puts(vt.enableAutoMargin);
-        puts(caps.resetColors);
+        puts(vt.resetFgBg);
         puts(vt.sgr0);
         puts(vt.cursorReset);
         puts(vt.showCursor);
@@ -268,7 +322,7 @@ class TtyScreen : Screen
 
     int colors() const pure
     {
-        return caps.colors;
+        return vt.numColors;
     }
 
     void show()
@@ -301,7 +355,7 @@ class TtyScreen : Screen
     {
         if (vt.setWindowSize != "")
         {
-            puts(vt.setWindowSize, size.y, size.x);
+            puts(format(vt.setWindowSize, size.y, size.x));
             flush();
             cells.setAllDirty(true);
             resize();
@@ -350,7 +404,6 @@ private:
         Modifiers mod;
     }
 
-    const(Termcap)* caps;
     CellBuffer cells;
     bool clear_; // if a screen clear is requested
     Coord pos_; // location where we will update next
@@ -370,17 +423,7 @@ private:
 
     void puts(string s)
     {
-        Termcap.puts(ob, s, &flush);
-    }
-
-    void puts(string s, int[] args...)
-    {
-        puts(Termcap.param(s, args));
-    }
-
-    void puts(string s, string[] args...)
-    {
-        puts(Termcap.param(s, args));
+        ob.write(s);
     }
 
     // flush queued output
@@ -397,51 +440,56 @@ private:
         auto fg = style.fg;
         auto bg = style.bg;
 
-        if (caps.colors == 0)
+        if (vt.numColors == 0 || (fg == Color.invalid && bg == Color.invalid))
         {
             return;
         }
         if (fg == Color.reset || bg == Color.reset)
         {
-            puts(caps.resetColors);
+            puts(vt.resetFgBg);
         }
-        if (caps.colors > 256)
+        if (vt.numColors > 256)
         {
-            if (caps.setFgBgRGB != "" && isRGB(fg) && isRGB(bg))
+            if (isRGB(fg) && isRGB(bg))
             {
                 auto rgb1 = decompose(fg);
                 auto rgb2 = decompose(bg);
-                puts(caps.setFgBgRGB, rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]);
+                puts(format!(vt.setFgBgRGB)(rgb1[0], rgb1[1], rgb1[2], rgb2[0], rgb2[1], rgb2[2]));
+                return;
             }
-            else
+            if (isRGB(fg))
             {
-                if (isRGB(fg) && caps.setFgRGB != "")
-                {
-                    auto rgb = decompose(fg);
-                    puts(caps.setFgRGB, rgb[0], rgb[1], rgb[2]);
-                }
-                if (isRGB(bg) && caps.setBgRGB != "")
-                {
-                    auto rgb = decompose(bg);
-                    puts(caps.setBgRGB, rgb[0], rgb[1], rgb[2]);
-                }
+                auto rgb = decompose(fg);
+                puts(format!(vt.setFgRGB)(rgb[0], rgb[1], rgb[2]));
+                fg = Color.invalid;
             }
-        }
-        else
-        {
-            fg = toPalette(fg, caps.colors);
-            bg = toPalette(bg, caps.colors);
-        }
-        if (fg < 256 && bg < 256 && caps.setFgBg != "")
-            puts(caps.setFgBg, fg, bg);
-        else
-        {
-            if (fg < 256)
-                puts(caps.setFg, fg);
-            if (bg < 256)
-                puts(caps.setBg, bg);
+            if (isRGB(bg))
+            {
+                auto rgb = decompose(bg);
+                puts(format!(vt.setBgRGB)(rgb[0], rgb[1], rgb[2]));
+                bg = Color.invalid;
+            }
         }
 
+        fg = toPalette(fg, vt.numColors);
+        bg = toPalette(bg, vt.numColors);
+
+        if (fg < 8)
+        {
+            puts(format!(vt.setFg8)(fg));
+        }
+        else if (fg < 256)
+        {
+            puts(format!(vt.setFg256)(fg));
+        }
+        if (bg < 8)
+        {
+            puts(format!(vt.setBg8)(bg));
+        }
+        else if (bg < 256)
+        {
+            puts(format!(vt.setBg256)(bg));
+        }
     }
 
     void sendAttrs(Style style)
@@ -545,7 +593,7 @@ private:
             goTo(pos);
         }
 
-        if (caps.colors == 0)
+        if (vt.numColors == 0)
         {
             // if its monochrome, simulate lighter and darker with reverse
             if (darker(c.style.fg, c.style.bg))
@@ -711,20 +759,7 @@ private:
     }
 }
 
-version (Posix)  : import dcell.terminfo;
-
-Screen newTtyScreen(string term = "")
+Screen newTtyScreen()
 {
-    import std.process;
-
-    if (term == "")
-    {
-        term = environment.get("TERM", "ansi");
-    }
-    auto caps = Database.get(term);
-    if (caps is null)
-    {
-        throw new Exception("terminal not found");
-    }
-    return new TtyScreen(newDevTty(), caps, term);
+    return new TtyScreen(newDevTty());
 }

@@ -22,7 +22,6 @@ import std.utf : decode, UTFException;
 import dcell.event;
 import dcell.key;
 import dcell.mouse;
-import dcell.termcap;
 
 package:
 
@@ -1201,13 +1200,8 @@ private:
     unittest
     {
         import core.thread;
-        import dcell.database;
 
         // taken from xterm, but pared down
-        static immutable Termcap term = {name: "test-term",};
-        Database.put(&term);
-        auto tc = Database.get("test-term");
-        assert(tc !is null);
         Parser p = new Parser();
         assert(p.empty());
         assert(p.parse("")); // no data, is fine
