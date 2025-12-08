@@ -814,11 +814,15 @@ private:
                 return;
             }
 
-            if (p0 == 200) {
+            if (p0 == 200)
+            {
                 pasting = true;
                 pasteBuf = null;
-            } else if (p0 == 201) {
-                if (pasting) {
+            }
+            else if (p0 == 201)
+            {
+                if (pasting)
+                {
                     evs ~= newPasteEvent(pasteBuf);
                     pasting = false;
                     pasteBuf = null;
@@ -1194,93 +1198,6 @@ private:
         return false;
     }
 
-    bool parsePaste()
-    {
-        bool matches;
-
-        if (pasteStart == "")
-        {
-            return false;
-        }
-
-        auto now = MonoTime.currTime();
-        if (!pasting)
-        {
-            if (parseSequence(pasteStart))
-            {
-                pasting = true;
-                pasteBuf = "";
-                pasteTime = now;
-                return true;
-            }
-            return false;
-        }
-        assert(pasting);
-
-        // we end the sequence if we see it, but also if we timed out looking for it
-        if (parseSequence(pasteEnd) ||
-            ((now - pasteTime) > seqTime * 4))
-        {
-            pasting = false;
-            auto ev = newPasteEvent(pasteBuf);
-            pasteBuf = "";
-            evs ~= ev;
-            return true;
-        }
-        if (parseRune())
-        {
-            pasteTime = now;
-        }
-        // we pretend to have eaten the entire thing, even if there is stuff left
-        return true;
-    }
-
-    bool parseRune()
-    {
-        if (buf.length == 0)
-        {
-            return false;
-        }
-        dchar dc;
-        Modifiers mod = Modifiers.none;
-        if ((buf[0] >= ' ' && buf[0] < 0x7F) ||
-            (pasting && isWhite(buf[0])))
-        {
-            dc = buf[0];
-            buf = buf[1 .. $];
-            // printable ascii, easy to deal with
-            if (escaped)
-            {
-                escaped = false;
-                mod = Modifiers.alt;
-            }
-            if (pasting)
-                pasteBuf ~= dc;
-            else
-                evs ~= newKeyEvent(Key.rune, dc, mod);
-            return true;
-        }
-        if ((buf[0] < 0x80) || (buf[0] == 0x7F)) // control character, not a rune
-            return false;
-        // unicode bits...
-        size_t index = 0;
-        auto temp = cast(string) buf;
-        try
-        {
-            dc = temp.decode(index);
-        }
-        catch (UTFException e)
-        {
-            return false;
-        }
-        if (pasting)
-            pasteBuf ~= dc;
-        else
-            evs ~= newKeyEvent(Key.rune, dc, mod);
-        buf = buf[index .. $];
-        return true;
-    }
-
     unittest
     {
         import core.thread;
@@ -1293,7 +1210,6 @@ private:
             exitKeypad: "\x1b[?1l\x1b>",
             cursorBack1: "\x08",
             cursorUp1: "\x1b[A",
-            mouse: "\x1b[M",
         };
         Database.put(&term);
         auto tc = Database.get("test-term");
