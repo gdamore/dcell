@@ -76,6 +76,8 @@ class TtyScreen : Screen
         enum string enableAltChars = "\x1b(B\x1b)0"; // set G0 as US-ASCII, G1 as DEC line drawing
         enum string startAltChars = "\x0e"; // aka Shift-Out
         enum string endAltChars = "\x0f"; // aka Shift-In
+        enum string enterKeypad = "\x1b[?1h\x1b="; // Note mode 1 might not be supported everywhere
+        enum string exitKeypad = "\x1b[?1l\x1b>"; // Also mode 1
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -100,8 +102,6 @@ class TtyScreen : Screen
         // setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
         // setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
         // resetFgBg         = "\x1b[39;49m"                       // ECMA defined
-        // enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
-        // exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
         // requestWindowSize = "\x1b[18t"                          // For modern terminals
     }
 
@@ -147,8 +147,12 @@ class TtyScreen : Screen
         stopping.set(false);
         ti.save();
         ti.raw();
+        puts(vt.hideCursor);
         puts(vt.disableAutoMargin);
+        puts(vt.enterKeypad);
+        puts(vt.enableAltChars);
         puts(vt.clear);
+
         resize();
         draw();
         spawn(&inputLoop, cast(shared TtyImpl) ti, tid,
@@ -179,6 +183,7 @@ class TtyScreen : Screen
         puts(vt.showCursor);
         puts(vt.cursorReset);
         puts(vt.clear);
+        puts(vt.exitKeypad);
         puts(vt.disablePaste);
         enableMouse(MouseEnable.disable);
         puts(vt.disableFocus);
