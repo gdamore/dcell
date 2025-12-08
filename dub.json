@@ -1,19 +1,12 @@
 {
-	"authors": [
-		"Garrett D'Amore"
-	],
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"dependencies": {
-		"east_asian_width": "~>1.0.0"
-	},
-	"description": "Terminal Cells for D.",
-	"license": "BSL-1.0",
-	"name": "dcell",
-	"subPackages": [
-		"./mkinfo/",
-		"./demos/colors/",
-		"./demos/hello/",
-		"./demos/mouse/"
-	],
-	"targetType": "library"
+  "authors": ["Garrett D'Amore"],
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "dependencies": {
+    "east_asian_width": "~>1.0.0"
+  },
+  "description": "Terminal Cells for D.",
+  "license": "BSL-1.0",
+  "name": "dcell",
+  "subPackages": ["./demos/colors/", "./demos/hello/", "./demos/mouse/"],
+  "targetType": "library"
 }
