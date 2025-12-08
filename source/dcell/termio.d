@@ -150,7 +150,6 @@ version (Posix)
             tio.c_cc[VTIME] = 0;
 
             enforce(tcsetattr(fd, TCSANOW, &tio) >= 0);
-            fcntl(fd, F_SETFL, b ? 0 : O_NONBLOCK);
             block = b;
         }
 
