@@ -14,9 +14,6 @@ static immutable Termcap term0 = {
     setFg: "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
     setBg: "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
     resetColors: "\x1b[39;49m",
-    altChars: "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x1b(0",
-    exitACS: "\x1b(B",
 };
 
 // alacritty-direct
@@ -28,9 +25,6 @@ static immutable Termcap term1 = {
     setFg: "\x1b[%?%p1%{8}%<%t3%p1%d%e38:2::%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m",
     setBg: "\x1b[%?%p1%{8}%<%t4%p1%d%e48:2::%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m",
     resetColors: "\x1b[39;49m",
-    altChars: "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x1b(0",
-    exitACS: "\x1b(B",
 };
 
 static this()

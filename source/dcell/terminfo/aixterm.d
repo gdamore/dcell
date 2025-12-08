@@ -12,7 +12,6 @@ static immutable Termcap term0 = {
     setFg: "\x1b[3%p1%dm",
     setBg: "\x1b[4%p1%dm",
     resetColors: "\x1b[32m\x1b[40m",
-    altChars: "jjkkllmmnnqqttuuvvwwxx",
 };
 
 // aixterm-16color
@@ -23,7 +22,6 @@ static immutable Termcap term1 = {
     setFg: "\x1b[%?%p1%{8}%<%t%p1%{30}%+%e%p1%\'R\'%+%;%dm",
     setBg: "\x1b[%?%p1%{8}%<%t%p1%\'(\'%+%e%p1%{92}%+%;%dm",
     resetColors: "\x1b[32m\x1b[40m",
-    altChars: "jjkkllmmnnqqttuuvvwwxx",
 };
 
 static this()

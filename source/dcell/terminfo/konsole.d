@@ -14,10 +14,6 @@ static immutable Termcap term0 = {
     setFg: "\x1b[3%p1%dm",
     setBg: "\x1b[4%p1%dm",
     resetColors: "\x1b[39;49m",
-    altChars: "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x0e",
-    exitACS: "\x0f",
-    enableACS: "\x1b)0",
 };
 
 // konsole-16color
@@ -29,10 +25,6 @@ static immutable Termcap term1 = {
     exitKeypad: "\x1b[?1l\x1b>",
     setFg: "\x1b[%?%p1%{8}%<%t%p1%{30}%+%e%p1%\'R\'%+%;%dm",
     setBg: "\x1b[%?%p1%{8}%<%t%p1%\'(\'%+%e%p1%{92}%+%;%dm",
-    altChars: "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x0e",
-    exitACS: "\x0f",
-    enableACS: "\x1b)0",
 };
 
 // konsole-256color
@@ -45,10 +37,6 @@ static immutable Termcap term2 = {
     setFg: "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
     setBg: "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
     resetColors: "\x1b[39;49m",
-    altChars: "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
-    enterACS: "\x0e",
-    exitACS: "\x0f",
-    enableACS: "\x1b)0",
 };
 
 static this()
