@@ -191,7 +191,6 @@ class TtyScreen : Screen
 
     ~this()
     {
-        ti.stop();
         ti.close();
     }
 
