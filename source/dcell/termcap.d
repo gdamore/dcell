@@ -33,10 +33,6 @@ struct Termcap
     string setFg; /// `setaf`, sets foreground text color (indexed)
     string setBg; /// `setab`, sets background text color (indexed)
     string resetColors; /// `op`, sets foreground and background to default
-    string altChars; /// `acsc`, alternate characters, used for non-ASCII characters with certain legacy terminals
-    string enterACS; /// `smacs`, sequence to switch to alternate character set
-    string exitACS; /// `rmacs`, sequence to return to normal character set
-    string enableACS; /// `enacs`, sequence to enable alternate character set support
 
     // Non-standard additions to terminfo.  YMMV.
     string setFgBg; /// sequence to set both foreground and background together, using indexed colors

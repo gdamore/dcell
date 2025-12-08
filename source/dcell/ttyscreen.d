@@ -73,6 +73,9 @@ class TtyScreen : Screen
         enum string exitCA = "\x1b[?1049l"; // alternate screen
         enum string startSyncOut = "\x1b[?2026h";
         enum string endSyncOut = "\x1b[?2026l";
+        enum string enableAltChars = "\x1b(B\x1b)0"; // set G0 as US-ASCII, G1 as DEC line drawing
+        enum string startAltChars = "\x0e"; // aka Shift-Out
+        enum string endAltChars = "\x0f"; // aka Shift-In
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -89,9 +92,6 @@ class TtyScreen : Screen
         // underColor        = "\x1b[58:5:%dm"
         // underRGB          = "\x1b[58:2::%d:%d:%dm"
         // underFg           = "\x1b[59m"
-        // enableAltChars    = "\x1b(B\x1b)0"                      // set G0 as US-ASCII, G1 as DEC line drawing
-        // startAltChars     = "\x0e"                              // aka Shift-Out
-        // endAltChars       = "\x0f"                              // aka Shift-In
         // setFg8            = "\x1b[3%dm"                         // for colors less than 8
         // setFg256          = "\x1b[38;5;%dm"                     // for colors less than 256
         // setFgRgb          = "\x1b[38;2;%d;%d;%dm"               // for RGB
