@@ -136,6 +136,7 @@ version (Posix)
         {
             if (file.isOpen)
             {
+                stop();
                 file.close();
             }
         }
