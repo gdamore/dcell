@@ -137,7 +137,7 @@ class TtyScreen : Screen
         }
 
         string cterm = environment.get("COLORTERM");
-        if (environment.get("NO_COLOR"))
+        if ("NO_COLOR" in environment)
         {
             vt.numColors = 0;
         }
