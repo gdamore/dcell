@@ -1204,11 +1204,7 @@ private:
         import dcell.database;
 
         // taken from xterm, but pared down
-        static immutable Termcap term = {
-            name: "test-term",
-            enterKeypad: "\x1b[?1h\x1b=",
-            exitKeypad: "\x1b[?1l\x1b>",
-        };
+        static immutable Termcap term = {name: "test-term",};
         Database.put(&term);
         auto tc = Database.get("test-term");
         assert(tc !is null);

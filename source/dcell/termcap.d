@@ -28,8 +28,6 @@ struct Termcap
     int columns; /// `cols`, the number of columns present
     int lines; /// `lines`, the number lines (rows) present
     int colors; // `colors`, the number of colors supported
-    string enterKeypad; /// `smkx`, enables keypad mode
-    string exitKeypad; /// `rmkx`, leaves keypad mode
     string setFg; /// `setaf`, sets foreground text color (indexed)
     string setBg; /// `setab`, sets background text color (indexed)
     string resetColors; /// `op`, sets foreground and background to default
