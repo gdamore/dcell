@@ -1,12 +1,12 @@
 {
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"description": "Color Demo in Dcell",
-	"name": "colors",
-	"targetType": "executable",
-	"targetName": "colors",
-	"targetPath": "bin",
-	"mainSourceFile": "source/colors.d",
-	"dependencies": {
-	    "dcell" : { "path": "../.." }
-	}
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "description": "Color Demo in Dcell",
+  "name": "colors",
+  "targetType": "executable",
+  "targetName": "colors",
+  "targetPath": "bin",
+  "mainSourceFile": "source/colors.d",
+  "dependencies": {
+    "dcell": { "path": "../.." }
+  }
 }

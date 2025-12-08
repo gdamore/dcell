@@ -1208,8 +1208,6 @@ private:
             name: "test-term",
             enterKeypad: "\x1b[?1h\x1b=",
             exitKeypad: "\x1b[?1l\x1b>",
-            cursorBack1: "\x08",
-            cursorUp1: "\x1b[A",
         };
         Database.put(&term);
         auto tc = Database.get("test-term");
