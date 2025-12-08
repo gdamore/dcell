@@ -192,6 +192,7 @@ class TtyScreen : Screen
     ~this()
     {
         ti.stop();
+        ti.close();
     }
 
     private void start(Tid tid, EventQueue eq)

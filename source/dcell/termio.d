@@ -74,9 +74,14 @@ interface TtyImpl
     Coord windowSize();
 
     /**
-     * Stop input scanning.  This may close the tty device.
+     * Stop input scanning.
      */
     void stop();
+
+    /**
+     * Close the ttye device.
+     */
+    void close();
 
     /**
      * Start termio.  This will open the device.
@@ -108,8 +113,11 @@ version (Posix)
 
         void start()
         {
-            file = File(path, "r+b");
-            fd = file.fileno();
+            if (!file.isOpen)
+            {
+                file = File(path, "r+b");
+                fd = file.fileno();
+            }
             save();
             watchResize(fd);
         }
@@ -121,6 +129,14 @@ version (Posix)
                 ignoreResize(fd);
                 flush();
                 restore();
+            }
+        }
+
+        void close()
+        {
+            if (file.isOpen)
+            {
+                file.close();
             }
         }
 

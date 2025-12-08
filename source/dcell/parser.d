@@ -366,10 +366,7 @@ private:
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
     bool buttonDown; // true if buttons were down
     bool pasting;
-    MonoTime pasteTime;
     dstring pasteBuf;
-    string pasteStart;
-    string pasteEnd;
 
     void postKey(Key k, dchar dch, Modifiers mod)
     {
@@ -1218,7 +1215,7 @@ private:
         assert(p.parse(['\x1b', 'O']) == false);
         ev = p.events();
         assert(ev.length == 0);
-        Thread.sleep(msecs(200));
+        Thread.sleep(p.seqTime * 2);
         assert(p.parse([]) == true);
         ev = p.events();
         assert(ev.length == 1);
@@ -1230,7 +1227,7 @@ private:
         assert(p.parse(['\x1b']) == false);
         ev = p.events();
         assert(ev.length == 0);
-        Thread.sleep(msecs(100));
+        Thread.sleep(p.seqTime * 2);
         assert(p.parse([]) == true);
         ev = p.events();
         assert(ev.length == 1);
