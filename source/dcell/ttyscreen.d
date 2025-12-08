@@ -1,7 +1,7 @@
 /**
  * TtyScreen module implements POSIX style terminals (ala XTerm).
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -14,12 +14,14 @@ package:
 
 import core.atomic;
 import core.time;
-import std.string;
+import std.algorithm : canFind;
+import std.format;
 import std.concurrency;
 import std.exception;
 import std.outbuffer;
 import std.range;
 import std.stdio;
+import std.string;
 
 import dcell.cell;
 import dcell.cursor;
@@ -36,7 +38,74 @@ import dcell.turnstile;
 
 class TtyScreen : Screen
 {
-    this(TtyImpl tt, const(Termcap)* tc)
+    // Various escape escape sequences we can send.
+    // Note that we have a rather broad assumption that we only support terminals
+    // that understand these things, or in some cases, that will gracefully ignore
+    // them.  (For example, terminals should ignore SGR settings they don't grok.)
+    struct Vt
+    {
+        enum string enableAutoMargin = "\x1b[?7h"; // dec private mode 7 (enable)
+        enum string disableAutoMargin = "\x1b[?7l";
+        enum string setCursorPosition = "\x1b[%d;%dH";
+        enum string sgr0 = "\x1b[m"; // attrOff
+        enum string bold = "\x1b[1m";
+        enum string dim = "\x1b[2m";
+        enum string italic = "\x1b[3m";
+        enum string underline = "\x1b[4m";
+        enum string blink = "\x1b[5m";
+        enum string reverse = "\x1b[7m";
+        enum string strikeThrough = "\x1b[9m";
+        enum string showCursor = "\x1b[?25h";
+        enum string hideCursor = "\x1b[?25l";
+        enum string clear = "\x1b[H\x1b[J";
+        enum string enablePaste = "\x1b[?2004h";
+        enum string disablePaste = "\x1b[?2004l";
+        enum string enableFocus = "\x1b[?1004h";
+        enum string disableFocus = "\x1b[?1004l";
+        enum string cursorReset = "\x1b[0 q"; // reset cursor shape to default
+        enum string cursorBlinkingBlock = "\x1b[1 q";
+        enum string cursorBlock = "\x1b[2 q";
+        enum string cursorBlinkingUnderline = "\x1b[3 q";
+        enum string cursorUnderline = "\x1b[4 q";
+        enum string cursorBlinkingBar = "\x1b[5 q";
+        enum string cursorBar = "\x1b[6 q";
+        enum string enterCA = "\x1b[?1049h"; // alternate screen
+        enum string exitCA = "\x1b[?1049l"; // alternate screen
+        enum string startSyncOut = "\x1b[?2026h";
+        enum string endSyncOut = "\x1b[?2026l";
+
+        // these can be overridden (e.g. disabled for legacy)
+        string enterURL = "\x1b]8;;%s\x1b\\";
+        string exitURL = "\x1b]8;;\x1b\\";
+        string setWindowSize = "\x1b[8;%d;%dt";
+        string saveTitle = "\x1b[22;2t";
+        string restoreTitle = "\x1b[23;2t";
+        string setTitle = "\x1b[>2t\x1b]2;%s\x1b\\";
+
+        // doubleUnder       = "\x1b[4:2m"
+        // curlyUnder        = "\x1b[4:3m"
+        // dottedUnder       = "\x1b[4:4m"
+        // dashedUnder       = "\x1b[4:5m"
+        // underColor        = "\x1b[58:5:%dm"
+        // underRGB          = "\x1b[58:2::%d:%d:%dm"
+        // underFg           = "\x1b[59m"
+        // enableAltChars    = "\x1b(B\x1b)0"                      // set G0 as US-ASCII, G1 as DEC line drawing
+        // startAltChars     = "\x0e"                              // aka Shift-Out
+        // endAltChars       = "\x0f"                              // aka Shift-In
+        // setFg8            = "\x1b[3%dm"                         // for colors less than 8
+        // setFg256          = "\x1b[38;5;%dm"                     // for colors less than 256
+        // setFgRgb          = "\x1b[38;2;%d;%d;%dm"               // for RGB
+        // setBg8            = "\x1b[4%dm"                         // color colors less than 8
+        // setBg256          = "\x1b[48;5;%dm"                     // for colors less than 256
+        // setBgRgb          = "\x1b[48;2;%d;%d;%dm"               // for RGB
+        // setFgBgRgb        = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm" // for RGB, in one shot
+        // resetFgBg         = "\x1b[39;49m"                       // ECMA defined
+        // enterKeypad       = "\x1b[?1h\x1b="                     // Note mode 1 might not be supported everywhere
+        // exitKeypad        = "\x1b[?1l\x1b>"                     // Also mode 1
+        // requestWindowSize = "\x1b[18t"                          // For modern terminals
+    }
+
+    this(TtyImpl tt, const(Termcap)* tc, string term = "")
     {
         caps = tc;
         ti = tt;
@@ -46,6 +115,24 @@ class TtyScreen : Screen
         stopping = new Turnstile();
         defStyle.bg = Color.reset;
         defStyle.fg = Color.reset;
+
+        legacy = false;
+        if (term.startsWith("vt") || term.canFind("ansi") || term == "linux" || term == "sun" || term == "sun-color")
+        {
+            // these terminals are "legacy" and not expected to support most OSC functions
+            legacy = true;
+        }
+
+        // for legacy terminals, disable functions we don't support
+        if (legacy)
+        {
+            vt.enterURL = "";
+            vt.exitURL = "";
+            vt.setWindowSize = "";
+            vt.setTitle = "";
+            vt.restoreTitle = "";
+            vt.saveTitle = "";
+        }
     }
 
     ~this()
@@ -60,7 +147,8 @@ class TtyScreen : Screen
         stopping.set(false);
         ti.save();
         ti.raw();
-        puts(caps.clear);
+        puts(vt.disableAutoMargin);
+        puts(vt.clear);
         resize();
         draw();
         spawn(&inputLoop, cast(shared TtyImpl) ti, tid,
@@ -83,18 +171,21 @@ class TtyScreen : Screen
     {
         if (!started)
             return;
+
+        puts(vt.enableAutoMargin);
         puts(caps.resetColors);
-        puts(caps.attrOff);
-        puts(caps.cursorReset);
-        puts(caps.showCursor);
-        puts(caps.cursorReset);
-        puts(caps.clear);
-        puts(caps.disablePaste);
+        puts(vt.sgr0);
+        puts(vt.cursorReset);
+        puts(vt.showCursor);
+        puts(vt.cursorReset);
+        puts(vt.clear);
+        puts(vt.disablePaste);
         enableMouse(MouseEnable.disable);
-        enableFocus(false);
+        puts(vt.disableFocus);
         flush();
         stopping.set(true);
         ti.blocking(false);
+        ti.stop();
         stopping.wait(false);
         ti.blocking(true);
         ti.restore();
@@ -167,7 +258,7 @@ class TtyScreen : Screen
 
     bool hasMouse() const pure
     {
-        return caps.mouse != "";
+        return true;
     }
 
     int colors() const pure
@@ -192,7 +283,7 @@ class TtyScreen : Screen
 
     void beep()
     {
-        puts(caps.bell);
+        puts("\x07");
         flush();
     }
 
@@ -203,9 +294,9 @@ class TtyScreen : Screen
 
     void setSize(Coord size)
     {
-        if (caps.setWindowSize != "")
+        if (vt.setWindowSize != "")
         {
-            puts(caps.setWindowSize, size.x, size.y);
+            puts(vt.setWindowSize, size.y, size.x);
             flush();
             cells.setAllDirty(true);
             resize();
@@ -218,16 +309,13 @@ class TtyScreen : Screen
         // to the de-facto standard from XTerm.  This is necessary as
         // there is no standard terminfo sequence for reporting this
         // information.
-        if (caps.mouse != "")
-        {
-            mouseEn = en; // save this so we can restore after a suspend
-            sendMouseEnable(en);
-        }
+        mouseEn = en; // save this so we can restore after a suspend
+        sendMouseEnable(en);
     }
 
     void enableFocus(bool enabled)
     {
-        puts("\x1b[?1004%s", enabled ? "h" : "l");
+        puts(enabled ? Vt.enableFocus : Vt.disableFocus);
         flush();
     }
 
@@ -271,10 +359,10 @@ private:
     OutBuffer ob;
     Turnstile stopping;
     bool started;
+    bool legacy; // legacy terminals don't have support for OSC, APC, DSC, etc.
     EventQueue eq;
+    Vt vt;
 
-    // puts emits a parameterized string that may contain embedded delay padding.
-    // it should not be used for user-supplied strings.
     void puts(string s)
     {
         Termcap.puts(ob, s, &flush);
@@ -355,19 +443,19 @@ private:
     {
         auto attr = style.attr;
         if (attr & Attr.bold)
-            puts(caps.bold);
+            puts(Vt.bold);
         if (attr & Attr.underline)
-            puts(caps.underline);
+            puts(Vt.underline);
         if (attr & Attr.reverse)
-            puts(caps.reverse);
+            puts(Vt.reverse);
         if (attr & Attr.blink)
-            puts(caps.blink);
+            puts(Vt.blink);
         if (attr & Attr.dim)
-            puts(caps.dim);
+            puts(Vt.dim);
         if (attr & Attr.italic)
-            puts(caps.italic);
+            puts(Vt.italic);
         if (attr & Attr.strikethrough)
-            puts(caps.strikethrough);
+            puts(Vt.strikeThrough);
     }
 
     void clearScreen()
@@ -375,12 +463,12 @@ private:
         if (clear_)
         {
             clear_ = false;
-            puts(caps.attrOff);
-            puts(caps.exitURL);
+            puts(vt.sgr0);
+            puts(vt.exitURL);
             sendColors(defStyle);
             sendAttrs(defStyle);
             style_ = defStyle;
-            puts(caps.clear);
+            puts(Vt.clear);
             flush();
         }
     }
@@ -389,7 +477,7 @@ private:
     {
         if (pos != pos_)
         {
-            puts(caps.setCursor, pos.y, pos.x);
+            puts(format!(Vt.setCursorPosition)(pos.y, pos.x));
             pos_ = pos;
         }
     }
@@ -399,49 +487,37 @@ private:
     {
         if (!cells.isLegal(cursorPos) || (cursorShape == Cursor.hidden))
         {
-            if (caps.hideCursor != "")
-            {
-                puts(caps.hideCursor);
-            }
-            else
-            {
-                // go to last cell (lower right)
-                // this is the best we can do to move the cursor
-                // out of the way.
-                auto size = cells.size();
-                goTo(Coord(size.x - 1, size.y - 1));
-            }
+            puts(vt.hideCursor);
             return;
         }
         goTo(cursorPos);
-        puts(caps.showCursor);
+        puts(cursorShape != Cursor.hidden ? vt.showCursor : vt.hideCursor);
         final switch (cursorShape)
         {
         case Cursor.current:
             break;
         case Cursor.hidden:
-            puts(caps.hideCursor);
             break;
         case Cursor.reset:
-            puts(caps.cursorReset);
+            puts(vt.cursorReset);
             break;
         case Cursor.bar:
-            puts(caps.cursorBar);
+            puts(vt.cursorBar);
             break;
         case Cursor.block:
-            puts(caps.cursorBlock);
+            puts(vt.cursorBlock);
             break;
         case Cursor.underline:
-            puts(caps.cursorUnderline);
+            puts(vt.cursorUnderline);
             break;
         case Cursor.blinkingBar:
-            puts(caps.cursorBlinkingBar);
+            puts(vt.cursorBlinkingBar);
             break;
         case Cursor.blinkingBlock:
-            puts(caps.cursorBlinkingBlock);
+            puts(vt.cursorBlinkingBlock);
             break;
         case Cursor.blinkingUnderline:
-            puts(caps.cursorBlinkingUnderline);
+            puts(vt.cursorBlinkingUnderline);
             break;
         }
 
@@ -458,19 +534,8 @@ private:
         {
             return c.width;
         }
-        // auto-margin handling -- if we are going to automatically
-        // wrap at the bottom right corner, then we want to insert
-        // that character in place, to avoid the scroll of doom.
         auto size = cells.size();
-        if ((pos.y == size.y - 1) && (pos.x == size.x - 1) && caps.automargin
-            && (caps.insertChar != ""))
-        {
-            auto pp = pos;
-            pp.x--;
-            goTo(pp);
-            insert = true;
-        }
-        else if (pos != pos_)
+        if (pos != pos_)
         {
             goTo(pos);
         }
@@ -483,7 +548,7 @@ private:
                 c.style.attr ^= Attr.reverse;
             }
         }
-        if (caps.enterURL == "")
+        if (vt.enterURL == "")
         {
             // avoid pointless changes due to URL where not supported
             c.style.url = "";
@@ -491,7 +556,7 @@ private:
 
         if (c.style.fg != style_.fg || c.style.bg != style_.bg || c.style.attr != style_.attr)
         {
-            puts(caps.attrOff);
+            puts(Vt.sgr0);
             sendColors(c.style);
             sendAttrs(c.style);
         }
@@ -499,11 +564,11 @@ private:
         {
             if (c.style.url != "")
             {
-                puts(caps.enterURL, c.style.url);
+                puts(format(vt.enterURL, c.style.url));
             }
             else
             {
-                puts(caps.exitURL);
+                puts(vt.exitURL);
             }
         }
         // TODO: replacement encoding (ACSC, application supplied fallbacks)
@@ -533,7 +598,7 @@ private:
 
     void draw()
     {
-        puts(caps.hideCursor); // hide the cursor while we draw
+        puts(vt.hideCursor); // hide the cursor while we draw
         clearScreen(); // no op if not needed
         auto size = cells.size();
         Coord pos = Coord(0, 0);
@@ -564,27 +629,24 @@ private:
         // to the de-facto standard from XTerm.  This is necessary as
         // there is no standard terminfo sequence for reporting this
         // information.
-        if (caps.mouse != "")
-        {
-            // start by disabling everything
-            puts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
-            // then turn on specific enables
-            if (en & MouseEnable.buttons)
-                puts("\x1b[?1000h");
-            if (en & MouseEnable.drag)
-                puts("\x1b[?1002h");
-            if (en & MouseEnable.motion)
-                puts("\x1b[?1003h");
-            // and if any are set, we need to send this
-            if (en & MouseEnable.all)
-                puts("\x1b[?1006h");
-            flush();
-        }
+        // start by disabling everything
+        puts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
+        // then turn on specific enables
+        if (en & MouseEnable.buttons)
+            puts("\x1b[?1000h");
+        if (en & MouseEnable.drag)
+            puts("\x1b[?1002h");
+        if (en & MouseEnable.motion)
+            puts("\x1b[?1003h");
+        // and if any are set, we need to send this
+        if (en & MouseEnable.all)
+            puts("\x1b[?1006h");
+        flush();
     }
 
     void sendPasteEnable(bool b)
     {
-        puts(b ? caps.enablePaste : caps.disablePaste);
+        puts(b ? Vt.enablePaste : Vt.disablePaste);
         flush();
     }
 
@@ -624,6 +686,13 @@ private:
                     eq.send(ev);
                 }
             }
+
+            if (stopping.get())
+            {
+                stopping.set(false);
+                return;
+            }
+
             if (!p.empty() || !finished)
             {
                 f.blocking(false);
@@ -632,12 +701,6 @@ private:
             {
                 // No data, so we can sleep until some arrives.
                 f.blocking(true);
-            }
-
-            if (stopping.get())
-            {
-                stopping.set(false);
-                return;
             }
         }
     }
@@ -658,5 +721,5 @@ Screen newTtyScreen(string term = "")
     {
         throw new Exception("terminal not found");
     }
-    return new TtyScreen(newDevTty(), caps);
+    return new TtyScreen(newDevTty(), caps, term);
 }

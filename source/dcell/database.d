@@ -140,45 +140,6 @@ synchronized class Database
             tc.resetColors = "\x1b[39;49m";
         }
 
-        // if we have mouse support, we can try to assume that we
-        // can safely/reasonably add some other features, if they
-        // are not provided for explicitly in the database.
-        if (tc.mouse != "")
-        {
-            // changeable cursor shapes
-            if (tc.cursorReset == "")
-            {
-                tc.cursorReset = "\x1b[0 q";
-                tc.cursorBlinkingBlock = "\x1b[1 q";
-                tc.cursorBlock = "\x1b[2 q";
-                tc.cursorBlinkingUnderline = "\x1b[3 q";
-                tc.cursorUnderline = "\x1b[4 q";
-                tc.cursorBlinkingBar = "\x1b[5 q";
-                tc.cursorBar = "\x1b[6 q";
-            }
-            // bracketed paste
-            if (tc.enablePaste == "")
-            {
-                tc.enablePaste = "\x1b[?2004h";
-                tc.disablePaste = "\x1b[?2004l";
-                tc.pasteStart = "\x1b[200~";
-                tc.pasteEnd = "\x1b[201~";
-            }
-            // OSC URL support
-            if (tc.enterURL == "")
-            {
-                tc.enterURL = "\x1b]8;;%p1%s\x1b\\";
-                tc.exitURL = "\x1b]8;;\x1b\\";
-            }
-            // OSC window size
-            if (tc.setWindowSize == "")
-            {
-                tc.setWindowSize = "\x1b[8;%p1%p2%d;%dt";
-            }
-        }
-
-        // likewise, if we have mouse support, let's try to add backeted
-        // paste support.
         return tc;
     }
 }
@@ -188,9 +149,7 @@ synchronized class Database
     static immutable Termcap caps = {
         name: "mytest", aliases: ["mytest-1", "mytest-2"]
     };
-    static immutable Termcap caps2 = {
-        name: "ctest", mouse: ":mouse", colors: 1 << 24
-    };
+    static immutable Termcap caps2 = {name: "ctest", colors: 1 << 24};
 
     Database.put(&caps);
     Database.put(&caps2);
@@ -224,5 +183,4 @@ synchronized class Database
     assert(tc.setFgBgRGB != "");
     assert(tc.setFg != "");
     assert(tc.resetColors != "");
-    assert(tc.enablePaste != ""); // xterm like
 }

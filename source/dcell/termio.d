@@ -118,11 +118,10 @@ version (Posix)
         {
             if (file.isOpen())
             {
+                ignoreResize(fd);
                 flush();
                 restore();
-                file.close();
             }
-            ignoreResize(fd);
         }
 
         void save()

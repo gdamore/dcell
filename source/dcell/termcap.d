@@ -28,55 +28,21 @@ struct Termcap
     int columns; /// `cols`, the number of columns present
     int lines; /// `lines`, the number lines (rows) present
     int colors; // `colors`, the number of colors supported
-    string bell; /// `bell`, the sequence to ring a bell
-    string clear; /// `clear`, the sequence to clear the screen
-    string enterCA; /// `smcup`, sequence to enter cursor addressing mode
-    string exitCA; /// `rmcup`, sequence to exit cursor addressing mode
-    string showCursor; /// `cnorm`, should display the normal cursor
-    string hideCursor; /// `civis`, mark the cursor invisible
-    string attrOff; /// `sgr0`, turn off all text attributes and colors
-    string underline; /// `smul`, starts underlining
-    string bold; /// `bold`, starts bold (maybe intense or double-strike)
-    string blink; /// `blink`, starts blinking text
-    string reverse; /// `rev`, inverts the foreground and background colors
-    string dim; /// `dim`, reduces the intensity of text
-    string italic; /// `sitm`, starts italics mode (not widely supported)
     string enterKeypad; /// `smkx`, enables keypad mode
     string exitKeypad; /// `rmkx`, leaves keypad mode
     string setFg; /// `setaf`, sets foreground text color (indexed)
     string setBg; /// `setab`, sets background text color (indexed)
     string resetColors; /// `op`, sets foreground and background to default
-    string setCursor; /// `cup`, sets cursor location to row and column
-    string cursorBack1; /// `cub1`, move cursor backwards one
-    string cursorUp1; /// `cuu1`, mover cursor up one line
-    string insertChar; /// `ich1`, insert a character, used for inserting at bottom right for automargin terminals
-    string mouse; /// `kmouse`, indicates support for mouse mode - XTerm style sequences are assumed
     string altChars; /// `acsc`, alternate characters, used for non-ASCII characters with certain legacy terminals
     string enterACS; /// `smacs`, sequence to switch to alternate character set
     string exitACS; /// `rmacs`, sequence to return to normal character set
     string enableACS; /// `enacs`, sequence to enable alternate character set support
-    bool automargin; /// `am`, if true cursor wraps and advances to next row after last column
 
     // Non-standard additions to terminfo.  YMMV.
-    string strikethrough; // smxx
     string setFgBg; /// sequence to set both foreground and background together, using indexed colors
     string setFgBgRGB; /// sequence to set both foreground and background together, using RGB colors
     string setFgRGB; /// sequence to set foreground color to RGB value
     string setBgRGB; /// sequence to set background color RGB value
-    string enablePaste; /// sequence to enable delimited paste mode
-    string disablePaste; /// sequence to disable delimited paste mode
-    string pasteStart; /// sequence sent by terminal to indicate start of a paste buffer
-    string pasteEnd; /// sequence sent by terminal to indicated end of a paste buffer
-    string cursorReset; /// sequence to reset the cursor shape to default
-    string cursorBlock; /// sequence to change the cursor to a solid block
-    string cursorUnderline; /// sequence to change the cursor to a steady underscore
-    string cursorBar; /// sequence to change the cursor to a steady vertical bar
-    string cursorBlinkingBlock; /// sequence to change the cursor to a blinking block
-    string cursorBlinkingUnderline; /// sequence to change the cursor to a blinking underscore
-    string cursorBlinkingBar; /// sequence to change the cursor to a blinking vertical bar
-    string enterURL; /// sequence to start making text a clickable link
-    string exitURL; /// sequence to stop making text clickable link
-    string setWindowSize; /// sequence to resize the window (rarely supported)
 
     /** Permits a constant value to be assigned to a mutable value. */
     void opAssign(scope const(Termcap)* other) @trusted
