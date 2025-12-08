@@ -9,8 +9,6 @@ static immutable Termcap term0 = {
     name: "xfce",
     lines: 24,
     colors: 8,
-    enterKeypad: "\x1b[?1h\x1b=",
-    exitKeypad: "\x1b[?1l\x1b>",
     setFg: "\x1b[3%p1%dm",
     setBg: "\x1b[4%p1%dm",
     resetColors: "\x1b[39;49m",
