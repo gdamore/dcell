@@ -85,6 +85,7 @@ class TtyScreen : Screen
         enum string setBgRGB = "\x1b[48;2;%d;%d;%dm"; // for RGB
         enum string setFgBgRGB = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm"; // for RGB, in one shot
         enum string resetFgBg = "\x1b[39;49m"; // ECMA defined
+        enum string requestDA = "\x1b[c"; // request primary device attributes
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -243,10 +244,10 @@ class TtyScreen : Screen
         puts(vt.disableFocus);
         flush();
         stopping.set(true);
-        ti.blocking(false);
+        puts(vt.requestDA); // request DA to wake up the reader
+        flush();
         ti.stop();
         stopping.wait(false);
-        ti.blocking(true);
         ti.restore();
         started = false;
     }

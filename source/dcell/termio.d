@@ -101,7 +101,6 @@ version (Posix)
     import core.sys.posix.sys.ioctl;
     import core.sys.posix.termios;
     import core.sys.posix.unistd;
-    import core.sys.posix.fcntl;
     import std.stdio;
 
     package class PosixTty : TtyImpl
@@ -128,7 +127,6 @@ version (Posix)
             {
                 ignoreResize(fd);
                 flush();
-                restore();
             }
         }
 
@@ -137,6 +135,7 @@ version (Posix)
             if (file.isOpen)
             {
                 stop();
+                restore();
                 file.close();
             }
         }
@@ -150,7 +149,7 @@ version (Posix)
 
         void restore()
         {
-            enforce(tcsetattr(fd, TCSANOW, &saved) >= 0, "failed to set termio state");
+            enforce(tcsetattr(fd, TCSAFLUSH, &saved) >= 0, "failed to set termio state");
         }
 
         void flush()
