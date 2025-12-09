@@ -79,7 +79,7 @@ interface TtyImpl
     void stop();
 
     /**
-     * Close the ttye device.
+     * Close the tty device.
      */
     void close();
 
