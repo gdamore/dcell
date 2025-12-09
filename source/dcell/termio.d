@@ -250,7 +250,7 @@ version (Posix)
 
         void write(string s)
         {
-            file.rawWrite(s);
+            file.write(s);
         }
 
         bool resized()
