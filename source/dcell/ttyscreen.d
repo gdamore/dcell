@@ -86,6 +86,11 @@ class TtyScreen : Screen
         enum string setFgBgRGB = "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm"; // for RGB, in one shot
         enum string resetFgBg = "\x1b[39;49m"; // ECMA defined
         enum string requestDA = "\x1b[c"; // request primary device attributes
+        enum string disableMouse = "\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l";
+        enum string enableButtons = "\x1b[?1000h";
+        enum string enableDrag = "\x1b[?1002h";
+        enum string enableMotion = "\x1b[?1003h";
+        enum string mouseSgr = "\x1b[?1006h"; // SGR reporting (use with other enables)
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -268,7 +273,7 @@ class TtyScreen : Screen
         puts(vt.clear);
         puts(vt.exitKeypad);
         puts(vt.disablePaste);
-        enableMouse(MouseEnable.disable);
+        puts(vt.disableMouse);
         puts(vt.disableFocus);
         puts(vt.disableCsiU);
         flush();
@@ -343,11 +348,6 @@ class TtyScreen : Screen
     {
         pasteEn = b;
         sendPasteEnable(b);
-    }
-
-    bool hasMouse() const pure
-    {
-        return true;
     }
 
     int colors() const pure
@@ -715,17 +715,25 @@ private:
         // there is no standard terminfo sequence for reporting this
         // information.
         // start by disabling everything
-        puts("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l");
+        puts(vt.disableMouse);
         // then turn on specific enables
         if (en & MouseEnable.buttons)
-            puts("\x1b[?1000h");
+        {
+            puts(vt.enableButtons);
+        }
         if (en & MouseEnable.drag)
-            puts("\x1b[?1002h");
+        {
+            puts(vt.enableDrag);
+        }
         if (en & MouseEnable.motion)
-            puts("\x1b[?1003h");
+        {
+            puts(vt.enableMotion);
+        }
         // and if any are set, we need to send this
         if (en & MouseEnable.all)
-            puts("\x1b[?1006h");
+        {
+            puts(vt.mouseSgr);
+        }
         flush();
     }
 
