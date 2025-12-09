@@ -130,14 +130,6 @@ interface Screen
     void enableFocus(bool b);
 
     /**
-     * Do we have a mouse? This may be overly optimistic for some
-     * terminals, but it is a good first guess.
-     *
-     * Returns: true if the terminal is thought to support mouse events
-     */
-    bool hasMouse();
-
-    /**
      * Enable mouse mode.  This can cause terminals/emulators
      * to behave differently -- for example affecting the ability
      * to scroll or use copy/paste.
