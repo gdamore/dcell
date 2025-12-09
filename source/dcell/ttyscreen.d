@@ -94,6 +94,12 @@ class TtyScreen : Screen
         string saveTitle = "\x1b[22;2t";
         string restoreTitle = "\x1b[23;2t";
         string setTitle = "\x1b[>2t\x1b]2;%s\x1b\\";
+        // three advanced keyboard protocols:
+        // - xterm modifyOtherKeys (uses CSI 27 ~ )
+        // - kitty csi-u (uses CSI u)
+        // - win32-input-mode (uses CSI _)
+        string enableCsiU = "\x1b[>4;2m" ~ "\x1b[>1u" ~ "\x1b[9001h";
+        string disableCsiU = "\x1b[9001l" ~ "\x1b[<u" ~ "\x1b[>4;0m";
 
         // number of colors - again this can be overridden.
         // Typical values are 0 (monochrome), 8, 16, 256, and 1<<24.
@@ -179,6 +185,26 @@ class TtyScreen : Screen
             vt.numColors = 0;
         }
 
+        version (Windows)
+        {
+            // If we don't have a $TERM (e.g. Windows Terminal), or we are dealing with WezTerm
+            // (which cannot mix modes), then only support win32-input-mode.
+            if (term == "" || environment.get("TERM_PROGRAM") == "WezTerm")
+            {
+                vt.enableCsiU = "\x1b[?9001h";
+                vt.disableCsiU = "\x1b[?9001l";
+            }
+        }
+        else
+        {
+            // WezTerm is unhappy if we ask for other modes
+            if (environment.get("TERM_PROGRAM") == "WezTerm")
+            {
+                vt.enableCsiU = "\x1b[>1u";
+                vt.disableCsiU = "\x1b[<u";
+            }
+        }
+
         if (legacy)
         {
             vt.enterURL = "";
@@ -187,6 +213,8 @@ class TtyScreen : Screen
             vt.setTitle = "";
             vt.restoreTitle = "";
             vt.saveTitle = "";
+            vt.enableCsiU = "";
+            vt.disableCsiU = "";
         }
     }
 
@@ -204,6 +232,7 @@ class TtyScreen : Screen
         ti.raw();
         puts(vt.hideCursor);
         puts(vt.disableAutoMargin);
+        puts(vt.enableCsiU);
         puts(vt.enterKeypad);
         puts(vt.enableAltChars);
         puts(vt.clear);
@@ -242,6 +271,7 @@ class TtyScreen : Screen
         puts(vt.disablePaste);
         enableMouse(MouseEnable.disable);
         puts(vt.disableFocus);
+        puts(vt.disableCsiU);
         flush();
         stopping.set(true);
         puts(vt.requestDA); // request DA to wake up the reader
