@@ -837,6 +837,14 @@ private:
             // other cases we use the lookup (P is an SS3 key)
             goto default;
 
+        case 'c':
+            if (!params.empty && params[0] == '?')
+            {
+                // device attributes response - we use this for wake ups, but don't care about the content.
+                return;
+            }
+            goto default;
+
         default:
 
             if ((mode in ss3Keys) && p0 == 1 && plen > 1)
