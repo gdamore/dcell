@@ -98,9 +98,8 @@ class TtyScreen : Screen
         // - xterm modifyOtherKeys (uses CSI 27 ~ )
         // - kitty csi-u (uses CSI u)
         // - win32-input-mode (uses CSI _)
-        string enableCsiU = "\x1b[>4;2m" ~ "\x1b[>1u" ~ "\x1b[9001h";
-        string disableCsiU = "\x1b[9001l" ~ "\x1b[<u" ~ "\x1b[>4;0m";
-
+        string enableCsiU = "\x1b[>4;2m" ~ "\x1b[>1u" ~ "\x1b[?9001h";
+        string disableCsiU = "\x1b[?9001l" ~ "\x1b[<u" ~ "\x1b[>4;0m";
         // number of colors - again this can be overridden.
         // Typical values are 0 (monochrome), 8, 16, 256, and 1<<24.
         // There are some oddballs like xterm-88color.  The first
