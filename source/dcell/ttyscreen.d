@@ -651,6 +651,7 @@ private:
 
     void draw()
     {
+        puts(vt.startSyncOut);
         puts(vt.hideCursor); // hide the cursor while we draw
         clearScreen(); // no op if not needed
         auto size = cells.size();
@@ -673,6 +674,7 @@ private:
             }
         }
         sendCursor();
+        puts(vt.endSyncOut);
         flush();
     }
 
