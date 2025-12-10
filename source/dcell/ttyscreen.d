@@ -32,6 +32,7 @@ import dcell.termio;
 import dcell.screen;
 import dcell.event;
 import dcell.parser;
+import dcell.tty;
 
 class TtyScreen : Screen
 {
@@ -123,7 +124,27 @@ class TtyScreen : Screen
         // requestWindowSize = "\x1b[18t"                          // For modern terminals
     }
 
-    this(TtyImpl tt, string term = "")
+    this()
+    {
+        version (Posix)
+        {
+            import dcell.termio : PosixTty;
+
+            this(new PosixTty("/dev/tty"), "");
+        }
+        else version (Windows)
+        {
+            import dcell.wintty : WinTty;
+
+            this(new WinTty());
+        }
+        else
+        {
+            throw new Exception("no default TTY for platform");
+        }
+    }
+
+    this(Tty tt, string term = "")
     {
         ti = tt;
         ti.start();
@@ -455,7 +476,7 @@ private:
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
-    TtyImpl ti;
+    Tty ti;
     OutBuffer ob;
     bool started;
     bool legacy; // legacy terminals don't have support for OSC, APC, DSC, etc.
@@ -754,9 +775,4 @@ private:
         puts(b ? Vt.enablePaste : Vt.disablePaste);
         flush();
     }
-}
-
-Screen newTtyScreen()
-{
-    return new TtyScreen(newDevTty());
 }
