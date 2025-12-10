@@ -190,19 +190,10 @@ class TtyScreen : Screen
         {
             // If we don't have a $TERM (e.g. Windows Terminal), or we are dealing with WezTerm
             // (which cannot mix modes), then only support win32-input-mode.
-            if (term == "" || environment.get("TERM_PROGRAM") == "WezTerm")
+            if (term == "")
             {
                 vt.enableCsiU = "\x1b[?9001h";
                 vt.disableCsiU = "\x1b[?9001l";
-            }
-        }
-        else
-        {
-            // WezTerm is unhappy if we ask for other modes
-            if (environment.get("TERM_PROGRAM") == "WezTerm")
-            {
-                vt.enableCsiU = "\x1b[>1u";
-                vt.disableCsiU = "\x1b[<u";
             }
         }
 
