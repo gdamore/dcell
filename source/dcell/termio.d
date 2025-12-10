@@ -276,7 +276,7 @@ version (Posix)
                 FD_SET(fd, &readFds);
                 FD_SET(sigRfd, &readFds);
 
-                if (dur.isNegative)
+                if (dur.isNegative || dur == Duration.max)
                 {
                     tvp = null;
                 }
@@ -337,7 +337,7 @@ version (Posix)
                 pfd[1].revents = 0;
 
                 int dly;
-                if (dur.isNegative || dur == dur.max)
+                if (dur.isNegative || dur == Duration.max)
                 {
                     dly = -1;
                 }
