@@ -654,10 +654,10 @@ version (Windows)
 
         Coord windowSize()
         {
-            CONSOLE_SCREEN_BUFFER_INFO oscreen;
-            GetConsoleScreenBufferInfo(output, &oscreen);
-            return Coord(oscreen.srWindow.Right - oscreen.srWindow.Left + 1,
-                oscreen.srWindow.Bottom - oscreen.srWindow.Top + 1);
+            CONSOLE_SCREEN_BUFFER_INFO info;
+            GetConsoleScreenBufferInfo(output, &info);
+            return Coord(info.srWindow.Right - info.srWindow.Left + 1,
+                info.srWindow.Bottom - info.srWindow.Top + 1);
         }
 
         bool resized()
