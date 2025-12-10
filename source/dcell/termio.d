@@ -2,7 +2,7 @@
  * Termio module for dcell contains code associated iwth managing terminal settings such as
  * non-blocking mode.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -11,9 +11,27 @@
  */
 module dcell.termio;
 
+import std.datetime;
 import std.exception;
 import std.range.interfaces;
 import dcell.coord;
+
+version (OSX)
+{
+    version = UseSelect;
+}
+else version (iOS)
+{
+    version = UseSelect;
+}
+else version (tvOS)
+{
+    version = UseSelect;
+}
+else version (VisionOS)
+{
+    version = UseSelect;
+}
 
 /**
  * TtyImpl is the interface that implementations should
@@ -56,7 +74,7 @@ interface TtyImpl
      * Read input.  May return an empty slice if no data
      * is present and blocking is disabled.
      */
-    string read();
+    string read(Duration dur = Duration.zero);
 
     /**
      * Write output.
@@ -101,6 +119,8 @@ version (Posix)
     import core.sys.posix.sys.ioctl;
     import core.sys.posix.termios;
     import core.sys.posix.unistd;
+    import core.sys.posix.fcntl;
+    import std.process;
     import std.stdio;
 
     package class PosixTty : TtyImpl
@@ -216,7 +236,7 @@ version (Posix)
                 else
                     enum TIOCGWINSZ = 0x5413; // everything else
             }
-            else version (Darwin)
+            else version (Apple)
                 enum TIOCGWINSZ = 0x40087468;
             else version (Solaris)
                 enum TIOCGWINSZ = 0x5468;
@@ -236,16 +256,121 @@ version (Posix)
             return Coord(wsz.ws_col, wsz.ws_row);
         }
 
-        string read()
+        version (UseSelect)
         {
-            // this has to use the underlying read system call
-            import unistd = core.sys.posix.unistd;
+            // On macOS, we have to use a select() based implementation because poll()
+            // does not work reasonably on /dev/tty. (This was very astonishing when first
+            // we discovered it -- POLLNVAL for device files.)
+            string read(Duration dur = Duration.zero)
+            {
+                // this has to use the underlying read system call
+                import unistd = core.sys.posix.unistd;
+                import core.sys.posix.sys.select; // Or similar module for select bindings
 
-            ubyte[] buf = new ubyte[128];
-            auto rv = unistd.read(fd, cast(void*) buf.ptr, buf.length);
-            if (rv < 0)
-                return "";
-            return cast(string) buf[0 .. rv];
+                fd_set readFds;
+                timeval timeout;
+                timeval* tvp;
+
+                FD_ZERO(&readFds);
+                FD_SET(fd, &readFds);
+                FD_SET(sigRfd, &readFds);
+
+                if (dur.isNegative)
+                {
+                    tvp = null;
+                }
+                else
+                {
+                    auto usecs = dur.total!"usecs";
+
+                    timeout.tv_sec = cast(typeof(timeout.tv_sec)) usecs / 1_000_000;
+                    timeout.tv_usec = cast(typeof(timeout.tv_usec)) usecs % 1_000_000;
+                    tvp = &timeout;
+                }
+
+                import std.algorithm : max;
+
+                int num = select(max(fd, sigRfd) + 1, &readFds, null, null, tvp);
+
+                if (num < 1)
+                {
+                    return "";
+                }
+
+                string result;
+
+                if (FD_ISSET(fd, &readFds))
+                {
+                    ubyte[128] buf;
+                    auto nread = unistd.read(fd, cast(void*) buf.ptr, buf.length);
+                    if (nread > 0)
+                    {
+                        result = cast(string)(buf[0 .. nread]).dup;
+                    }
+                }
+                if (FD_ISSET(sigRfd, &readFds))
+                {
+                    ubyte[1] buf;
+                    // this can fail, we're just clearning the signaled state
+                    unistd.read(sigRfd, buf.ptr, 1);
+                }
+                return result;
+            }
+        }
+        else
+        {
+            string read(Duration dur = Duration.zero)
+            {
+                // this has to use the underlying read system call
+                import unistd = core.sys.posix.unistd;
+                import core.sys.posix.poll;
+                import core.sys.posix.fcntl;
+
+                pollfd[2] pfd;
+                pfd[0].fd = fd;
+                pfd[0].events = POLLRDNORM;
+                pfd[0].revents = 0;
+
+                pfd[1].fd = sigRfd;
+                pfd[1].events = POLLRDNORM;
+                pfd[1].events = 0;
+
+                int dly;
+                if (dur.isNegative || dur == dur.max)
+                {
+                    dly = -1;
+                }
+                else
+                {
+                    dly = cast(int)(dur.total!"msecs");
+                }
+
+                string result;
+
+                long rv = poll(pfd.ptr, 1, dly);
+                if (rv < 1)
+                {
+                    return result;
+                }
+                if (pfd[0].revents & POLLRDNORM)
+                {
+                    ubyte[128] buf;
+                    auto nread = unistd.read(fd, cast(void*) buf.ptr, buf.length);
+                    if (nread > 0)
+                    {
+                        result = cast(string)(buf[0 .. nread]).dup;
+                    }
+                }
+                if (pfd[1].revents & POLLRDNORM)
+                {
+                    ubyte[1] buf;
+                    // this can fail, and its fine (just clearing the signaled state)
+                    unistd.read(sigRfd, buf.ptr, 1);
+                }
+                import std.format;
+
+                return result;
+            }
         }
 
         void write(string s)
@@ -287,19 +412,21 @@ version (Posix)
 
     private __gshared int sigRaised = 0;
     private __gshared int sigFd = -1;
+    private __gshared Pipe sigPipe;
+    private __gshared int sigWfd;
+    private __gshared int sigRfd;
+
     private extern (C) void handleSigWinCh(int _) nothrow
     {
-        int fd = sigFd;
         atomicStore(sigRaised, 1);
-        termios tio;
-        // wake the input loop so it can see the signal
+
+        // wake any reader so it can see the update
         // this is crummy but its the best way to get this noticed.
-        if (tcgetattr(fd, &tio) >= 0)
-        {
-            tio.c_cc[VMIN] = 0;
-            tio.c_cc[VTIME] = 1;
-            tcsetattr(fd, TCSANOW, &tio);
-        }
+        ubyte[1] buf;
+        import unistd = core.sys.posix.unistd;
+
+        // we do not care if this fails
+        unistd.write(sigWfd, buf.ptr, 1);
     }
 
     // We don't have a stanrdard definition of SIGWINCH
@@ -330,8 +457,18 @@ version (Posix)
 
     void watchResize(int fd)
     {
+        import std.process;
+        import core.sys.posix.fcntl;
+
         if (atomicLoad(sigFd) == -1)
         {
+            // create the pipe for notifications if not already done so.
+            sigPipe = pipe();
+            sigWfd = sigPipe.writeEnd.fileno();
+            sigRfd = sigPipe.readEnd.fileno();
+            fcntl(sigWfd, F_SETFL, O_NONBLOCK);
+            fcntl(sigRfd, F_SETFL, O_NONBLOCK);
+
             sigFd = fd;
             sigaction_t sa;
             sa.sa_handler = &handleSigWinCh;
@@ -347,6 +484,7 @@ version (Posix)
             sa.sa_handler = SIG_IGN;
             sigaction(SIGWINCH, &sa, null);
             sigFd = -1;
+            sigPipe.close();
         }
     }
 

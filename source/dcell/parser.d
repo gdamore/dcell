@@ -317,6 +317,7 @@ class Parser
         return cast(Event[]) res;
     }
 
+    // Parse the supplied content, returns true if data is fully parsed.
     bool parse(string b)
     {
         buf ~= b;

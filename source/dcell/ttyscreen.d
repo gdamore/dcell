@@ -16,7 +16,7 @@ import core.atomic;
 import core.time;
 import std.algorithm : canFind;
 import std.format;
-import std.concurrency;
+import std.datetime;
 import std.exception;
 import std.outbuffer;
 import std.process;
@@ -26,14 +26,12 @@ import std.string;
 
 import dcell.cell;
 import dcell.cursor;
-import dcell.evqueue;
 import dcell.key;
 import dcell.mouse;
 import dcell.termio;
 import dcell.screen;
 import dcell.event;
 import dcell.parser;
-import dcell.turnstile;
 
 class TtyScreen : Screen
 {
@@ -128,10 +126,10 @@ class TtyScreen : Screen
     this(TtyImpl tt, string term = "")
     {
         ti = tt;
+        parser = new Parser();
         ti.start();
         cells = new CellBuffer(ti.windowSize());
         ob = new OutBuffer();
-        stopping = new Turnstile();
         defStyle.bg = Color.reset;
         defStyle.fg = Color.reset;
 
@@ -227,11 +225,10 @@ class TtyScreen : Screen
         ti.close();
     }
 
-    private void start(Tid tid, EventQueue eq)
+    void start()
     {
         if (started)
             return;
-        stopping.set(false);
         ti.save();
         ti.raw();
         puts(vt.hideCursor);
@@ -243,20 +240,8 @@ class TtyScreen : Screen
 
         resize();
         draw();
-        spawn(&inputLoop, cast(shared TtyImpl) ti, tid,
-            cast(shared EventQueue) eq, cast(shared Turnstile) stopping);
+
         started = true;
-    }
-
-    void start(Tid tid)
-    {
-        start(tid, null);
-    }
-
-    void start()
-    {
-        eq = new EventQueue();
-        start(Tid(), eq);
     }
 
     void stop()
@@ -277,11 +262,7 @@ class TtyScreen : Screen
         puts(vt.disableFocus);
         puts(vt.disableCsiU);
         flush();
-        stopping.set(true);
-        puts(vt.requestDA); // request DA to wake up the reader
-        flush();
         ti.stop();
-        stopping.wait(false);
         ti.restore();
         started = false;
     }
@@ -408,23 +389,60 @@ class TtyScreen : Screen
         flush();
     }
 
-    Event receiveEvent(Duration dur)
+    Event waitEvent(Duration dur = msecs(100))
     {
-        if (eq is null)
-        {
-            return Event(EventType.error);
-        }
-        return eq.receive(dur);
-    }
+        // naive polling loop for now.
+        MonoTime expire;
 
-    /** This variant of receiveEvent blocks forever until an event is available. */
-    Event receiveEvent()
-    {
-        if (eq is null)
+        if (!dur.isNegative)
         {
-            return Event(EventType.error);
+            expire = MonoTime.currTime() + dur;
         }
-        return eq.receive();
+        else
+        {
+            expire = MonoTime.max;
+        }
+
+        // residual tracks whether we are waiting for the rest of
+        // a partial escape sequence in the parser.
+        bool residual = false;
+
+        for (;;)
+        {
+            events ~= parser.events();
+            if (ti.resized())
+            {
+                Event rev;
+                rev.type = EventType.resize;
+                rev.when = MonoTime.currTime();
+                events ~= rev;
+            }
+            if (!events.empty)
+            {
+                auto event = events[0];
+                events = events[1 .. $];
+                return event;
+            }
+
+            // if we have partial data in the parser, we need to use
+            // a shorter wakeup, so we can create an event in case the
+            // escape sequence is not completed (e.g. lone ESC.)
+            if (residual || !dur.isNegative)
+            {
+                auto now = MonoTime.currTime();
+                if (expire <= now)
+                {
+                    // expired
+                    return Event(EventType.none);
+                }
+                auto interval = residual ? msecs(1) : (expire - now);
+                residual = !parser.parse(ti.read(interval));
+            }
+            else
+            {
+                residual = !parser.parse(ti.read());
+            }
+        }
     }
 
 private:
@@ -445,11 +463,11 @@ private:
     bool pasteEn; // saved state for suspend/resume
     TtyImpl ti;
     OutBuffer ob;
-    Turnstile stopping;
     bool started;
     bool legacy; // legacy terminals don't have support for OSC, APC, DSC, etc.
-    EventQueue eq;
     Vt vt;
+    Event[] events;
+    Parser parser;
 
     void puts(string s)
     {
@@ -741,61 +759,6 @@ private:
     {
         puts(b ? Vt.enablePaste : Vt.disablePaste);
         flush();
-    }
-
-    static void inputLoop(shared TtyImpl tin, Tid tid,
-        shared EventQueue eq, shared Turnstile stopping)
-    {
-        TtyImpl f = cast(TtyImpl) tin;
-        Parser p = new Parser();
-
-        f.blocking(true);
-
-        for (;;)
-        {
-            string s;
-            try
-            {
-                s = f.read();
-            }
-            catch (Exception e)
-            {
-            }
-            bool finished = p.parse(s);
-            auto evs = p.events();
-            if (f.resized())
-            {
-                Event ev;
-                ev.type = EventType.resize;
-                ev.when = MonoTime.currTime();
-                evs ~= ev;
-            }
-            foreach (_, ev; evs)
-            {
-                if (eq is null)
-                    send(ownerTid(), ev);
-                else
-                {
-                    eq.send(ev);
-                }
-            }
-
-            if (stopping.get())
-            {
-                stopping.set(false);
-                return;
-            }
-
-            if (!p.empty() || !finished)
-            {
-                f.blocking(false);
-            }
-            else
-            {
-                // No data, so we can sleep until some arrives.
-                f.blocking(true);
-            }
-        }
     }
 }
 

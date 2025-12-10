@@ -12,7 +12,6 @@ module color;
 
 import std.stdio;
 import std.string;
-import std.concurrency;
 import std.random;
 import std.range;
 import dcell;
@@ -137,7 +136,7 @@ void main()
     while (!done)
     {
         cb.makeBox(s);
-        auto ev = s.receiveEvent(msecs(50));
+        auto ev = s.waitEvent(msecs(50));
         switch (ev.type)
         {
         case EventType.key:
