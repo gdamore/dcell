@@ -401,6 +401,8 @@ class TtyScreen : Screen
         }
         else
         {
+            // we check dur.isNegative, but this adds a safeguard to make sure
+            // we won't misconstrue it as a small value.
             expire = MonoTime.max;
         }
 
