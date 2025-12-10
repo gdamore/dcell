@@ -654,6 +654,7 @@ version (Windows)
 
         Coord windowSize()
         {
+            CONSOLE_SCREEN_BUFFER_INFO oscreen;
             GetConsoleScreenBufferInfo(output, &oscreen);
             return Coord(oscreen.srWindow.Right - oscreen.srWindow.Left + 1,
                 oscreen.srWindow.Bottom - oscreen.srWindow.Top + 1);
@@ -672,7 +673,6 @@ version (Windows)
         HANDLE eventH;
         DWORD omode;
         DWORD imode;
-        CONSOLE_SCREEN_BUFFER_INFO oscreen;
         bool started;
         bool wasResized;
     }
