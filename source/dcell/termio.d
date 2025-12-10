@@ -334,7 +334,7 @@ version (Posix)
 
                 pfd[1].fd = sigRfd;
                 pfd[1].events = POLLRDNORM;
-                pfd[1].events = 0;
+                pfd[1].revents = 0;
 
                 int dly;
                 if (dur.isNegative || dur == dur.max)
@@ -348,7 +348,7 @@ version (Posix)
 
                 string result;
 
-                long rv = poll(pfd.ptr, 1, dly);
+                long rv = poll(pfd.ptr, 2, dly);
                 if (rv < 1)
                 {
                     return result;
