@@ -619,8 +619,11 @@ version (Windows)
                     switch (ev.EventType)
                     {
                     case KEY_EVENT:
-                        auto chr = ev.KeyEvent.AsciiChar;
-                        result ~= chr;
+                        if (ev.KeyEvent.bKeyDown && ev.KeyEvent.AsciiChar != 0)
+                        {
+                            auto chr = ev.KeyEvent.AsciiChar;
+                            result ~= chr;
+                        }
                         break;
                     case WINDOW_BUFFER_SIZE_EVENT:
                         wasResized = true;
