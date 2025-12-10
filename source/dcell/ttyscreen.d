@@ -1,5 +1,9 @@
 /**
- * TtyScreen module implements POSIX style terminals (ala XTerm).
+ * TtyScreen module implements VT style terminals (ala XTerm).
+ * These are terminals that work by sending escape sequences over
+ * a single byte stream. Historically this would be a serial port,
+ * but modern systems likely use SSH, or a pty (pseudo-terminal).
+ * Modern Windows has adopted this form of API as well.
  *
  * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
