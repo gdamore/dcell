@@ -49,8 +49,13 @@ import core.sys.posix.fcntl;
 import std.process;
 import std.stdio;
 
-package class PosixTty : Tty
+/**
+ * PosixTty implements the TTY interface for POSIX systems, using a normal
+ * file descriptor and the termio facility found on such systems.
+ */
+class PosixTty : Tty
 {
+    /// Create a Tty device on a given device path. The usual path is "/dev/tty".
     this(string dev)
     {
         path = dev;

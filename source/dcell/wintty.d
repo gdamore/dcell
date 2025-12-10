@@ -50,8 +50,11 @@ extern (Windows) @nogc nothrow
 @nogc:
 nothrow:
 
-// WindowsTty use ReadConsoleInput, as that is the only
-// way to get window resize events.
+/**
+ * WinTty impleements the Tty using the VT input mode and the Win32 ReadConsoleInput and WriteConsole APIs.
+ * We use this instead of ReadFile/WriteFile in order to obtain resize events, and access to the screen size.
+ * The terminal is expected to be connected the the process' STD_INPUT_HANDLE and STD_OUTPUT_HANDLE.
+ */
 class WinTty : Tty
 {
 
