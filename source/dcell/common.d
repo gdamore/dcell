@@ -27,12 +27,11 @@ version (Posix)
 }
 else version (Windows)
 {
+    import dcell.ttyscreen;
+
     Screen newScreen()
     {
-        import std.exception;
-
-        throw new Exception("windows not supported yet");
-        return null;
+        return newTtyScreen();
     }
 }
 else

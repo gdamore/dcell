@@ -399,6 +399,13 @@ version (Posix)
     }
 
 }
+else version (Windows)
+{
+    TtyImpl newDevTty()
+    {
+        return new WinTty();
+    }
+}
 else
 {
     TtyImpl newDevTty(string _ = "/dev/tty")
@@ -500,5 +507,192 @@ version (Posix)
         {
             return false;
         }
+    }
+}
+
+version (Windows)
+{
+
+    import core.sys.windows.windows;
+
+    // Kernel32.dll functions
+    extern (Windows)
+    {
+        BOOL ReadConsoleInputW(HANDLE hConsoleInput, INPUT_RECORD* lpBuffer, DWORD nLength, DWORD* lpNumEventsRead);
+
+        BOOL GetNumberOfConsoleInputEvents(HANDLE hConsoleInput, DWORD* lpcNumberOfEvents);
+
+        BOOL FlushConsoleInputBuffer(HANDLE hConsoleInput);
+
+        DWORD WaitForMultipleObjects(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
+
+        BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+
+        BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
+
+        BOOL GetConsoleScreenBufferInfo(HANDLE hConsoleOutput, CONSOLE_SCREEN_BUFFER_INFO* lpConsoleScreenBufferInfo);
+
+        HANDLE CreateEventW(SECURITY_ATTRIBUTES* secAttr, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName);
+
+        BOOL SetEvent(HANDLE hEvent);
+
+        BOOL WriteConsoleW(HANDLE hFile, LPCVOID buf, DWORD nNumBytesToWrite, LPDWORD lpNumBytesWritten, LPVOID rsvd);
+
+        BOOL CloseHandle(HANDLE hObject);
+    }
+
+    // WindowsTty use ReadConsoleInput, as that is the only
+    // way to get window resize events.
+    package class WinTty : TtyImpl
+    {
+
+        this()
+        {
+            input = GetStdHandle(STD_INPUT_HANDLE);
+            output = GetStdHandle(STD_OUTPUT_HANDLE);
+            eventH = CreateEventW(null, true, false, null);
+        }
+
+        void save()
+        {
+
+            GetConsoleMode(output, &omode);
+            GetConsoleMode(input, &imode);
+        }
+
+        void restore()
+        {
+            SetConsoleMode(output, omode);
+            SetConsoleMode(input, imode);
+        }
+
+        void start()
+        {
+            save();
+            if (!started)
+            {
+                started = true;
+                FlushConsoleInputBuffer(input);
+            }
+        }
+
+        void stop()
+        {
+            SetEvent(eventH);
+        }
+
+        void close()
+        {
+            CloseHandle(input);
+            CloseHandle(output);
+            CloseHandle(eventH);
+        }
+
+        void raw()
+        {
+            SetConsoleMode(input, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS);
+            SetConsoleMode(output, // ENABLE_LVB_GRID_WORLDWIDE |
+                ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
+
+        }
+
+        void flush()
+        {
+        }
+
+        void blocking(bool b)
+        {
+        }
+
+        /**
+         * Read input.  May return an empty slice if no data
+         * is present and blocking is disabled.
+         */
+        string read(Duration dur = Duration.zero)
+        {
+            HANDLE[2] handles;
+            handles[0] = input;
+            handles[1] = eventH;
+
+            DWORD dly;
+            if (dur.isNegative || dur == Duration.max)
+            {
+                dly = INFINITE;
+            }
+            else
+            {
+                dly = cast(DWORD)(dur.total!"msecs");
+            }
+
+            auto rv = WaitForMultipleObjects(2, handles.ptr, false, dly);
+            string result = null;
+
+            // WaitForMultipleObjects returns WAIT_OBJECT_0 + the index.
+            switch (rv)
+            {
+            case WAIT_OBJECT_0 + 1: // w.cancelFlag
+                return result;
+            case WAIT_OBJECT_0: // input
+                INPUT_RECORD[128] recs;
+                DWORD nrec;
+                ReadConsoleInput(input, recs.ptr, 128, &nrec);
+
+                foreach (ev; recs[0 .. nrec])
+                {
+                    switch (ev.EventType)
+                    {
+                    case KEY_EVENT:
+                        auto chr = ev.KeyEvent.AsciiChar;
+                        result ~= chr;
+                        break;
+                    case WINDOW_BUFFER_SIZE_EVENT:
+                        wasResized = true;
+                        break;
+                    default: // we could process focus, etc. here, but we already
+                        // get them inline via VT sequences
+                        break;
+                    }
+                }
+
+                return result;
+            default:
+                return result;
+            }
+        }
+
+        /**
+         * Write output.
+         */
+        void write(string s)
+        {
+            import std.utf;
+
+            wstring w = toUTF16(s);
+
+            WriteConsoleW(output, w.ptr, cast(uint) w.length, null, null);
+        }
+
+        Coord windowSize()
+        {
+            GetConsoleScreenBufferInfo(output, &oscreen);
+            return Coord(oscreen.dwSize.X, oscreen.dwSize.Y);
+        }
+
+        bool resized()
+        {
+            bool result = wasResized;
+            wasResized = false;
+            return result;
+        }
+
+    private:
+        HANDLE output;
+        HANDLE input;
+        HANDLE eventH;
+        DWORD omode;
+        DWORD imode;
+        CONSOLE_SCREEN_BUFFER_INFO oscreen;
+        bool started;
+        bool wasResized;
     }
 }
