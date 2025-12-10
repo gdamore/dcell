@@ -63,14 +63,6 @@ interface TtyImpl
     void raw();
 
     /**
-     * Make input blocking or non-blocking.  Blocking input
-     * will cause reads against the terminal to block forever
-     * until at least one character is returned.  Otherwise it
-     * will return in at most
-     */
-    void blocking(bool b);
-
-    /**
      * Read input.  May return an empty slice if no data
      * is present and blocking is disabled.
      */
@@ -176,17 +168,6 @@ version (Posix)
         void flush()
         {
             file.flush();
-        }
-
-        void blocking(bool b) @trusted
-        {
-            termios tio;
-            enforce(tcgetattr(fd, &tio) >= 0);
-            tio.c_cc[VMIN] = b ? 1 : 0;
-            tio.c_cc[VTIME] = 0;
-
-            enforce(tcsetattr(fd, TCSANOW, &tio) >= 0);
-            block = b;
         }
 
         void raw() @trusted
@@ -591,16 +572,12 @@ version (Windows)
         void raw()
         {
             SetConsoleMode(input, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS);
-            SetConsoleMode(output, // ENABLE_LVB_GRID_WORLDWIDE |
+            SetConsoleMode(output,
                 ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
 
         }
 
         void flush()
-        {
-        }
-
-        void blocking(bool b)
         {
         }
 
