@@ -76,9 +76,9 @@ void drawSelect(Screen s, Coord c1, Coord c2, bool sel)
 {
     order(c1, c2);
     Coord pos;
-    for (pos.y = c1.y; pos.y < c2.y; pos.y++)
+    for (pos.y = c1.y; pos.y <= c2.y; pos.y++)
     {
-        for (pos.x = c1.x; pos.x < c2.x; pos.x++)
+        for (pos.x = c1.x; pos.x <= c2.x; pos.x++)
         {
             if (sel)
                 s[pos].style.attr |= Attr.reverse;
