@@ -419,7 +419,7 @@ version (Posix)
         unistd.write(sigWfd, buf.ptr, 1);
     }
 
-    // We don't have a stanrdard definition of SIGWINCH
+    // We don't have a standard definition of SIGWINCH
     version (linux)
     {
         // Legacy Linux is not even self-compatible ick.
@@ -652,7 +652,8 @@ version (Windows)
         Coord windowSize()
         {
             GetConsoleScreenBufferInfo(output, &oscreen);
-            return Coord(oscreen.dwSize.X, oscreen.dwSize.Y);
+            return Coord(oscreen.srWindow.Right - oscreen.srWindow.Left + 1,
+                oscreen.srWindow.Bottom - oscreen.srWindow.Top + 1);
         }
 
         bool resized()
