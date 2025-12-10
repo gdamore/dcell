@@ -1014,7 +1014,6 @@ private:
         else if (chr < ' ' && p0 >= 0x41 && p0 <= 0x5a)
         {
             key = cast(Key) p0;
-            chr = 0;
         }
         else if (key == 0x11 || key == 0x13 || key == 0x14)
         {
@@ -1110,6 +1109,36 @@ private:
             mod |= Modifiers.alt;
             escaped = false;
         }
+        if (dch < ' ' && k < Key.rune)
+        {
+            switch (cast(int) k)
+            {
+            case 0xd, 0xa:
+                k = Key.enter;
+                break;
+            case 0x9:
+                k = Key.tab;
+                break;
+            case 0x8:
+                k = Key.backspace;
+                break;
+            case 0x1b:
+                k = Key.esc;
+                break;
+            case 0: // control-space
+                k = Key.rune;
+                mod |= Modifiers.ctrl;
+                dch = ' ';
+                break;
+            default:
+                // most likely entered with a CTRL keypress
+                k = Key.rune;
+                mod |= Modifiers.ctrl;
+                dch = dch + '\x60';
+                break;
+            }
+        }
+
         Event ev = {
             type: EventType.key, when: MonoTime.currTime(), key: {
                 key: k, ch: dch, mod: mod
