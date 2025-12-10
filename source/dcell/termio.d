@@ -110,6 +110,7 @@ interface TtyImpl
      * Resized returns true if the window was resized since last checked.
      * Normally resize will force the window into non-blocking mode so
      * that the caller can see the resize in a timely fashion.
+     * This is edge triggered (reading it will clear the value.)
      */
     bool resized();
 }
@@ -380,6 +381,7 @@ version (Posix)
 
         bool resized()
         {
+            // NB: resized is edge triggered.
             return wasResized(fd);
         }
 
