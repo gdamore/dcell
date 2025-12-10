@@ -12,7 +12,6 @@ module mouse;
 
 import std.stdio;
 import std.string;
-import std.concurrency;
 import core.stdc.stdlib;
 
 import dcell;
@@ -105,7 +104,7 @@ void main()
     dstring kStr = "";
     dstring pStr = "";
 
-    s.start(thisTid());
+    s.start();
     s.showCursor(Cursor.hidden);
     s.enableMouse(MouseEnable.all);
     s.enablePaste(true);
@@ -140,10 +139,7 @@ void main()
         emitStr(s, pos, white, format(pasteFmt, pStr.length, ps));
         s.show();
         bStr = "";
-        Event ev;
-        receive(
-            (Event ee) { ev = ee; }
-        );
+        Event ev = s.waitEvent();
         Style st;
         st.bg = Color.red;
         Style up;

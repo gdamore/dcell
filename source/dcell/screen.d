@@ -11,7 +11,6 @@
 module dcell.screen;
 
 import core.time;
-import std.concurrency;
 
 public import dcell.cell;
 public import dcell.cursor;
@@ -94,21 +93,11 @@ interface Screen
     Coord size();
 
     /**
-     * If start was called without a Tid to send to, then events
-     * are delivered into a queue that can be polled via this API.
-     * This function is thread safe.
-     * Params:
-     *   dur = maximum time to wait, if no event is available then EventType.none is returned.
-     * Returns:
-     *   The event, which will be EventType.none if it times out, or EventType.closed if it is stopped.
+     * Wait for an event, up to the given duration.  This is used
+     * to rescan for changes as well, so it should be called as
+     * frequently.
      */
-    Event receiveEvent(Duration dur);
-
-    /**
-     * Receive events, without a timeout.  This only works if start
-     * was called without a tid.
-     */
-    Event receiveEvent();
+    Event waitEvent(Duration dur = msecs(100));
 
     /**
      * Enable bracketed paste mode mode.  Bracketed paste mode
@@ -211,20 +200,17 @@ interface Screen
     void resize();
 
     /**
-     * Start should be called to start processing.  Once this begins,
-     * events (see event.d) will be delivered to the caller via
-     * std.concurrency.send().  Additionally, this may change terminal
+     * Start sets up the terminal.  This changes terminal
      * settings to put the input stream into raw mode, etc.
      */
     void start();
-    void start(Tid);
 
     /**
      * Stop is called to stop processing on the screen.  The terminal
-     * settings will be restored, and the screen may be cleared. Input
-     * events will no longer be delivered.  This should be called when
-     * the program is exited, or if suspending (to run a sub-shell process
-     * interactively for example).
+     * settings will be restored, and the screen may be cleared.
+     *
+     * This should be called when the program is exited, or if suspending
+     * (to run a sub-shell process interactively for example).
      */
     void stop();
 }
