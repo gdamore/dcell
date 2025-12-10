@@ -10,9 +10,8 @@ project into D.
 
 At present, this works reasonably well for most TTY type devices
 (think xterm, Terminal, Term2, etc) on Posix (Linux, macOS, etc)
-systems.
-
-Windows support is missing.
+systems. Windows Terminal and other console emulators on Windows
+are also supported.
 
 It supports most of the things that Tcell supports.  The API is
 subject to change, as I'm working on improving this.
