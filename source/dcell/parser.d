@@ -361,7 +361,6 @@ private:
     Event[] evs;
     int utfLen; // how many UTF bytes are expected
     ubyte escChar; // character immediately following escape (zero if none)
-    const KeyCode[string] keyCodes;
     bool partial; // record partially parsed sequences
     MonoTime keyStart; // when the timer started
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
