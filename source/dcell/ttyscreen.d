@@ -126,7 +126,6 @@ class TtyScreen : Screen
     this(TtyImpl tt, string term = "")
     {
         ti = tt;
-        parser = new Parser();
         ti.start();
         cells = new CellBuffer(ti.windowSize());
         ob = new OutBuffer();
@@ -229,6 +228,8 @@ class TtyScreen : Screen
     {
         if (started)
             return;
+
+        parser = new Parser(); // if we are restarting, this discards the old one
         ti.save();
         ti.raw();
         puts(vt.hideCursor);
