@@ -572,7 +572,7 @@ private:
     {
         if (pos != pos_)
         {
-            puts(format!(Vt.setCursorPosition)(pos.y, pos.x));
+            puts(format!(Vt.setCursorPosition)(pos.y + 1, pos.x + 1));
             pos_ = pos;
         }
     }
