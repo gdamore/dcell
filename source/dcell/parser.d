@@ -1013,7 +1013,7 @@ private:
         }
         else if (chr < ' ' && p0 >= 0x41 && p0 <= 0x5a)
         {
-            key = cast(Key) p0;
+            chr = p0;
         }
         else if (key == 0x11 || key == 0x13 || key == 0x14)
         {
