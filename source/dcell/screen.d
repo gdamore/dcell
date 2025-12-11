@@ -110,15 +110,6 @@ interface Screen
     void enablePaste(bool b);
 
     /**
-     * Enable focus reporting. This will cause focus events to be sent
-     * when the window focus changes.
-     *
-     * Params:
-     *   b = true to enable focus reporting, false to disable
-     */
-    void enableFocus(bool b);
-
-    /**
      * Enable mouse mode.  This can cause terminals/emulators
      * to behave differently -- for example affecting the ability
      * to scroll or use copy/paste.

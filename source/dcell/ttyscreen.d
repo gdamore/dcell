@@ -266,6 +266,7 @@ class TtyScreen : Screen
         }
         puts(vt.saveTitle);
         puts(vt.enterKeypad);
+        puts(vt.enableFocus);
         puts(vt.enableAltChars);
         puts(vt.clear);
 
@@ -416,12 +417,6 @@ class TtyScreen : Screen
         // information.
         mouseEn = en; // save this so we can restore after a suspend
         sendMouseEnable(en);
-    }
-
-    void enableFocus(bool enabled)
-    {
-        puts(enabled ? Vt.enableFocus : Vt.disableFocus);
-        flush();
     }
 
     void enableAlternateScreen(bool enabled)
