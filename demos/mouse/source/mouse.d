@@ -138,7 +138,6 @@ void main()
         pos.y++;
         emitStr(s, pos, white, format(pasteFmt, pStr.length, ps));
         s.show();
-        bStr = "";
         Event ev = s.waitEvent();
         Style st;
         st.bg = Color.red;
@@ -195,6 +194,8 @@ void main()
             kStr = ev.key.toString();
             break;
         case EventType.mouse:
+            bStr = "";
+
             if (ev.mouse.mod & Modifiers.shift)
                 bStr ~= " S";
             if (ev.mouse.mod & Modifiers.ctrl)
