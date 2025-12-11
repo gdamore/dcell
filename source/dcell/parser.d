@@ -401,7 +401,7 @@ private:
                     size_t index = 0;
                     dchar dch = decode(cast(string) accum, index);
                     accum = null;
-                    postKey(Key.rune, dch, Modifiers.none);
+                    postKey(Key.graph, dch, Modifiers.none);
                 }
                 break;
             case ParseState.ini:
@@ -450,21 +450,21 @@ private:
                     // simple runes
                     if (ch >= ' ')
                     {
-                        postKey(Key.rune, ch, Modifiers.none);
+                        postKey(Key.graph, ch, Modifiers.none);
                     }
                     // Control keys below here - legacy handling
                     else if (ch == 0)
                     {
-                        postKey(Key.rune, ' ', Modifiers.ctrl);
+                        postKey(Key.graph, ' ', Modifiers.ctrl);
                     }
                     else if (ch < '\x1b')
                     {
-                        postKey(Key.rune, ch + 0x60, Modifiers.ctrl);
+                        postKey(Key.graph, ch + 0x60, Modifiers.ctrl);
                     }
                     else
                     {
                         // control keys
-                        postKey(Key.rune, ch + 0x40, Modifiers.ctrl);
+                        postKey(Key.graph, ch + 0x40, Modifiers.ctrl);
                     }
                     break;
                 }
@@ -525,15 +525,15 @@ private:
                     escaped = false;
                     if (ch >= ' ')
                     {
-                        postKey(Key.rune, ch, Modifiers.meta);
+                        postKey(Key.graph, ch, Modifiers.meta);
                     }
                     else if (ch < '\x1b')
                     {
-                        postKey(Key.rune, ch + 0x60, Modifiers.meta | Modifiers.ctrl);
+                        postKey(Key.graph, ch + 0x60, Modifiers.meta | Modifiers.ctrl);
                     }
                     else
                     {
-                        postKey(Key.rune, ch + 0x40, Modifiers.meta | Modifiers.ctrl);
+                        postKey(Key.graph, ch + 0x40, Modifiers.meta | Modifiers.ctrl);
                     }
                 }
                 break;
@@ -652,7 +652,7 @@ private:
             }
             else if (escChar != 0)
             {
-                postKey(Key.rune, escChar, Modifiers.alt);
+                postKey(Key.graph, escChar, Modifiers.alt);
                 escChar = 0;
                 parseState = ParseState.ini;
             }
@@ -746,7 +746,7 @@ private:
             if (plen > 0)
             {
                 Modifiers mod = Modifiers.none;
-                Key key = Key.rune;
+                Key key = Key.graph;
                 dchar chr = 0;
                 if (p0 in csiUKeys)
                 {
@@ -805,7 +805,7 @@ private:
                 }
                 else
                 {
-                    evs ~= newKeyEvent(Key.rune, p2, mod);
+                    evs ~= newKeyEvent(Key.graph, p2, mod);
                 }
                 return;
             }
@@ -996,7 +996,7 @@ private:
             return;
         }
 
-        auto key = Key.rune;
+        auto key = Key.graph;
         auto chr = p2;
         auto mod = Modifiers.none;
         auto rpt = max(1, p5);
@@ -1034,7 +1034,7 @@ private:
         {
             mod |= Modifiers.alt;
         }
-        if (key == Key.rune && chr > ' ' && mod == Modifiers.shift)
+        if (key == Key.graph && chr > ' ' && mod == Modifiers.shift)
         {
             // filter out lone shift for printable chars
             mod = Modifiers.none;
@@ -1048,7 +1048,7 @@ private:
 
         for (; rpt > 0; rpt--)
         {
-            if (key != key.rune || chr != 0)
+            if (key != key.graph || chr != 0)
             {
                 evs ~= newKeyEvent(key, chr, mod);
             }
@@ -1109,7 +1109,7 @@ private:
             mod |= Modifiers.alt;
             escaped = false;
         }
-        if (dch < ' ' && k < Key.rune)
+        if (dch < ' ' && k < Key.graph)
         {
             switch (cast(int) k)
             {
@@ -1126,13 +1126,13 @@ private:
                 k = Key.esc;
                 break;
             case 0: // control-space
-                k = Key.rune;
+                k = Key.graph;
                 mod |= Modifiers.ctrl;
                 dch = ' ';
                 break;
             default:
                 // most likely entered with a CTRL keypress
-                k = Key.rune;
+                k = Key.graph;
                 mod |= Modifiers.ctrl;
                 dch = dch + '\x60';
                 break;
@@ -1257,7 +1257,7 @@ private:
         ev = p.events();
         assert(ev.length == 1);
         assert(ev[0].type == EventType.key);
-        assert(ev[0].key.key == Key.rune);
+        assert(ev[0].key.key == Key.graph);
         assert(ev[0].key.mod == Modifiers.alt);
 
         // lone escape
@@ -1296,7 +1296,7 @@ private:
         ev = p.events();
         assert(ev.length == 1);
         assert(ev[0].type == EventType.key);
-        assert(ev[0].key.key == Key.rune);
+        assert(ev[0].key.key == Key.graph);
         assert(ev[0].key.ch == '€');
     }
 }

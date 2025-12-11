@@ -175,7 +175,7 @@ void main()
                     exit(0);
                 }
                 break;
-            case Key.rune:
+            case Key.graph:
                 if (ev.key.ch == 'C' || ev.key.ch == 'c')
                 {
                     s.clear();

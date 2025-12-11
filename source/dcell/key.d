@@ -22,10 +22,11 @@ enum Key
     none = 0,
 
     // NB: the low keys are empty because they are used for control
-    // encodings.  But we translate them to rune with a payload char.
+    // encodings.  But we translate them to graph with a payload char.
     // and ctrl modifier.
 
-    rune = 256, // start of defined keys, numbered high to avoid conflicts
+    // start of defined keys, numbered high to avoid conflicts
+    graph = 128, // special indicating that key is a grapheme
     up,
     down,
     right,
@@ -267,7 +268,7 @@ struct KeyEvent
         {
             kn = keyNames[key];
         }
-        else if (key == Key.rune)
+        else if (key == Key.graph)
         {
             if (mod == Modifiers.none)
             {

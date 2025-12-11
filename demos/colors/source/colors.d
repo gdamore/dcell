@@ -145,7 +145,7 @@ void main()
             case Key.esc, Key.enter:
                 done = true;
                 break;
-            case Key.rune:
+            case Key.graph:
                 // Ctrl-L (without other modifiers) used to force a redraw.
                 if (ev.key.ch == 'l' && ev.key.mod == Modifiers.ctrl)
                 {
