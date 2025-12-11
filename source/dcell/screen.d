@@ -148,6 +148,15 @@ interface Screen
     }
 
     /**
+     * Enable or disable the alternate screen. This must be called
+     * before start().  Note that this is best effort -- not every
+     * terminal actually supports this.  This is on by default.
+     * It can be disabled by setting DCELL_ALTSCREEN=disable in the
+     * environment.
+     */
+    void enableAlternateScreen(bool on);
+
+    /**
      * If the terminal supports color, this returns the
      * the number of colors.
      *
