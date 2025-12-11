@@ -978,13 +978,13 @@ private:
             // key up event ignore ignore
             return;
         }
-        if (p0 == 0 && p2 == 27 && nested is null)
-        {
-            nested = new Parser();
-        }
 
-        if (nested !is null && p2 > 0 && p2 < 0x80)
+        if (p0 == 0 && p1 == 0 && p2 > 0 && p2 < 0x80)
         {
+            if (nested is null)
+            {
+                nested = new Parser();
+            }
             // only ASCII in win32-input-mode
             nested.buf ~= cast(ubyte) p2;
             nested.scan();
