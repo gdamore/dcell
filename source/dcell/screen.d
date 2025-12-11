@@ -148,6 +148,15 @@ interface Screen
     void enableAlternateScreen(bool on);
 
     /**
+     * Set the title of the window. This only works for emulators running
+     * in a windowing environment, and is not universally supported.
+     * Setting an empty string as the title may let the emulator set
+     * a specific default, but it may also leave it empty - it depends
+     * on the specific terminal implementation.
+     */
+    void setTitle(string);
+
+    /**
      * If the terminal supports color, this returns the
      * the number of colors.
      *
