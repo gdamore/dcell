@@ -95,8 +95,7 @@ class WinTty : Tty
 
     void close()
     {
-        CloseHandle(input);
-        CloseHandle(output);
+        // NB: We do not close the standard input and output handles.
         CloseHandle(eventH);
     }
 
