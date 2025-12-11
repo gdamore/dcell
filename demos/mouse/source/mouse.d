@@ -108,6 +108,7 @@ void main()
     s.showCursor(Cursor.hidden);
     s.enableMouse(MouseEnable.all);
     s.enablePaste(true);
+    s.setTitle("Dcell Event Demo");
     Style white;
     white.fg = Color.midnightBlue;
     white.bg = Color.lightCoral;

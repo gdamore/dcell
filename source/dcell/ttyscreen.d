@@ -99,8 +99,12 @@ class TtyScreen : Screen
         string enterURL = "\x1b]8;;%s\x1b\\";
         string exitURL = "\x1b]8;;\x1b\\";
         string setWindowSize = "\x1b[8;%d;%dt";
+        // Some terminals do not support the title stack, but do support
+        // changing the title.  For those we set the title back to the
+        // empty string (which they take to mean unset) as a reasonable
+        // fallback. Shell programs generally change this as needed anyway.
         string saveTitle = "\x1b[22;2t";
-        string restoreTitle = "\x1b[23;2t";
+        string restoreTitle = "\x1b]2;\x1b\\" ~ "\x1b[23;2t";
         string setTitle = "\x1b[>2t\x1b]2;%s\x1b\\";
         // three advanced keyboard protocols:
         // - xterm modifyOtherKeys (uses CSI 27 ~ )
@@ -233,14 +237,14 @@ class TtyScreen : Screen
 
         if (legacy)
         {
-            vt.enterURL = "";
-            vt.exitURL = "";
-            vt.setWindowSize = "";
-            vt.setTitle = "";
-            vt.restoreTitle = "";
-            vt.saveTitle = "";
-            vt.enableCsiU = "";
-            vt.disableCsiU = "";
+            vt.enterURL = null;
+            vt.exitURL = null;
+            vt.setWindowSize = null;
+            vt.setTitle = null;
+            vt.restoreTitle = null;
+            vt.saveTitle = null;
+            vt.enableCsiU = null;
+            vt.disableCsiU = null;
         }
     }
 
@@ -269,6 +273,10 @@ class TtyScreen : Screen
         puts(vt.enableFocus);
         puts(vt.enableAltChars);
         puts(vt.clear);
+        if (title && !vt.setTitle.empty)
+        {
+            puts(format(vt.setTitle, title));
+        }
 
         resize();
         draw();
@@ -287,6 +295,7 @@ class TtyScreen : Screen
         puts(vt.cursorReset);
         puts(vt.showCursor);
         puts(vt.cursorReset);
+        puts(vt.restoreTitle);
         if (altScrEn)
         {
             puts(vt.clear);
@@ -428,6 +437,16 @@ class TtyScreen : Screen
         }
     }
 
+    void setTitle(string title)
+    {
+        this.title = title;
+        if (started && !vt.setTitle.empty)
+        {
+            puts(format(vt.setTitle, title));
+            flush();
+        }
+    }
+
     Event waitEvent(Duration dur = msecs(100))
     {
         // naive polling loop for now.
@@ -510,6 +529,7 @@ private:
     Vt vt;
     Event[] events;
     Parser parser;
+    string title;
 
     void puts(string s)
     {
@@ -620,7 +640,7 @@ private:
     {
         if (pos != pos_)
         {
-            puts(format!(Vt.setCursorPosition)(pos.y + 1, pos.x + 1));
+            puts(format!(vt.setCursorPosition)(pos.y + 1, pos.x + 1));
             pos_ = pos;
         }
     }
@@ -705,7 +725,7 @@ private:
         }
         if (c.style.url != style_.url)
         {
-            if (c.style.url != "")
+            if (c.style.url != "" && vt.enterURL !is null)
             {
                 puts(format(vt.enterURL, c.style.url));
             }
