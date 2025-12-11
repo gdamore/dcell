@@ -211,6 +211,15 @@ class TtyScreen : Screen
             vt.numColors = 0;
         }
 
+        if (environment.get("DCELL_ALTSCREEN") == "disable")
+        {
+            altScrEn = false;
+        }
+        else
+        {
+            altScrEn = true;
+        }
+
         version (Windows)
         {
             // If we don't have a $TERM (e.g. Windows Terminal), or we are dealing with WezTerm
@@ -251,6 +260,11 @@ class TtyScreen : Screen
         puts(vt.hideCursor);
         puts(vt.disableAutoMargin);
         puts(vt.enableCsiU);
+        if (altScrEn)
+        {
+            puts(vt.enterCA);
+        }
+        puts(vt.saveTitle);
         puts(vt.enterKeypad);
         puts(vt.enableAltChars);
         puts(vt.clear);
@@ -272,7 +286,11 @@ class TtyScreen : Screen
         puts(vt.cursorReset);
         puts(vt.showCursor);
         puts(vt.cursorReset);
-        puts(vt.clear);
+        if (altScrEn)
+        {
+            puts(vt.clear);
+            puts(vt.exitCA);
+        }
         puts(vt.exitKeypad);
         puts(vt.disablePaste);
         puts(vt.disableMouse);
@@ -406,6 +424,15 @@ class TtyScreen : Screen
         flush();
     }
 
+    void enableAlternateScreen(bool enabled)
+    {
+        altScrEn = enabled;
+        if (environment.get("DCELL_ALTSCREEN") == "disable")
+        {
+            altScrEn = false;
+        }
+    }
+
     Event waitEvent(Duration dur = msecs(100))
     {
         // naive polling loop for now.
@@ -480,6 +507,7 @@ private:
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
     bool pasteEn; // saved state for suspend/resume
+    bool altScrEn; // alternate screen is enabled (default on)
     Tty ti;
     OutBuffer ob;
     bool started;
