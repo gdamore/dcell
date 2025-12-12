@@ -127,6 +127,11 @@ void main()
 
     auto s = newScreen();
     assert(s !is null);
+    scope (exit)
+    {
+        s.stop();
+    }
+
     ColorBoxes cb = new ColorBoxes();
 
     auto now = MonoTime.currTime();
