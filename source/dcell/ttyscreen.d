@@ -261,13 +261,13 @@ class TtyScreen : Screen
         parser = new Parser(); // if we are restarting, this discards the old one
         ti.save();
         ti.raw();
-        puts(vt.hideCursor);
-        puts(vt.disableAutoMargin);
-        puts(vt.enableCsiU);
         if (altScrEn)
         {
             puts(vt.enterCA);
         }
+        puts(vt.hideCursor);
+        puts(vt.disableAutoMargin);
+        puts(vt.enableCsiU);
         puts(vt.saveTitle);
         puts(vt.enterKeypad);
         puts(vt.enableFocus);
