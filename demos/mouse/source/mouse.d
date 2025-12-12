@@ -94,6 +94,10 @@ void main()
 
     auto s = newScreen();
     assert(s !is null);
+    scope (exit)
+    {
+        s.stop();
+    }
 
     dstring posFmt = "Mouse: %d, %d";
     dstring btnFmt = "Buttons: %s";

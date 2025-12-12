@@ -75,6 +75,10 @@ void main()
 
     auto ts = newScreen();
     assert(ts !is null);
+    scope (exit)
+    {
+        ts.stop();
+    }
 
     ts.start();
     displayHelloWorld(ts);
