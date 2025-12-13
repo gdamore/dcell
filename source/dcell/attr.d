@@ -1,7 +1,7 @@
 /**
  * Attributes module for dcell.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -13,7 +13,7 @@ module dcell.attr;
 /**
  * Text attributes that do not include color.
  */
-enum Attr : int
+enum Attr
 {
     none = 0, /// normal, plain text
     bold = 1 << 0,
@@ -23,5 +23,6 @@ enum Attr : int
     dim = 1 << 4,
     italic = 1 << 5,
     strikethrough = 1 << 6,
-    invalid = -1, // invalid attribute
+    invalid = 1 << 7, // invalid attribute
+    init = invalid,
 }
