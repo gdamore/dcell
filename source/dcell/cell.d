@@ -1,7 +1,7 @@
 /**
  * Cell module for dcell.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -11,6 +11,7 @@
 module dcell.cell;
 
 import std.algorithm;
+import std.exception;
 import std.traits;
 import std.utf;
 
@@ -29,20 +30,20 @@ public import dcell.style;
  */
 struct Cell
 {
-    string xtext; /// character content - one character followed by any combining characters
+    // The order of these is chosen to minimize space per cell.
     Style style; /// styling for the cell
 
     this(C)(C c, Style st = Style()) if (isSomeChar!C)
     {
         ss = toUTF8([c]);
-        ds = toUTF32([c]);
+        dw = calcWidth();
         style = st;
     }
 
     this(S)(S s, Style st = Style()) if (isSomeString!S)
     {
         ss = toUTF8(s);
-        ds = toUTF32(s);
+        dw = calcWidth();
         style = st;
     }
 
@@ -53,49 +54,76 @@ struct Cell
 
     @property const(string) text(const(string) s) pure @safe
     {
-        ds = toUTF32(s);
-        ss = s;
+        ss = toUTF8(s);
+        dw = calcWidth();
         return s;
     }
 
     /**
      * The display width of the contents of the cell, which will be 1 (typical western
-     * characters, as well as ambiguous characters) or 2 (typical CJK characters).
+     * characters, as well as ambiguous characters), 2 (typical CJK characters), or in
+     * some cases 0 (empty content, control characters, zero-width whitespace).
+     * Note that cells immediately following a cell with a wide character will themselves
+     * generally have no content (as their screen display real-estate is consumed by the
+     * wide character.)
+     *
      * This relies on the accuracy of the content in the imported east_asian_width
-     * package, and may therefore not be perfectly correct for a given platform or
-     * font or context.  In particular it may be wrong for some emoji.  Note also that
-     * the D std.uni notion of grapheme boundaries is out of date, and so many
-     * things that should be treated as a single grapheme (or grapheme cluster) will
-     * not be.
+     * package and the terminal/font combination (and for some characters it may even
+     * be sensitive to which Unicode edition is being supported). Therefore the results
+     * may not be perfectly correct for a given platform or font or context.
      */
-    @property uint width() pure const
+    @property ubyte width() const pure @safe
+    {
+        return dw;
+    }
+
+private:
+
+    string ss;
+    ubyte dw; // display width
+
+    ubyte calcWidth() pure const @safe
     {
         enum regionA = '\U0001F1E6';
         enum regionZ = '\U0001F1FF';
 
-        if (ds.length < 1)
+        if (ss.length < 1 || ss[0] < ' ' || ss[0] == '\x7F') // empty or control characters
         {
             return (0);
         }
-        if (ds[0] < ' ')
-            return 0; // control characters
-        if (ds[0] < '\u02b0') // most common case, covers ASCII, Latin supplements, IPA
+        if (ss[0] < '\x80') // covers ASCII
+        {
             return 1;
-        // flags - missing from east asian width decoding (and also stdin)
-        if ((ds.length >= 2) && (ds[0] >= regionA && ds[0] <= regionZ && ds[1] >= regionA && ds[1] <= regionZ))
+        }
+        auto d = toUTF32(ss);
+        // flags - missing from east asian width decoding
+        if ((d.length >= 2) && (d[0] >= regionA && d[0] <= regionZ && d[1] >= regionA && d[1] <= regionZ))
         {
             return 2;
         }
-        return cast(uint) displayWidth(ds[0]);
+        assert(d.length > 0);
+        if (d[0] < '\u02b0')
+        {
+            return 1; // covers latin supplements, IPA
+        }
+        auto w = displayWidth(d[0]);
+        if (w < 0)
+        {
+            return 0;
+        }
+        if (w > 2)
+        {
+            return 2;
+        }
+        return cast(ubyte) w;
     }
-
-    private dstring ds;
-    private string ss;
 }
 
 unittest
 {
     assert(Cell('\t').width == 0);
+    assert(Cell('\x7F').width == 0);
+    assert(Cell("").width == 0);
     assert(Cell('A').width == 1); // ASCII
     assert(Cell("B").width == 1); // ASCII (string)
     assert(Cell('ￂ').width == 1); // half-width form
@@ -106,13 +134,14 @@ unittest
     assert(Cell('♀').width == 1); // modifier alone
     assert(Cell("\U0001F44D").width == 2); // thumbs up
     assert(Cell("\U0001f1fa\U0001f1f8").width == 2); // US flag (regional indicators)
+    assert(Cell("\U0001f9db\u200d\u2640").width == 1); // female vampire
+    assert(Cell("🤝 🏽").width == 2); // modified emoji (medium skin tone handshake)
+    assert(Cell("\U0001F44D\U0001F3fD").width == 2); // thumbs up, medium skin tone
 
     // The following are broken due to bugs in std.uni and/or the east asian width.
     // At some point it may be easier to refactor this ourself.
-    // assert(Cell("\U0001f9db\u200d\u2640").width == 1); // female vampire
-    // assert(Cell("🤝 🏽").width == 2); // modified emoji (medium skin tone handshake)
     // assert(Cell("🧛‍♀️").width == 2); // modified emoji -- does not work
-    // assert(Cell("\U0001F44D\U0001F3fD").width == 2); // thumbs up, medium skin tone
+    // assert(Cell('\u200d').width == 0); // Zero Width Joiner
 }
 
 /**
@@ -358,7 +387,7 @@ class CellBuffer
     }
 
     /**
-     * Fill the entires contents, including the given style.
+     * Fill the entire contents, including the given style.
      */
     void fill(string s, Style style) pure
     {
