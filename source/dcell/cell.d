@@ -493,7 +493,7 @@ class CellBuffer
         assert(cb.dirty(Coord(2, 0)));
 
         st.attr = Attr.reverse;
-        st.bg = Color.none;
+        st.bg = Color.invalid;
         st.fg = Color.maroon;
         cb.fill("%", st);
         assert(cb[1, 1].text == "%");

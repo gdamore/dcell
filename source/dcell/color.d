@@ -1,7 +1,7 @@
 /**
  * Color module for dcell.
  *
- * Copyright: Copyright 2022 Garrett D'Amore
+ * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
  * License:
  *   Distributed under the Boost Software License, Version 1.0.
@@ -10,6 +10,7 @@
  */
 module dcell.color;
 
+import std.format;
 import std.typecons;
 
 /**
@@ -21,9 +22,8 @@ import std.typecons;
  */
 enum Color : uint
 {
-    none = 1 << 24, /// no color change
-    reset = none + 1, /// reset color to terminal defaults
-    invalid = none + 2, /// generically an invalid color
+    invalid = 1 << 24, /// not a color (also means do not change color)
+    reset = invalid + 1, /// reset color to terminal defaults
     isRGB = 1 << 31, /// indicates that the low 24-bits are red, green blue
     black = 0,
     maroon = 1,
@@ -165,12 +165,13 @@ enum Color : uint
     wheat = isRGB | 0xF5DEB3,
     whiteSmoke = isRGB | 0xF5F5F5,
     yellowGreen = isRGB | 0x9ACD32,
+    init = invalid,
 }
 
 private static immutable uint[Color] rgbValues;
 private static immutable Color[uint] palValues;
 
-shared static this()
+shared static this() @safe
 {
     rgbValues[Color.black] = 0x000000;
     rgbValues[Color.maroon] = 0x800000;
@@ -695,7 +696,7 @@ shared static this()
  *  c = a Color
  * Returns: Numeric RGB value for color, or -1 if it cannot be represented.
  */
-int toHex(Color c) pure
+int toHex(Color c) pure @safe
 {
     if ((c & Color.isRGB) != 0)
     {
@@ -715,7 +716,7 @@ int toHex(Color c) pure
  *   rgb = hex value, red << 16 | green << 8 | blue
  * Returns: The associated Color, or Color.invalid if a bad value for rgb was supplied.
  */
-Color fromHex(int rgb) pure
+Color fromHex(int rgb) pure @safe
 {
     if (rgb < 1 << 24)
     {
@@ -734,7 +735,7 @@ Color fromHex(int rgb) pure
  *   c = a valid Color
  * Returns: An RGB format Color, Color.invalid if it cannot be determined.
  */
-Color toRGB(Color c) pure
+Color toRGB(Color c) pure @safe
 {
     if ((c & Color.isRGB) != 0)
     {
@@ -754,9 +755,15 @@ Color toRGB(Color c) pure
  *   c = a valid color
  * Returns: true if the color is an RGB format color
  */
-bool isRGB(Color c) pure
+bool isRGB(Color c) pure @safe
 {
     return (c & Color.isRGB) != 0;
+}
+
+/// Return true if the color is valid.
+bool isValid(Color c) pure @safe
+{
+    return (c != Color.invalid);
 }
 
 /**
@@ -771,13 +778,13 @@ bool isRGB(Color c) pure
  *
  * Returns: the palette Color closest matching c
  */
-Color toPalette(Color c, int numColors)
+Color toPalette(Color c, int numColors) @safe
 {
     import std.functional;
 
     switch (c)
     {
-    case Color.none, Color.reset, Color.invalid:
+    case Color.reset, Color.invalid:
         return c;
     default:
         return memoize!bestColor(c, numColors);
@@ -785,7 +792,7 @@ Color toPalette(Color c, int numColors)
 }
 
 /// Return true if c1 is darker than c2.
-bool darker(Color c1, Color c2)
+bool darker(Color c1, Color c2) @safe
 {
     import std.functional;
 
@@ -797,7 +804,7 @@ bool darker(Color c1, Color c2)
 /**
  * decompose a color into red, green, and blue values.
  */
-auto decompose(Color c) pure
+auto decompose(Color c) pure @safe
 {
     c = toRGB(c);
     return Tuple!(int, int, int)((c & 0xff0000) >> 16, ((c & 0xff00) >> 8), (c & 0xff));
@@ -806,12 +813,42 @@ auto decompose(Color c) pure
 /**
  * decompose a color into red, green, and blue values.
  */
-void decompose(Color c, ref int r, ref int g, ref int b) pure
+void decompose(Color c, ref int r, ref int g, ref int b) pure @safe
 {
     c = toRGB(c);
     r = int(c & 0xff0000) >> 16;
     g = int(c & 0xff00) >> 8;
     b = int(c & 0xff);
+}
+
+/**
+ * Name returns W3C name or an empty string if no arguments
+ * if passed true as an argument it will falls back to
+ * the CSS hex string if no W3C name found '#ABCDEF'
+ */
+string name(Color c, bool css = false) pure @safe
+{
+    foreach (name, color; colorsByName)
+    {
+        if (c == color)
+        {
+            return name;
+        }
+    }
+    if (css)
+    {
+        return c.css();
+    }
+    return "";
+}
+
+string css(Color c) pure @safe
+{
+    if (!c.isValid)
+    {
+        return "";
+    }
+    return format("#%06X", c.toHex());
 }
 
 unittest
@@ -854,9 +891,14 @@ unittest
     assert(decompose(Color.red)[0] == 0xff);
     assert(decompose(Color.red)[1] == 0);
     assert(decompose(Color.red)[2] == 0);
+
+    assert(Color.red.name == "red");
+    assert(Color.darkKhaki.name == "darkkhaki");
+    assert(Color.red.css == "#FF0000");
+    assert(Color.red.toRGB.name(true) == "#FF0000");
 }
 
-private long redMean(Color c1, Color c2) pure
+private long redMean(Color c1, Color c2) pure @safe
 {
     int r1, r2, g1, g2, b1, b2;
     decompose(c1, r1, g1, b1);
@@ -875,7 +917,7 @@ private long redMean(Color c1, Color c2) pure
     return dist;
 }
 
-private Color bestColor(Color c, int numColors) pure
+private Color bestColor(Color c, int numColors) pure @safe
 {
     // this is an expensive operation, so you really want
     // to memoize it.
@@ -926,6 +968,8 @@ unittest
 {
     import std.stdio;
 
+    Color v;
+    assert(v == Color.invalid);
     assert(bestColor(Color.red, 16) == Color.red);
     assert(bestColor(Color.red, 256) == Color.red);
     assert(bestColor(Color.paleGreen, 256) == cast(Color) 120);
@@ -942,4 +986,162 @@ unittest
     assert(toPalette(Color.paleGreen, 256) == cast(Color) 120);
     assert(toPalette(Color.darkSlateBlue, 256) == cast(Color) 60);
     assert(toPalette(fromHex(0xfe0000), 16) == Color.red);
+}
+
+// ColorNames holds the written names of colors. Useful to present a list of
+// recognized named colors.
+static immutable Color[string] colorsByName;
+
+shared static this() @safe
+{
+    colorsByName = [
+        "black": Color.black,
+        "maroon": Color.maroon,
+        "green": Color.green,
+        "olive": Color.olive,
+        "navy": Color.navy,
+        "purple": Color.purple,
+        "teal": Color.teal,
+        "silver": Color.silver,
+        "gray": Color.gray,
+        "red": Color.red,
+        "lime": Color.lime,
+        "yellow": Color.yellow,
+        "blue": Color.blue,
+        "fuchsia": Color.fuchsia,
+        "aqua": Color.aqua,
+        "white": Color.white,
+        "aliceblue": Color.aliceBlue,
+        "antiquewhite": Color.antiqueWhite,
+        "aquamarine": Color.aquamarine,
+        "azure": Color.azure,
+        "beige": Color.beige,
+        "bisque": Color.bisque,
+        "blanchedalmond": Color.blanchedAlmond,
+        "blueviolet": Color.blueViolet,
+        "brown": Color.brown,
+        "burlywood": Color.burlyWood,
+        "cadetblue": Color.cadetBlue,
+        "chartreuse": Color.chartreuse,
+        "chocolate": Color.chocolate,
+        "coral": Color.coral,
+        "cornflowerblue": Color.cornflowerBlue,
+        "cornsilk": Color.cornsilk,
+        "crimson": Color.crimson,
+        "darkblue": Color.darkBlue,
+        "darkcyan": Color.darkCyan,
+        "darkgoldenrod": Color.darkGoldenrod,
+        "darkgray": Color.darkGray,
+        "darkgreen": Color.darkGreen,
+        "darkkhaki": Color.darkKhaki,
+        "darkmagenta": Color.darkMagenta,
+        "darkolivegreen": Color.darkOliveGreen,
+        "darkorange": Color.darkOrange,
+        "darkorchid": Color.darkOrchid,
+        "darkred": Color.darkRed,
+        "darksalmon": Color.darkSalmon,
+        "darkseagreen": Color.darkSeaGreen,
+        "darkslateblue": Color.darkSlateBlue,
+        "darkslategray": Color.darkSlateGray,
+        "darkturquoise": Color.darkTurquoise,
+        "darkviolet": Color.darkViolet,
+        "deeppink": Color.deepPink,
+        "deepskyblue": Color.deepSkyBlue,
+        "dimgray": Color.dimGray,
+        "dodgerblue": Color.dodgerBlue,
+        "firebrick": Color.fireBrick,
+        "floralwhite": Color.floralWhite,
+        "forestgreen": Color.forestGreen,
+        "gainsboro": Color.gainsboro,
+        "ghostwhite": Color.ghostWhite,
+        "gold": Color.gold,
+        "goldenrod": Color.goldenrod,
+        "greenyellow": Color.greenYellow,
+        "honeydew": Color.honeydew,
+        "hotpink": Color.hotPink,
+        "indianred": Color.indianRed,
+        "indigo": Color.indigo,
+        "ivory": Color.ivory,
+        "khaki": Color.khaki,
+        "lavender": Color.lavender,
+        "lavenderblush": Color.lavenderBlush,
+        "lawngreen": Color.lawnGreen,
+        "lemonchiffon": Color.lemonChiffon,
+        "lightblue": Color.lightBlue,
+        "lightcoral": Color.lightCoral,
+        "lightcyan": Color.lightCyan,
+        "lightgoldenrodyellow": Color.lightGoldenrodYellow,
+        "lightgray": Color.lightGray,
+        "lightgreen": Color.lightGreen,
+        "lightpink": Color.lightPink,
+        "lightsalmon": Color.lightSalmon,
+        "lightseagreen": Color.lightSeaGreen,
+        "lightskyblue": Color.lightSkyBlue,
+        "lightslategray": Color.lightSlateGray,
+        "lightsteelblue": Color.lightSteelBlue,
+        "lightyellow": Color.lightYellow,
+        "limegreen": Color.limeGreen,
+        "linen": Color.linen,
+        "mediumaquamarine": Color.mediumAquamarine,
+        "mediumblue": Color.mediumBlue,
+        "mediumorchid": Color.mediumOrchid,
+        "mediumpurple": Color.mediumPurple,
+        "mediumseagreen": Color.mediumSeaGreen,
+        "mediumslateblue": Color.mediumSlateBlue,
+        "mediumspringgreen": Color.mediumSpringGreen,
+        "mediumturquoise": Color.mediumTurquoise,
+        "mediumvioletred": Color.mediumVioletRed,
+        "midnightblue": Color.midnightBlue,
+        "mintcream": Color.mintCream,
+        "mistyrose": Color.mistyRose,
+        "moccasin": Color.moccasin,
+        "navajowhite": Color.navajoWhite,
+        "oldlace": Color.oldLace,
+        "olivedrab": Color.oliveDrab,
+        "orange": Color.orange,
+        "orangered": Color.orangeRed,
+        "orchid": Color.orchid,
+        "palegoldenrod": Color.paleGoldenrod,
+        "palegreen": Color.paleGreen,
+        "paleturquoise": Color.paleTurquoise,
+        "palevioletred": Color.paleVioletRed,
+        "papayawhip": Color.papayaWhip,
+        "peachpuff": Color.peachPuff,
+        "peru": Color.peru,
+        "pink": Color.pink,
+        "plum": Color.plum,
+        "powderblue": Color.powderBlue,
+        "rebeccapurple": Color.rebeccaPurple,
+        "rosybrown": Color.rosyBrown,
+        "royalblue": Color.royalBlue,
+        "saddlebrown": Color.saddleBrown,
+        "salmon": Color.salmon,
+        "sandybrown": Color.sandyBrown,
+        "seagreen": Color.seaGreen,
+        "seashell": Color.seashell,
+        "sienna": Color.sienna,
+        "skyblue": Color.skyBlue,
+        "slateblue": Color.slateBlue,
+        "slategray": Color.slateGray,
+        "snow": Color.snow,
+        "springgreen": Color.springGreen,
+        "steelblue": Color.steelBlue,
+        "tan": Color.tan,
+        "thistle": Color.thistle,
+        "tomato": Color.tomato,
+        "turquoise": Color.turquoise,
+        "violet": Color.violet,
+        "wheat": Color.wheat,
+        "whitesmoke": Color.whiteSmoke,
+        "yellowgreen": Color.yellowGreen,
+        "grey": Color.gray,
+        "dimgrey": Color.dimGray,
+        "darkgrey": Color.darkGray,
+        "darkslategrey": Color.darkSlateGray,
+        "lightgrey": Color.lightGray,
+        "lightslategrey": Color.lightSlateGray,
+        "slategrey": Color.slateGray,
+
+        "reset": Color.reset, // actually the terminal default
+    ];
 }
