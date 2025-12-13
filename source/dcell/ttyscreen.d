@@ -158,8 +158,8 @@ class TtyScreen : Screen
         ti.start();
         cells = new CellBuffer(ti.windowSize());
         ob = new OutBuffer();
-        defStyle.bg = Color.reset;
-        defStyle.fg = Color.reset;
+        cells.style.bg = Color.reset;
+        cells.style.fg = Color.reset;
 
         if (term == "")
         {
@@ -329,7 +329,7 @@ class TtyScreen : Screen
 
     void fill(string s)
     {
-        fill(s, this.defStyle);
+        fill(s, this.style);
     }
 
     void showCursor(Coord pos, Cursor cur = Cursor.current)
@@ -400,11 +400,6 @@ class TtyScreen : Screen
     {
         puts("\x07");
         flush();
-    }
-
-    void setStyle(Style style)
-    {
-        defStyle = style;
     }
 
     void setSize(Coord size)
@@ -505,6 +500,47 @@ class TtyScreen : Screen
         }
     }
 
+    // This is the default style we use when writing content using
+    // put and similar APIs.
+    @property Style style() const @safe
+    {
+        return cells.style;
+    }
+
+    @property Style style(const(Style) st) @safe
+    {
+        return cells.style = st;
+    }
+
+    // This is the current position that will be writing when when using
+    // put or write.
+    @property Coord position() const @safe
+    {
+        return cells.position;
+    }
+
+    @property Coord position(const(Coord) pos) @safe
+    {
+        return cells.position = pos;
+    }
+
+    // Write a string at the current `position`, using the current `style`.
+    // This will wrap if it reaches the end of the terminal.
+    void write(string s) @safe
+    {
+        cells.write(s);
+    }
+
+    void write(wstring s) @safe
+    {
+        cells.write(s);
+    }
+
+    void write(dstring s) @safe
+    {
+        cells.write(s);
+    }
+
 private:
     struct KeyCode
     {
@@ -516,7 +552,6 @@ private:
     bool clear_; // if a screen clear is requested
     Coord pos_; // location where we will update next
     Style style_; // current style
-    Style defStyle; // default style (when screen is cleared)
     Coord cursorPos;
     Cursor cursorShape;
     MouseEnable mouseEn; // saved state for suspend/resume
@@ -628,9 +663,9 @@ private:
             clear_ = false;
             puts(vt.sgr0);
             puts(vt.exitURL);
-            sendColors(defStyle);
-            sendAttrs(defStyle);
-            style_ = defStyle;
+            sendColors(style);
+            sendAttrs(style);
+            style_ = style;
             puts(Vt.clear);
             flush();
         }

@@ -186,11 +186,6 @@ interface Screen
     void setSize(Coord);
 
     /**
-     * Set the default style used when clearing the screen, etc.
-     */
-    void setStyle(Style);
-
-    /**
      * Fill the entire screen with the given content and style.
      * Content is not drawn until the show() or sync() functions are called.
      */
@@ -222,4 +217,23 @@ interface Screen
      * (to run a sub-shell process interactively for example).
      */
     void stop();
+
+    /**
+     * The style property is used when writing content to the screen
+     * using the simpler write() API.
+     */
+    @property Style style() const @safe;
+    @property Style style(const(Style)) @safe;
+
+    /**
+     * The position property is used when writing content to the screen
+     * when using the simpler write() API.  The position will advance as
+     * content is written.
+     */
+    @property Coord position() const @safe;
+    @property Coord position(const(Coord)) @safe;
+
+    void write(string) @safe;
+    void write(wstring) @safe;
+    void write(dstring) @safe;
 }
