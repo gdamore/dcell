@@ -134,13 +134,13 @@ unittest
     assert(Cell('♀').width == 1); // modifier alone
     assert(Cell("\U0001F44D").width == 2); // thumbs up
     assert(Cell("\U0001f1fa\U0001f1f8").width == 2); // US flag (regional indicators)
-    assert(Cell("\U0001f9db\u200d\u2640").width == 1); // female vampire
+    assert(Cell("\U0001f9db\u200d\u2640").width == 2); // female vampire
     assert(Cell("🤝 🏽").width == 2); // modified emoji (medium skin tone handshake)
     assert(Cell("\U0001F44D\U0001F3fD").width == 2); // thumbs up, medium skin tone
+    assert(Cell("🧛‍♀️").width == 2); // modified emoji
 
     // The following are broken due to bugs in std.uni and/or the east asian width.
     // At some point it may be easier to refactor this ourself.
-    // assert(Cell("🧛‍♀️").width == 2); // modified emoji -- does not work
     // assert(Cell('\u200d').width == 0); // Zero Width Joiner
 }
 

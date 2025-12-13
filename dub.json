@@ -2,7 +2,7 @@
   "authors": ["Garrett D'Amore"],
   "copyright": "Copyright 2025 Garrett D'Amore",
   "dependencies": {
-    "east_asian_width": "~>1.0.0"
+    "east_asian_width": "~>1.1.0"
   },
   "description": "Terminal Cells for D.",
   "license": "BSL-1.0",
