@@ -13,6 +13,7 @@ module dcell.cell;
 import std.algorithm;
 import std.exception;
 import std.traits;
+import std.uni;
 import std.utf;
 
 import eastasianwidth;
@@ -47,7 +48,7 @@ struct Cell
         style = st;
     }
 
-    @property const(string) text() pure @safe const
+    @property const(string) text() nothrow pure @safe const
     {
         return ss;
     }
@@ -72,7 +73,7 @@ struct Cell
      * be sensitive to which Unicode edition is being supported). Therefore the results
      * may not be perfectly correct for a given platform or font or context.
      */
-    @property ubyte width() const pure @safe
+    @property ubyte width() const nothrow pure @safe
     {
         return dw;
     }
@@ -158,23 +159,23 @@ class CellBuffer
     private Cell[] cells; // current content - linear for performance
     private Cell[] prev; // previous content - linear for performance
 
-    private size_t index(Coord pos) nothrow pure const
+    private size_t index(Coord pos) nothrow pure const @safe @nogc
     {
         return index(pos.x, pos.y);
     }
 
-    private size_t index(size_t x, size_t y) nothrow pure const
+    private size_t index(size_t x, size_t y) nothrow pure const @safe @nogc
     {
         assert(size_.x > 0);
         return (y * size_.x + x);
     }
 
-    package bool isLegal(Coord pos) nothrow pure const
+    package bool isLegal(Coord pos) nothrow pure const @safe @nogc
     {
         return ((pos.x >= 0) && (pos.y >= 0) && (pos.x < size_.x) && (pos.y < size_.y));
     }
 
-    this(const size_t cols, const size_t rows)
+    this(const size_t cols, const size_t rows) @safe
     {
         assert((cols >= 0) && (rows >= 0) && (cols < int.max) && (rows < int.max));
         cells = new Cell[cols * rows];
@@ -188,7 +189,7 @@ class CellBuffer
         }
     }
 
-    this(Coord size)
+    this(Coord size) @safe
     {
         this(size.x, size.y);
     }
@@ -202,7 +203,7 @@ class CellBuffer
      * Params:
      *   pos = coordinates of cell to check
      */
-    bool dirty(Coord pos) pure const
+    bool dirty(Coord pos) nothrow pure const @safe
     {
         if (isLegal(pos))
         {
@@ -223,7 +224,7 @@ class CellBuffer
      *   pos = coordinate of sell to update
      *   b = mark all dirty if true, or clean if false
      */
-    void setDirty(Coord pos, bool b) pure
+    void setDirty(Coord pos, bool b) pure @safe
     {
         if (isLegal(pos))
         {
@@ -245,7 +246,7 @@ class CellBuffer
      * Params:
      *   b = mark all dirty if true, or clean if false
      */
-    void setAllDirty(bool b) pure
+    void setAllDirty(bool b) pure @safe
     {
         // structured this way for efficiency
         if (b)
@@ -264,17 +265,17 @@ class CellBuffer
         }
     }
 
-    ref Cell opIndex(Coord pos)
+    ref Cell opIndex(Coord pos) nothrow @safe
     {
         return this[pos.x, pos.y];
     }
 
-    ref Cell opIndex(size_t x, size_t y)
+    ref Cell opIndex(size_t x, size_t y) nothrow @safe
     {
         return cells[index(x, y)];
     }
 
-    Cell get(Coord pos) nothrow pure
+    Cell get(Coord pos) nothrow pure @safe
     {
         if (isLegal(pos))
         {
@@ -290,7 +291,7 @@ class CellBuffer
      *   c = content to store for the cell.
      *   pos = coordinate of the cell
      */
-    void opIndexAssign(Cell c, size_t x, size_t y) pure
+    void opIndexAssign(Cell c, size_t x, size_t y) pure @safe
     {
         if ((x < size_.x) && (y < size_.y))
         {
@@ -302,7 +303,7 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(Cell c, Coord pos) pure
+    void opIndexAssign(Cell c, Coord pos) pure @safe
     {
         this[pos.x, pos.y] = c;
     }
@@ -315,7 +316,7 @@ class CellBuffer
      *       character (including combining marks) is written.
      *   pos = coordinate to update.
      */
-    void opIndexAssign(string s, Coord pos) pure
+    void opIndexAssign(string s, Coord pos) pure @safe
     {
         if (s == "" || s[0] < ' ')
         {
@@ -328,7 +329,7 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(Style style, Coord pos) pure
+    void opIndexAssign(Style style, Coord pos) nothrow pure @safe
     {
         if (isLegal(pos))
         {
@@ -336,7 +337,7 @@ class CellBuffer
         }
     }
 
-    void opIndexAssign(string s, size_t x, size_t y) pure
+    void opIndexAssign(string s, size_t x, size_t y) pure @safe
     {
         if (s == "" || s[0] < ' ')
         {
@@ -346,12 +347,12 @@ class CellBuffer
         cells[index(x, y)].text = s;
     }
 
-    void opIndexAssign(Style v, size_t x, size_t y) pure
+    void opIndexAssign(Style v, size_t x, size_t y) nothrow pure @safe
     {
         cells[index(x, y)].style = v;
     }
 
-    int opDollar(size_t dim)()
+    int opDollar(size_t dim)() nothrow pure @safe
     {
         if (dim == 0)
         {
@@ -363,7 +364,7 @@ class CellBuffer
         }
     }
 
-    void fill(Cell c) pure
+    void fill(Cell c) pure @safe
     {
         if (c.text == "" || c.text[0] < ' ')
         {
@@ -378,7 +379,7 @@ class CellBuffer
     /**
      * Fill the entire contents, but leave any text styles undisturbed.
      */
-    void fill(string s) pure
+    void fill(string s) pure @safe
     {
         foreach (i; 0 .. cells.length)
         {
@@ -389,7 +390,7 @@ class CellBuffer
     /**
      * Fill the entire contents, including the given style.
      */
-    void fill(string s, Style style) pure
+    void fill(string s, Style style) pure @safe
     {
         Cell c = Cell(s, style);
         fill(c);
@@ -402,7 +403,7 @@ class CellBuffer
      * content.  The entire set of contents are marked dirty, because
      * presumably everything needs to be redrawn when this happens.
      */
-    void resize(Coord size)
+    void resize(Coord size) @safe
     {
         if (size_ == size)
         {
@@ -430,14 +431,80 @@ class CellBuffer
         prev = new Cell[size.x * size.y];
     }
 
-    void resize(int cols, int rows)
+    void resize(int cols, int rows) @safe
     {
         resize(Coord(cols, rows));
     }
 
-    Coord size() const pure nothrow
+    Coord size() const pure nothrow @safe
     {
         return size_;
+    }
+
+    // This is the default style we use when writing content using
+    // put and similar APIs.
+    Style style;
+
+    // This is the current position that will be writing when when using
+    // put or write.
+    Coord position;
+
+    void put(Grapheme g) @safe
+    {
+        if (isLegal(position))
+        {
+            auto ix = index(position);
+            string str = toUTF8(g[]);
+            cells[ix].text = str;
+            cells[ix].style = style;
+            auto w = cells[ix].width;
+            final switch (w)
+            {
+            case 0:
+                break;
+            case 1:
+                position.x++;
+                if (position.x >= size_.x)
+                {
+                    // auto wrap
+                    position.y++;
+                    position.x = 0;
+                }
+                break;
+            case 2:
+                position.x++;
+                if (isLegal(position))
+                {
+                    cells[index(position)].text = "";
+                }
+                position.x++;
+                if (position.x >= size_.x)
+                {
+                    position.y++;
+                    position.x = 0;
+                }
+            }
+        }
+    }
+
+    // Put uses a range put, and can thus support a formatted writer, but
+    // note that this WILL NOT WORK with grapheme clusters, because the formatted
+    // writer does not know about unicode segmentation.  Use write() and create
+    // a string elsewhere if you need to work with grapheme clusters.  Single code
+    // point use cases (i.e. most simple text, or precomposed scripts) will work fine.
+    void put(Char)(Char c) @safe if (isSomeChar!Char)
+    {
+        put(Grapheme(c));
+    }
+
+    // Write a string at the current `position`, using the current `style`.
+    // This will wrap if it reaches the end of the terminal.
+    void write(Str)(Str s) @safe if (isSomeString!Str)
+    {
+        foreach (g; s.byGrapheme)
+        {
+            put(g);
+        }
     }
 
     unittest
@@ -552,4 +619,42 @@ class CellBuffer
         assert(cb[0, 49].text == "C");
         assert(cb[131, 49].text == "D");
     }
+}
+
+unittest
+{
+    auto cb = new CellBuffer(80, 24);
+    cb.put('1');
+    cb.position = Coord(5, 10);
+    cb.style.attr = Attr.bold;
+    cb.put('2');
+
+    assert(cb[0, 0].text == "1");
+    assert(cb[5, 10].text == "2");
+    assert(cb[5, 10].style.attr == Attr.bold);
+
+    cb.position = Coord(76, 1);
+    cb.write("this wraps");
+    assert(cb[76, 1].text == "t");
+    assert(cb[77, 1].text == "h");
+    assert(cb[78, 1].text == "i");
+    assert(cb[79, 1].text == "s");
+    assert(cb[0, 2].text == " ");
+    assert(cb[1, 2].text == "w");
+    assert(cb[2, 2].text == "r");
+    assert(cb[3, 2].text == "a");
+    assert(cb[4, 2].text == "p");
+    assert(cb[5, 2].text == "s");
+
+    cb.position = Coord(0, 3);
+    cb.write("￥ yen sign");
+    assert(cb[0, 3].text == "￥");
+    assert(cb[0, 3].width == 2);
+    assert(cb[1, 3].text == "");
+    assert(cb[1, 3].width == 0);
+    assert(cb[2, 3].text == " ");
+    assert(cb[2, 3].width == 1);
+    assert(cb[3, 3].text == "y");
+    assert(cb[4, 3].text == "e");
+    assert(cb[5, 3].text == "n");
 }

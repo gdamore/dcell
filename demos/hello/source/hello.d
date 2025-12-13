@@ -15,15 +15,11 @@ import std.string;
 
 import dcell;
 
-void emitStr(Screen s, int x, int y, Style style, string str)
+void centerStr(Screen s, int y, Style style, string str)
 {
-    // NB: this naively assumes only ASCII
-    while (str != "")
-    {
-        s[x, y] = Cell(str[0], style);
-        str = str[1 .. $];
-        x += 1;
-    }
+    s.style = style;
+    s.position = Coord((s.size.x - cast(int)(str.length)) / 2, y);
+    s.write(str);
 }
 
 void displayHelloWorld(Screen s)
@@ -32,11 +28,10 @@ void displayHelloWorld(Screen s)
     Style def;
     def.bg = Color.silver;
     def.fg = Color.black;
-    s.setStyle(def);
     s.clear();
     Style style = {fg: Color.red, bg: Color.papayaWhip};
-    emitStr(s, size.x / 2 - 9, size.y / 2 - 1, style, " Hello, World! ");
-    emitStr(s, size.x / 2 - 11, size.y / 2 + 1, def, " Press ESC to exit. ");
+    centerStr(s, size.y / 2 - 1, style, " Hello There! ");
+    centerStr(s, size.y / 2 + 1, def, " Press ESC to exit. ");
 
     // this demonstrates a different method.
     // it places a red X in the center of the screen.
