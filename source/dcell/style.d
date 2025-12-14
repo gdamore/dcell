@@ -22,6 +22,7 @@ struct Style
 {
     Color fg; /// foreground color
     Color bg; /// background color
+    Color ul; /// underline color (when underline is in use)
     string url; /// clickable URL, or none if empty
     Attr attr; /// text attributes
 }
