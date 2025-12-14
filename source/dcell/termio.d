@@ -61,6 +61,25 @@ class PosixTty : Tty
         path = dev;
     }
 
+    /**
+     * Create a Tty device form a given file. This should support termios.
+     * One reason to do this is so that an explictly created file on /dev/tty
+     * can be used together with poll, select, epoll, and so forth.  It must
+     * pass the `isatty` check.
+     *
+     * Caution: on macOS the tty device does _not_ support the standard
+     * `poll` or `kqueue` APIs, but does support `select`.
+     *
+     * For more advanced use cases, consider implementing the tty interface
+     * directly.
+     */
+    this(File f)
+    {
+        enforce(f.isOpen, "file is not open");
+        file = f;
+        fd = file.fileno();
+    }
+
     void start()
     {
         if (!file.isOpen)
