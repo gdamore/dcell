@@ -562,11 +562,18 @@ private:
             ti.wakeUp();
         }
 
+        // Note that this operator (~=) intentionally
+        // calls the parents put directly to prevent spurious wakeups
+        // when adding events that have already come from the tty.
+        // It is significant that this method (indeed the entire class)
+        // is private, so it should not be accessible by external consumers.
         void opOpAssign(string op : "~")(Event rhs)
         {
             super.put(rhs);
         }
 
+        // Permit appending a list of events read from the parser directly, but
+        // without waking up the reader.
         void opOpAssign(string op : "~")(Event[] rhs)
         {
             foreach (ev; rhs)
@@ -591,7 +598,6 @@ private:
     bool started;
     bool legacy; // legacy terminals don't have support for OSC, APC, DSC, etc.
     Vt vt;
-    Event[] evs;
     Parser parser;
     string title;
     TtyEventQ evq;
