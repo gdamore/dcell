@@ -94,6 +94,13 @@ class TtyScreen : Screen
         enum string enableDrag = "\x1b[?1002h";
         enum string enableMotion = "\x1b[?1003h";
         enum string mouseSgr = "\x1b[?1006h"; // SGR reporting (use with other enables)
+        enum string doubleUnder = "\x1b[4:2m";
+        enum string curlyUnder = "\x1b[4:3m";
+        enum string dottedUnder = "\x1b[4:4m";
+        enum string dashedUnder = "\x1b[4:5m";
+        enum string underColor = "\x1b[58:5:%dm";
+        enum string underRGB = "\x1b[58:2::%d:%d:%dm";
+        enum string underFg = "\x1b[59m";
 
         // these can be overridden (e.g. disabled for legacy)
         string enterURL = "\x1b]8;;%s\x1b\\";
@@ -122,13 +129,6 @@ class TtyScreen : Screen
         // variables.)
         int numColors = 256;
 
-        // doubleUnder       = "\x1b[4:2m"
-        // curlyUnder        = "\x1b[4:3m"
-        // dottedUnder       = "\x1b[4:4m"
-        // dashedUnder       = "\x1b[4:5m"
-        // underColor        = "\x1b[58:5:%dm"
-        // underRGB          = "\x1b[58:2::%d:%d:%dm"
-        // underFg           = "\x1b[59m"
         // requestWindowSize = "\x1b[18t"                          // For modern terminals
     }
 
@@ -502,7 +502,7 @@ class TtyScreen : Screen
 
     // This is the default style we use when writing content using
     // put and similar APIs.
-    @property Style style() const @safe
+    @property ref Style style() @safe
     {
         return cells.style;
     }
@@ -589,6 +589,21 @@ private:
         {
             return;
         }
+
+        if (style.ul == Color.reset)
+        {
+            puts(vt.underFg);
+        }
+        else if (style.ul.isRGB && vt.numColors > 256)
+        {
+            auto rgb = decompose(style.ul);
+            puts(format!(vt.underRGB)(rgb[0], rgb[1], rgb[2]));
+        }
+        else
+        {
+            auto ul = toPalette(style.ul, vt.numColors);
+            puts(format!(vt.underColor)(ul));
+        }
         if (fg == Color.reset || bg == Color.reset)
         {
             puts(vt.resetFgBg);
@@ -641,19 +656,37 @@ private:
     {
         auto attr = style.attr;
         if (attr & Attr.bold)
-            puts(Vt.bold);
-        if (attr & Attr.underline)
-            puts(Vt.underline);
+            puts(vt.bold);
         if (attr & Attr.reverse)
-            puts(Vt.reverse);
+            puts(vt.reverse);
         if (attr & Attr.blink)
-            puts(Vt.blink);
+            puts(vt.blink);
         if (attr & Attr.dim)
-            puts(Vt.dim);
+            puts(vt.dim);
         if (attr & Attr.italic)
-            puts(Vt.italic);
+            puts(vt.italic);
         if (attr & Attr.strikethrough)
-            puts(Vt.strikeThrough);
+            puts(vt.strikeThrough);
+        switch (attr & Attr.underlineMask)
+        {
+        case Attr.plainUnderline:
+            puts(vt.underline);
+            break;
+        case attr.doubleUnderline:
+            puts(vt.underline ~ vt.doubleUnder);
+            break;
+        case Attr.curlyUnderline:
+            puts(vt.underline ~ vt.curlyUnder);
+            break;
+        case Attr.dottedUnderline:
+            puts(vt.underline ~ vt.dottedUnder);
+            break;
+        case Attr.dashedUnderline:
+            puts(vt.underline ~ vt.dashedUnder);
+            break;
+        default:
+            break;
+        }
     }
 
     void clearScreen()
