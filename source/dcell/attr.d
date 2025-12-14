@@ -19,10 +19,20 @@ enum Attr
     bold = 1 << 0,
     blink = 1 << 1,
     reverse = 1 << 2, /// foreground and background colors reversed
-    underline = 1 << 3,
-    dim = 1 << 4,
-    italic = 1 << 5,
-    strikethrough = 1 << 6,
-    invalid = 1 << 7, // invalid attribute
+    dim = 1 << 3,
+    italic = 1 << 4,
+    strikethrough = 1 << 5,
+
+    /// Underlines are a bit field, because they can be styled.  Use a ^= underlineMask; a |= plainUnderline.
+    /// If you only use simple underlines you can just set underline as a bool.
+    underline = 1 << 6,
+    plainUnderline = underline | 0 << 7,
+    doubleUnderline = underline | 1 << 7,
+    curlyUnderline = underline | 2 << 7, // underline styles take bits 7-9
+    dottedUnderline = underline | 3 << 7,
+    dashedUnderline = underline | 4 << 7,
+    underlineMask = underline | 7 << 7, // all bits set for underline
+
+    invalid = 1 << 15, // invalid attribute
     init = invalid,
 }

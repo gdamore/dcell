@@ -1,0 +1,12 @@
+{
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "description": "Styles Demo for Dcell",
+  "name": "styles",
+  "targetType": "executable",
+  "targetName": "styles",
+  "targetPath": "bin",
+  "mainSourceFile": "source/styles.d",
+  "dependencies": {
+    "dcell": { "path": "../.." }
+  }
+}
