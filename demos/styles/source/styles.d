@@ -1,5 +1,5 @@
 /**
- * Styles world demo for Dcell.
+ * Styles demo for Dcell.
  *
  * Copyright: Copyright 2025 Garrett D'Amore
  * Authors: Garrett D'Amore
@@ -10,7 +10,6 @@
  */
 module styles;
 
-import std.stdio;
 import std.string;
 
 import dcell;
@@ -159,8 +158,6 @@ void handleEvent(Screen ts, Event ev)
 
 void main()
 {
-    import std.stdio;
-
     auto ts = newScreen();
     assert(ts !is null);
     scope (exit)
