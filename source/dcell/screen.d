@@ -121,7 +121,7 @@ interface Screen
 
     /**
      * Obtain the list of events.  The returned value is both an input range of `Event`,
-     * (for receiving evens), and an output range of `Event`.
+     * (for receiving events), and an output range of `Event`.
      */
     EventQ events() @safe;
 

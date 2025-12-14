@@ -120,7 +120,7 @@ void main()
     Coord oldTop = Coord(-1, -1);
     Coord oldBot = Coord(-1, -1);
     int esc = 0;
-    dchar lb;
+    dchar lb = 0;
     bool focused = true;
 
     for (;;)
@@ -279,7 +279,6 @@ void main()
                     lb = '?';
                     break;
                 }
-                // mousePos = ev.mouse.pos;
                 if (button != Buttons.none)
                     oldBot = ev.mouse.pos;
 

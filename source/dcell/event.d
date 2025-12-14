@@ -72,7 +72,7 @@ struct FocusEvent
 }
 
 /**
- * EventQ is an input and output range of Events that behaves as a FIFO.
+ * EventQ is both an input and output range of Events that behaves as a FIFO.
  * When adding to the output range it will wake up any reader using the
  * delegate that was passed to it at construction.
  */
