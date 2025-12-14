@@ -87,4 +87,9 @@ interface Tty
      * This is edge triggered (reading it will clear the value.)
      */
     bool resized();
+
+    /**
+     * Wake up any reader blocked in read().
+     */
+    void wakeUp();
 }

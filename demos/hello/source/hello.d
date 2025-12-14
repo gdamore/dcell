@@ -29,7 +29,7 @@ void displayHelloWorld(Screen s)
     def.bg = Color.silver;
     def.fg = Color.black;
     s.clear();
-    Style style = {fg: Color.red, bg: Color.papayaWhip};
+    Style style = {fg: Color.navy, bg: Color.papayaWhip};
     centerStr(s, size.y / 2 - 1, style, " Hello There! ");
     centerStr(s, size.y / 2 + 1, def, " Press ESC to exit. ");
 
@@ -79,7 +79,10 @@ void main()
     displayHelloWorld(ts);
     for (;;)
     {
-        Event ev = ts.waitEvent();
-        handleEvent(ts, ev);
+        ts.waitForEvent();
+        foreach (ev; ts.events())
+        {
+            handleEvent(ts, ev);
+        }
     }
 }
