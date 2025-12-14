@@ -58,6 +58,10 @@ nothrow:
 class WinTty : Tty
 {
 
+    /**
+     * Default constructor.
+     * This expects the terminal to be connected to STD_INPUT_HANDLE and STD_OUTPUT_HANDLE.
+     */
     this()
     {
         input = GetStdHandle(STD_INPUT_HANDLE);
