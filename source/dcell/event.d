@@ -11,6 +11,7 @@
 module dcell.event;
 
 import core.time;
+import std.range;
 
 import dcell.key;
 import dcell.mouse;
@@ -68,4 +69,36 @@ struct PasteEvent
 struct FocusEvent
 {
     bool focused;
+}
+
+/**
+ * EventQ is an input and output range of Events that behaves as a FIFO.
+ * When adding to the output range it will wake up any reader using the
+ * delegate that was passed to it at construction.
+ */
+class EventQ
+{
+
+    void put(Event ev)
+    {
+        events ~= ev;
+    }
+
+    final Event front() const nothrow pure @property @nogc @safe
+    {
+        return events.front;
+    }
+
+    final bool empty() const nothrow pure @property @nogc @safe
+    {
+        return events.empty;
+    }
+
+    final void popFront() nothrow pure @nogc @safe
+    {
+        events.popFront();
+    }
+
+private:
+    Event[] events;
 }

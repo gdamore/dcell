@@ -170,7 +170,10 @@ void main()
     displayStyles(ts);
     for (;;)
     {
-        Event ev = ts.waitEvent();
-        handleEvent(ts, ev);
+        ts.waitForEvent();
+        foreach (ev; ts.events())
+        {
+            handleEvent(ts, ev);
+        }
     }
 }

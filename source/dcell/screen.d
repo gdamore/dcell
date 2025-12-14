@@ -93,11 +93,37 @@ interface Screen
     Coord size();
 
     /**
-     * Wait for an event, up to the given duration.  This is used
-     * to rescan for changes as well, so it should be called as
-     * frequently.
+     * Wait for at least one event to be posted, for up to the given time.
+     * Params:
+     *   timeout = maximum duration to wait for an event to arrive
+     *   resched = if no event was posted, the caller should make another
+     *             attempt no later than this in order to handle incompletely parsed events
+     *
+     * Returns: true if at least one event is available, false otherwise.
      */
-    Event waitEvent(Duration dur = msecs(100));
+    bool waitForEvent(Duration timeout, ref Duration resched);
+
+    /**
+     * Wait for at least one event to be posted.
+     * This simpler version can be used when the caller is in a simple poll/handle
+     * loop (typical for some simple applications.)
+     *
+     * Params:
+     *   timeout = maximum duration to wait for an event to arrive
+     *
+     * Returns: True if at least one event is available, false otherwise.
+     */
+    final bool waitForEvent(Duration timeout = Duration.max)
+    {
+        Duration resched;
+        return waitForEvent(timeout, resched);
+    }
+
+    /**
+     * Obtain the list of events.  The returned value is both an input range of `Event`,
+     * (for receiving evens), and an output range of `Event`.
+     */
+    EventQ events() @safe;
 
     /**
      * Enable bracketed paste mode mode.  Bracketed paste mode

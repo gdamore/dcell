@@ -202,6 +202,11 @@ class WinTty : Tty
         return result;
     }
 
+    void wakeUp()
+    {
+        SetEvent(eventH);
+    }
+
 private:
     HANDLE output;
     HANDLE input;

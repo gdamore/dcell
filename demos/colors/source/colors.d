@@ -10,6 +10,7 @@
  */
 module color;
 
+import core.time;
 import std.stdio;
 import std.string;
 import std.random;
@@ -29,13 +30,15 @@ class ColorBoxes
     Random rng;
     enum inc = 8;
     int cnt;
+    bool done;
+    Screen s;
 
     bool flip()
     {
         return (rng.uniform!ubyte() & 0x1) != 0;
     }
 
-    this()
+    this(Screen scr)
     {
         rng = rndGen();
         r = rng.uniform!ubyte();
@@ -44,9 +47,10 @@ class ColorBoxes
         ri = inc;
         gi = inc / 4; // humans are very sensitive to green
         bi = inc;
+        s = scr;
     }
 
-    void makeBox(Screen s)
+    void makeBox()
     {
         Coord wsz = s.size();
         dchar dc = ' ';
@@ -117,31 +121,9 @@ class ColorBoxes
         }
         s.show();
     }
-}
 
-void main()
-{
-    import std.stdio;
-    import core.time;
-    import core.stdc.stdlib;
-
-    auto s = newScreen();
-    assert(s !is null);
-    scope (exit)
+    void handleEvent(Event ev)
     {
-        s.stop();
-    }
-
-    ColorBoxes cb = new ColorBoxes();
-
-    auto now = MonoTime.currTime();
-
-    s.start();
-    bool done = false;
-    while (!done)
-    {
-        cb.makeBox(s);
-        auto ev = s.waitEvent(msecs(50));
         switch (ev.type)
         {
         case EventType.key:
@@ -173,8 +155,68 @@ void main()
         default:
         }
     }
+
+    void run()
+    {
+        s.start();
+        scope (exit)
+        {
+            s.stop();
+        }
+        done = false;
+        makeBox();
+        while (!done)
+        {
+            loop: foreach (ev; s.events())
+            {
+                switch (ev.type)
+                {
+                case EventType.key:
+                    switch (ev.key.key)
+                    {
+                    case Key.esc, Key.enter:
+                        done = true;
+                        break loop;
+                    case Key.graph:
+                        // Ctrl-L (without other modifiers) used to force a redraw.
+                        if (ev.key.ch == 'l' && ev.key.mod == Modifiers.ctrl)
+                        {
+                            s.resize();
+                            s.sync();
+                        }
+                        break;
+                    default:
+                    }
+                    break;
+                case EventType.resize:
+                    s.resize();
+                    break;
+                case EventType.closed:
+                    done = true;
+                    break loop;
+                case EventType.error:
+                    assert(0, "error received");
+                default:
+                }
+            }
+            makeBox();
+            s.position = Coord(1, 1);
+            s.waitForEvent(msecs(50));
+        }
+    }
+}
+
+void main()
+{
+    import std.stdio;
+    import core.time;
+    import core.stdc.stdlib;
+
+    ColorBoxes cb = new ColorBoxes(newScreen());
+
+    auto now = MonoTime.currTime();
+    cb.run();
     auto end = MonoTime.currTime();
-    s.stop();
     writefln("Drew %d boxes in %s.", cb.cnt, end - now);
     writefln("Average per box %s.", (end - now) / cb.cnt);
 }

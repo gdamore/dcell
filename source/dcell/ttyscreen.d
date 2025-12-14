@@ -157,6 +157,7 @@ class TtyScreen : Screen
         ti = tt;
         ti.start();
         cells = new CellBuffer(ti.windowSize());
+        evq = new TtyEventQ();
         ob = new OutBuffer();
         cells.style.bg = Color.reset;
         cells.style.fg = Color.reset;
@@ -445,62 +446,64 @@ class TtyScreen : Screen
         }
     }
 
-    Event waitEvent(Duration dur = msecs(100))
+    bool waitForEvent(Duration timeout, ref Duration resched)
     {
-        // naive polling loop for now.
-        MonoTime expire;
-
-        if (!dur.isNegative)
-        {
-            expire = MonoTime.currTime() + dur;
-        }
-        else
-        {
-            // we check dur.isNegative, but this adds a safeguard to make sure
-            // we won't misconstrue it as a small value.
-            expire = MonoTime.max;
-        }
+        // expire for a time when we will timeout, safeguard against obvious overflow.
+        MonoTime expire = (timeout == Duration.max) ? MonoTime.max : MonoTime.currTime() + timeout;
 
         // residual tracks whether we are waiting for the rest of
         // a partial escape sequence in the parser.
         bool residual = false;
+        bool readOnce = false;
 
         for (;;)
         {
-            events ~= parser.events();
+            evq ~= parser.events();
             if (ti.resized())
             {
                 Event rev;
                 rev.type = EventType.resize;
                 rev.when = MonoTime.currTime();
-                events ~= rev;
+                evq ~= rev;
             }
-            if (!events.empty)
+            if (!evq.empty)
             {
-                auto event = events[0];
-                events = events[1 .. $];
-                return event;
+                return true;
             }
+
+            MonoTime now = MonoTime.currTime();
+
+            // if we expired, and we haven't at least called the
+            // read function once, then return.
+            Duration interval = expire - now;
+
+            if (expire < now)
+            {
+                if (readOnce)
+                {
+                    resched = residual ? msecs(25) : Duration.max;
+                    return false;
+                }
+                interval = msecs(0); // just do a polling read
+            }
+
+            readOnce = true;
 
             // if we have partial data in the parser, we need to use
             // a shorter wakeup, so we can create an event in case the
             // escape sequence is not completed (e.g. lone ESC.)
-            if (residual || !dur.isNegative)
+            if (residual && interval > msecs(5))
             {
-                auto now = MonoTime.currTime();
-                if (expire <= now)
-                {
-                    // expired
-                    return Event(EventType.none);
-                }
-                auto interval = residual ? msecs(1) : (expire - now);
-                residual = !parser.parse(ti.read(interval));
+                interval = msecs(5);
             }
-            else
-            {
-                residual = !parser.parse(ti.read());
-            }
+
+            residual = !parser.parse(ti.read(interval));
         }
+    }
+
+    EventQ events() nothrow @safe @nogc
+    {
+        return evq;
     }
 
     // This is the default style we use when writing content using
@@ -551,6 +554,28 @@ private:
         Modifiers mod;
     }
 
+    class TtyEventQ : EventQ
+    {
+        override void put(Event ev)
+        {
+            super.put(ev);
+            ti.wakeUp();
+        }
+
+        void opOpAssign(string op : "~")(Event rhs)
+        {
+            super.put(rhs);
+        }
+
+        void opOpAssign(string op : "~")(Event[] rhs)
+        {
+            foreach (ev; rhs)
+            {
+                super.put(ev);
+            }
+        }
+    }
+
     CellBuffer cells;
     bool clear_; // if a screen clear is requested
     Coord pos_; // location where we will update next
@@ -566,9 +591,10 @@ private:
     bool started;
     bool legacy; // legacy terminals don't have support for OSC, APC, DSC, etc.
     Vt vt;
-    Event[] events;
+    Event[] evs;
     Parser parser;
     string title;
+    TtyEventQ evq;
 
     void puts(string s)
     {

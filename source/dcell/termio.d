@@ -193,7 +193,7 @@ class PosixTty : Tty
         FD_SET(fd, &readFds);
         FD_SET(sigRfd, &readFds);
 
-        if (dur.isNegative || dur == Duration.max)
+        if (dur == Duration.max || dur.isNegative)
         {
             tvp = null;
         }
@@ -209,7 +209,6 @@ class PosixTty : Tty
         import std.algorithm : max;
 
         int num = select(max(fd, sigRfd) + 1, &readFds, null, null, tvp);
-
         if (num < 1)
         {
             return "";
@@ -252,7 +251,7 @@ class PosixTty : Tty
         pfd[1].revents = 0;
 
         int dly;
-        if (dur.isNegative || dur == Duration.max)
+        if (dur == Duration.max)
         {
             dly = -1;
         }
@@ -297,6 +296,16 @@ class PosixTty : Tty
     {
         // NB: resized is edge triggered.
         return wasResized(fd);
+    }
+
+    void wakeUp() nothrow
+    {
+        import unistd = core.sys.posix.unistd;
+
+        ubyte[1] buf;
+
+        // we do not care if this fails
+        unistd.write(sigWfd, buf.ptr, 1);
     }
 
 private:
