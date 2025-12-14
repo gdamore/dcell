@@ -222,7 +222,7 @@ interface Screen
      * The style property is used when writing content to the screen
      * using the simpler write() API.
      */
-    @property Style style() const @safe;
+    @property ref Style style() @safe;
     @property Style style(const(Style)) @safe;
 
     /**
