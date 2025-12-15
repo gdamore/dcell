@@ -56,7 +56,7 @@ interface Screen
     }
 
     /** Support $ operation in indices. */
-    size_t opDollar(size_t dim)() nothrow @safe
+    size_t opDollar(size_t dim)() @safe
     {
         static if (dim == 0)
         {
