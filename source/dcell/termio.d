@@ -11,6 +11,7 @@
  */
 module dcell.termio;
 
+import std.algorithm;
 import std.datetime;
 import std.exception;
 import std.range.interfaces;
@@ -212,16 +213,19 @@ class PosixTty : Tty
         FD_SET(fd, &readFds);
         FD_SET(sigRfd, &readFds);
 
-        if (dur == Duration.max || dur.isNegative)
+        if (dur == Duration.max)
         {
             tvp = null;
         }
         else
         {
+            // at least 10us, not more than an hour.
+            dur = min(hours(1), max(dur, usecs(10)));
             auto usecs = dur.total!"usecs";
+            assert(usecs > 0);
 
-            timeout.tv_sec = cast(typeof(timeout.tv_sec)) usecs / 1_000_000;
-            timeout.tv_usec = cast(typeof(timeout.tv_usec)) usecs % 1_000_000;
+            timeout.tv_sec = cast(typeof(timeout.tv_sec))(usecs / 1_000_000);
+            timeout.tv_usec = cast(typeof(timeout.tv_usec))(usecs % 1_000_000);
             tvp = &timeout;
         }
 
@@ -276,6 +280,8 @@ class PosixTty : Tty
         }
         else
         {
+            // clip to a day to prevent overrun
+            dur = min(hours(24), dur);
             dly = cast(int)(dur.total!"msecs");
         }
 
