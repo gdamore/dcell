@@ -1,12 +1,12 @@
 {
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"description": "Mouse demo in Dcell",
-	"name": "mouse",
-	"targetType": "executable",
-	"targetName": "mouse",
-	"targetPath": "bin",
-	"mainSourceFile": "source/mouse.d",
-	"dependencies": {
-	    "dcell" : { "path": "../../" }
-	}
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "description": "Mouse demo in Dcell",
+  "name": "mouse",
+  "targetType": "executable",
+  "targetName": "mouse",
+  "targetPath": "bin",
+  "mainSourceFile": "source/mouse.d",
+  "dependencies": {
+    "dcell": { "path": "../../" }
+  }
 }
