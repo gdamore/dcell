@@ -56,7 +56,7 @@ import std.stdio;
 class PosixTty : Tty
 {
     /// Create a Tty device on a given device path. The usual path is "/dev/tty".
-    this(string dev)
+    this(string dev) nothrow @safe
     {
         path = dev;
     }
@@ -73,14 +73,14 @@ class PosixTty : Tty
      * For more advanced use cases, consider implementing the tty interface
      * directly.
      */
-    this(File f)
+    this(File f) @safe
     {
         enforce(f.isOpen, "file is not open");
         file = f;
         fd = file.fileno();
     }
 
-    void start()
+    void start() @safe
     {
         if (!file.isOpen)
         {
@@ -91,7 +91,7 @@ class PosixTty : Tty
         watchResize(fd);
     }
 
-    void stop()
+    void stop() @safe
     {
         if (file.isOpen())
         {
@@ -100,7 +100,7 @@ class PosixTty : Tty
         }
     }
 
-    void close()
+    void close() @safe
     {
         if (file.isOpen)
         {
@@ -110,24 +110,24 @@ class PosixTty : Tty
         }
     }
 
-    void save()
+    void save() @trusted
     {
         if (!isatty(fd))
             throw new Exception("not a tty device");
         enforce(tcgetattr(fd, &saved) >= 0, "failed to get termio state");
     }
 
-    void restore()
+    void restore() @trusted
     {
         enforce(tcsetattr(fd, TCSAFLUSH, &saved) >= 0, "failed to set termio state");
     }
 
-    void flush()
+    void flush() @safe
     {
         file.flush();
     }
 
-    void raw()
+    void raw() @trusted
     {
         termios tio;
         enforce(tcgetattr(fd, &tio) >= 0, "failed to get termio state");
@@ -141,7 +141,7 @@ class PosixTty : Tty
         enforce(tcsetattr(fd, TCSANOW, &tio) >= 0, "failed to set termios");
     }
 
-    Coord windowSize()
+    Coord windowSize() @trusted
     {
         // If cores.sys.posix.sys.ioctl had more complete and accurate data...
         // this structure is fairly consistent amongst all POSIX variants
@@ -198,7 +198,7 @@ class PosixTty : Tty
     // On macOS, we have to use a select() based implementation because poll()
     // does not work reasonably on /dev/tty. (This was very astonishing when first
     // we discovered it -- POLLNVAL for device files.)
-    version (UseSelect) string read(Duration dur = Duration.zero)
+    version (UseSelect) string read(Duration dur = Duration.zero) @trusted
     {
         // this has to use the underlying read system call
         import unistd = core.sys.posix.unistd;
@@ -253,7 +253,7 @@ class PosixTty : Tty
         return result;
     }
 
-    version (UsePoll) string read(Duration dur = Duration.zero)
+    version (UsePoll) string read(Duration dur = Duration.zero) @trusted
     {
         // this has to use the underlying read system call
         import unistd = core.sys.posix.unistd;
@@ -306,18 +306,18 @@ class PosixTty : Tty
         return result;
     }
 
-    void write(string s)
+    void write(string s) @safe
     {
         file.write(s);
     }
 
-    bool resized()
+    bool resized() nothrow @safe @nogc
     {
         // NB: resized is edge triggered.
         return wasResized(fd);
     }
 
-    void wakeUp() nothrow
+    void wakeUp() nothrow @trusted
     {
         import unistd = core.sys.posix.unistd;
 
@@ -385,7 +385,7 @@ else version (AIX)
 else
     static assert(0, "no version");
 
-void watchResize(int fd)
+void watchResize(int fd) @trusted
 {
     import std.process;
     import core.sys.posix.fcntl;
@@ -406,7 +406,7 @@ void watchResize(int fd)
     }
 }
 
-void ignoreResize(int fd)
+void ignoreResize(int fd) @trusted
 {
     if (atomicLoad(sigFd) == fd)
     {
@@ -418,7 +418,7 @@ void ignoreResize(int fd)
     }
 }
 
-bool wasResized(int fd)
+bool wasResized(int fd) nothrow @trusted @nogc
 {
     if (fd == atomicLoad(sigFd) && fd != -1)
     {

@@ -28,17 +28,17 @@ interface Screen
      * Clears the screen.  This doesn't take effect until
      * the show function is called.
      */
-    void clear();
+    void clear() @safe;
 
     /**
      * Retrieve the contents for a given address.  This is taken from
      * the backing draw buffer, and won't necessarily reflect what is
      * displayed to the user until show is called.
      */
-    ref Cell opIndex(size_t x, size_t y);
+    ref Cell opIndex(size_t x, size_t y) @safe;
 
     /** Convenience for indexing */
-    final ref Cell opIndex(Coord pos)
+    final ref Cell opIndex(Coord pos) @safe
     {
         return this[pos.x, pos.y];
     }
@@ -47,16 +47,16 @@ interface Screen
      * Set the content for for a given location.  This won't necessarily
      * take effect until the show function is called.
      */
-    void opIndexAssign(Cell, size_t x, size_t y);
+    void opIndexAssign(Cell, size_t x, size_t y) @safe;
 
     /** Convenience for indexing. */
-    final void opIndexAssign(Cell c, Coord pos)
+    final void opIndexAssign(Cell c, Coord pos) @safe
     {
         this[pos.x, pos.y] = c;
     }
 
     /** Support $ operation in indices. */
-    size_t opDollar(size_t dim)()
+    size_t opDollar(size_t dim)() nothrow @safe
     {
         static if (dim == 0)
         {
@@ -71,7 +71,7 @@ interface Screen
     /**
      * Show the cursor at its current location.
      */
-    void showCursor(Cursor);
+    void showCursor(Cursor) @safe;
 
     /**
      * Move the cursor to the given location, and show
@@ -81,7 +81,7 @@ interface Screen
      *  pos = position of the cursor
      *  cur = cursor style
      */
-    void showCursor(Coord pos, Cursor cur = Cursor.current);
+    void showCursor(Coord pos, Cursor cur = Cursor.current) @safe;
 
     /**
      * Obtain the terminal window size.
@@ -90,7 +90,7 @@ interface Screen
      *
      * Returns: terminal dimensions
      */
-    Coord size();
+    Coord size() @safe;
 
     /**
      * Wait for at least one event to be posted, for up to the given time.
@@ -101,7 +101,7 @@ interface Screen
      *
      * Returns: true if at least one event is available, false otherwise.
      */
-    bool waitForEvent(Duration timeout, ref Duration resched);
+    bool waitForEvent(Duration timeout, ref Duration resched) @safe;
 
     /**
      * Wait for at least one event to be posted.
@@ -113,7 +113,7 @@ interface Screen
      *
      * Returns: True if at least one event is available, false otherwise.
      */
-    final bool waitForEvent(Duration timeout = Duration.max)
+    final bool waitForEvent(Duration timeout = Duration.max) @safe
     {
         Duration resched;
         return waitForEvent(timeout, resched);
@@ -133,7 +133,7 @@ interface Screen
      * Params:
      *   b = true to enable bracketed paste, false for disable
      */
-    void enablePaste(bool b);
+    void enablePaste(bool b) @safe;
 
     /**
      * Enable mouse mode.  This can cause terminals/emulators
@@ -143,7 +143,7 @@ interface Screen
      * Params:
      *   en = mouse events to report (mask)
      */
-    void enableMouse(MouseEnable en);
+    void enableMouse(MouseEnable en) @safe;
 
     /**
      * Enable typical mouse features. This enables tracking, but
@@ -151,7 +151,7 @@ interface Screen
      * use of copy-paste at the OS level, which many users tend to
      * find frustrating.
      */
-    final void enableMouse()
+    final void enableMouse() @safe
     {
         enableMouse(MouseEnable.buttons | MouseEnable.motion);
     }
@@ -159,7 +159,7 @@ interface Screen
     /**
      * Disable all mouse handling/capture.
      */
-    final void disableMouse()
+    final void disableMouse() @safe
     {
         enableMouse(MouseEnable.disable);
     }
@@ -171,7 +171,7 @@ interface Screen
      * It can be disabled by setting DCELL_ALTSCREEN=disable in the
      * environment.
      */
-    void enableAlternateScreen(bool on);
+    void enableAlternateScreen(bool on) @safe;
 
     /**
      * Set the title of the window. This only works for emulators running
@@ -180,7 +180,7 @@ interface Screen
      * a specific default, but it may also leave it empty - it depends
      * on the specific terminal implementation.
      */
-    void setTitle(string);
+    void setTitle(string) @safe;
 
     /**
      * If the terminal supports color, this returns the
@@ -188,52 +188,52 @@ interface Screen
      *
      * Returns: the number of colors supported (max 256), or 0 if monochrome
      */
-    int colors();
+    int colors() nothrow @safe;
 
     /**
      * Show content on the screen, doing so efficiently.
      */
-    void show();
+    void show() @safe;
 
     /**
      * Update the screen, writing every cell.  This should be done
      * to repair screen damage, for example.
      */
-    void sync();
+    void sync() @safe;
 
     /**
      * Emit a beep or bell.  This is done immediately.
      */
-    void beep();
+    void beep() @safe;
 
     /**
      * Attempt to resize the terminal.  YMMV.
      */
-    void setSize(Coord);
+    void setSize(Coord) @safe;
 
     /**
      * Fill the entire screen with the given content and style.
      * Content is not drawn until the show() or sync() functions are called.
      */
-    void fill(string s, Style style);
+    void fill(string s, Style style) @safe;
 
     /**
      * Fill the entire screen with the given content, but preserve the style.
      */
-    void fill(string s);
+    void fill(string s) @safe;
 
     /**
      * Applications should call this in response to receiving
      * a resize event.  (This can't be done automatically to
      * avoid thread safety issues.)
      */
-    void resize();
+    void resize() @safe;
 
     /**
      * Start sets up the terminal.  This changes terminal
      * settings to put the input stream into raw mode, etc.
      */
-    void start();
+    void start() @safe;
 
     /**
      * Stop is called to stop processing on the screen.  The terminal
@@ -242,7 +242,7 @@ interface Screen
      * This should be called when the program is exited, or if suspending
      * (to run a sub-shell process interactively for example).
      */
-    void stop();
+    void stop() @safe;
 
     /**
      * The style property is used when writing content to the screen

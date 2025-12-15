@@ -47,9 +47,6 @@ extern (Windows) @nogc nothrow
     BOOL CloseHandle(HANDLE hObject);
 }
 
-@nogc:
-nothrow:
-
 /**
  * WinTty impleements the Tty using the VT input mode and the Win32 ReadConsoleInput and WriteConsole APIs.
  * We use this instead of ReadFile/WriteFile in order to obtain resize events, and access to the screen size.
@@ -57,32 +54,31 @@ nothrow:
  */
 class WinTty : Tty
 {
-
     /**
      * Default constructor.
      * This expects the terminal to be connected to STD_INPUT_HANDLE and STD_OUTPUT_HANDLE.
      */
-    this()
+    this() @trusted
     {
         input = GetStdHandle(STD_INPUT_HANDLE);
         output = GetStdHandle(STD_OUTPUT_HANDLE);
         eventH = CreateEventW(null, true, false, null);
     }
 
-    void save()
+    void save() @trusted
     {
 
         GetConsoleMode(output, &omode);
         GetConsoleMode(input, &imode);
     }
 
-    void restore()
+    void restore() @trusted
     {
         SetConsoleMode(output, omode);
         SetConsoleMode(input, imode);
     }
 
-    void start()
+    void start() @trusted
     {
         save();
         if (!started)
@@ -92,29 +88,29 @@ class WinTty : Tty
         }
     }
 
-    void stop()
+    void stop() @trusted
     {
         SetEvent(eventH);
     }
 
-    void close()
+    void close() @trusted
     {
         // NB: We do not close the standard input and output handles.
         CloseHandle(eventH);
     }
 
-    void raw()
+    void raw() @trusted
     {
         SetConsoleMode(input, ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS);
         SetConsoleMode(output,
             ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
     }
 
-    void flush()
+    void flush() @safe
     {
     }
 
-    string read(Duration dur = Duration.zero)
+    string read(Duration dur = Duration.zero) @trusted
     {
         HANDLE[2] handles;
         handles[0] = input;
@@ -170,7 +166,7 @@ class WinTty : Tty
     }
 
     // Write output
-    void write(string s) @nogc nothrow
+    void write(string s) @trusted
     {
         import std.utf;
 
@@ -191,7 +187,7 @@ class WinTty : Tty
         }
     }
 
-    Coord windowSize()
+    Coord windowSize() @trusted
     {
         CONSOLE_SCREEN_BUFFER_INFO info;
         GetConsoleScreenBufferInfo(output, &info);
@@ -199,14 +195,14 @@ class WinTty : Tty
             info.srWindow.Bottom - info.srWindow.Top + 1);
     }
 
-    bool resized()
+    bool resized() @safe
     {
         bool result = wasResized;
         wasResized = false;
         return result;
     }
 
-    void wakeUp()
+    void wakeUp() @trusted
     {
         SetEvent(eventH);
     }

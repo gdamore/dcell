@@ -33,7 +33,7 @@ class ColorBoxes
     bool done;
     Screen s;
 
-    bool flip()
+    bool flip() @safe
     {
         return (rng.uniform!ubyte() & 0x1) != 0;
     }
@@ -50,7 +50,7 @@ class ColorBoxes
         s = scr;
     }
 
-    void makeBox()
+    void makeBox() @safe
     {
         Coord wsz = s.size();
         dchar dc = ' ';
@@ -122,7 +122,7 @@ class ColorBoxes
         s.show();
     }
 
-    void handleEvent(Event ev)
+    void handleEvent(Event ev) @safe
     {
         switch (ev.type)
         {
@@ -156,7 +156,7 @@ class ColorBoxes
         }
     }
 
-    void run()
+    void run() @safe
     {
         s.start();
         scope (exit)

@@ -27,12 +27,12 @@ interface Tty
      * Save current tty settings.  These can be subsequently
      * restored using restore.
      */
-    void save();
+    void save() @trusted;
 
     /**
      * Restore tty settings saved with save().
      */
-    void restore();
+    void restore() @trusted;
 
     /**
      * Make the terminal suitable for raw mode input.
@@ -42,43 +42,43 @@ interface Tty
      * will block until one character is presented.  (Same
      * effect as 'blocking(true)'.
      */
-    void raw();
+    void raw() @trusted;
 
     /**
      * Read input.  May return an empty slice if no data
      * is present and blocking is disabled.
      */
-    string read(Duration dur = Duration.zero);
+    string read(Duration dur = Duration.zero) @trusted;
 
     /**
      * Write output.
      */
-    void write(string s);
+    void write(string s) @trusted;
 
     /**
      * Flush output.
      */
-    void flush();
+    void flush() @trusted;
 
     /**
      * Get window size.
      */
-    Coord windowSize();
+    Coord windowSize() @trusted;
 
     /**
      * Stop input scanning.
      */
-    void stop();
+    void stop() @trusted;
 
     /**
      * Close the tty device.
      */
-    void close();
+    void close() @trusted;
 
     /**
      * Start termio.  This will open the device.
      */
-    void start();
+    void start() @trusted;
 
     /**
      * Resized returns true if the window was resized since last checked.
@@ -86,10 +86,10 @@ interface Tty
      * that the caller can see the resize in a timely fashion.
      * This is edge triggered (reading it will clear the value.)
      */
-    bool resized();
+    bool resized() nothrow @nogc @safe;
 
     /**
      * Wake up any reader blocked in read().
      */
-    void wakeUp();
+    void wakeUp() nothrow @trusted;
 }

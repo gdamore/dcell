@@ -79,7 +79,7 @@ struct FocusEvent
 class EventQ
 {
 
-    void put(Event ev)
+    void put(Event ev) @safe nothrow
     {
         events ~= ev;
     }

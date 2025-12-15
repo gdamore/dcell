@@ -310,7 +310,7 @@ immutable KeyCode[int] winKeys = [
 class Parser
 {
 
-    Event[] events() pure
+    Event[] events() pure @safe @nogc
     {
         auto res = evs;
         evs = null;
@@ -318,14 +318,14 @@ class Parser
     }
 
     // Parse the supplied content, returns true if data is fully parsed.
-    bool parse(string b)
+    bool parse(string b) @safe
     {
         buf ~= b;
         scan();
         return parseState == ParseState.ini;
     }
 
-    bool empty() const pure
+    bool empty() const pure @safe
     {
         return buf.length == 0;
     }
@@ -368,7 +368,7 @@ private:
     bool pasting;
     dstring pasteBuf;
 
-    void postKey(Key k, dchar dch, Modifiers mod)
+    void postKey(Key k, dchar dch, Modifiers mod) nothrow @safe
     {
         if (pasting)
         {
@@ -383,7 +383,7 @@ private:
         }
     }
 
-    void scan()
+    void scan() @trusted
     {
         while (!buf.empty)
         {
@@ -674,7 +674,7 @@ private:
         parseState = ParseState.ini;
     }
 
-    void handleCsi(ubyte mode, string params, string interm)
+    void handleCsi(ubyte mode, string params, string interm) @safe
     {
         parseState = ParseState.ini;
 
@@ -865,7 +865,7 @@ private:
         }
     }
 
-    void handleMouse(ubyte mode, int p0, int p1, int p2)
+    void handleMouse(ubyte mode, int p0, int p1, int p2) nothrow @safe
     {
         // XTerm mouse events only report at most one button at a time,
         // which may include a wheel button.  Wheel motion events are
@@ -954,7 +954,7 @@ private:
         evs ~= newMouseEvent(x, y, button, mod);
     }
 
-    void handleWinKey(int p0, int p1, int p2, int p3, int p4, int p5)
+    void handleWinKey(int p0, int p1, int p2, int p3, int p4, int p5) @safe
     {
         // win32-input-mode
         //  ^[ [ Vk ; Sc ; Uc ; Kd ; Cs ; Rc _
@@ -1056,7 +1056,7 @@ private:
     }
 
     // calculate the modifiers from the CSI modifier parameter.
-    Modifiers calcModifier(int n)
+    Modifiers calcModifier(int n) pure nothrow @safe @nogc
     {
         n--;
         Modifiers m;
@@ -1091,7 +1091,7 @@ private:
         return m;
     }
 
-    Event newFocusEvent(bool focused)
+    Event newFocusEvent(bool focused) nothrow @safe
     {
         Event ev =
         {
@@ -1102,7 +1102,7 @@ private:
         return ev;
     }
 
-    Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none)
+    Event newKeyEvent(Key k, dchar dch = 0, Modifiers mod = Modifiers.none) nothrow @safe
     {
         if (escaped)
         {
@@ -1147,7 +1147,7 @@ private:
         return ev;
     }
 
-    Event newMouseEvent(int x, int y, Buttons btn, Modifiers mod)
+    Event newMouseEvent(int x, int y, Buttons btn, Modifiers mod) nothrow @safe
     {
         Event ev = {
             type: EventType.mouse, when: MonoTime.currTime, mouse: {
@@ -1162,7 +1162,7 @@ private:
     // NB: it is possible for x and y to be outside the current coordinates
     // (happens for click drag for example).  Consumer of the event should clip
     // the coordinates as needed.
-    Event newMouseEvent(int x, int y, int btn)
+    Event newMouseEvent(int x, int y, int btn) nothrow @safe
     {
         Event ev = {
             type: EventType.mouse, when: MonoTime.currTime, mouse: {
@@ -1207,7 +1207,7 @@ private:
         return ev;
     }
 
-    Event newPasteEvent(dstring buffer)
+    Event newPasteEvent(dstring buffer) nothrow @safe
     {
         Event ev = {
             type: EventType.paste, when: MonoTime.currTime(), paste: {
@@ -1215,20 +1215,6 @@ private:
             }
         };
         return ev;
-    }
-
-    bool parseSequence(string seq)
-    {
-        if (startsWith(buf, seq))
-        {
-            buf = buf[seq.length .. $]; // yank the sequence
-            return true;
-        }
-        if (startsWith(seq, buf))
-        {
-            partial = true;
-        }
-        return false;
     }
 
     unittest

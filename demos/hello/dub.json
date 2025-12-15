@@ -1,12 +1,12 @@
 {
-	"copyright": "Copyright 2022 Garrett D'Amore",
-	"description": "Hello World in Dcell",
-	"name": "hello",
-	"targetType": "executable",
-	"targetName": "hello",
-	"targetPath": "bin",
-	"mainSourceFile": "source/hello.d",
-	"dependencies": {
-	    "dcell" : { "path": "../.." }
-	}
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "description": "Hello World in Dcell",
+  "name": "hello",
+  "targetType": "executable",
+  "targetName": "hello",
+  "targetPath": "bin",
+  "mainSourceFile": "source/hello.d",
+  "dependencies": {
+    "dcell": { "path": "../.." }
+  }
 }

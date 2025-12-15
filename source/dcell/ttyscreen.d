@@ -313,7 +313,7 @@ class TtyScreen : Screen
         started = false;
     }
 
-    void clear()
+    void clear() @safe
     {
         // save the style currently in effect, so when
         // we later send the clear, we can use it.
@@ -326,12 +326,12 @@ class TtyScreen : Screen
         cells.setAllDirty(false);
     }
 
-    void fill(string s, Style style)
+    void fill(string s, Style style) @safe
     {
         cells.fill(s, style);
     }
 
-    void fill(string s)
+    void fill(string s) @safe
     {
         fill(s, this.style);
     }
@@ -354,7 +354,7 @@ class TtyScreen : Screen
         return (cells.size());
     }
 
-    void resize()
+    void resize() @safe
     {
         auto phys = ti.windowSize();
         if (phys != cells.size())
@@ -364,34 +364,34 @@ class TtyScreen : Screen
         }
     }
 
-    ref Cell opIndex(size_t x, size_t y)
+    ref Cell opIndex(size_t x, size_t y) @safe
     {
         return (cells[x, y]);
     }
 
-    void opIndexAssign(Cell c, size_t x, size_t y)
+    void opIndexAssign(Cell c, size_t x, size_t y) @safe
     {
         cells[x, y] = c;
     }
 
-    void enablePaste(bool b)
+    void enablePaste(bool b) @safe
     {
         pasteEn = b;
         sendPasteEnable(b);
     }
 
-    int colors() const pure
+    int colors() const pure nothrow @safe
     {
         return vt.numColors;
     }
 
-    void show()
+    void show() @safe
     {
         resize();
         draw();
     }
 
-    void sync()
+    void sync() @safe
     {
         pos_ = Coord(-1, -1);
         resize();
@@ -400,13 +400,13 @@ class TtyScreen : Screen
         draw();
     }
 
-    void beep()
+    void beep() @safe
     {
         puts("\x07");
         flush();
     }
 
-    void setSize(Coord size)
+    void setSize(Coord size) @safe
     {
         if (vt.setWindowSize != "")
         {
@@ -417,7 +417,7 @@ class TtyScreen : Screen
         }
     }
 
-    void enableMouse(MouseEnable en)
+    void enableMouse(MouseEnable en) @safe
     {
         // we rely on the fact that all known implementations adhere
         // to the de-facto standard from XTerm.  This is necessary as
@@ -427,7 +427,7 @@ class TtyScreen : Screen
         sendMouseEnable(en);
     }
 
-    void enableAlternateScreen(bool enabled)
+    void enableAlternateScreen(bool enabled) @safe
     {
         altScrEn = enabled;
         if (environment.get("DCELL_ALTSCREEN") == "disable")
@@ -436,7 +436,7 @@ class TtyScreen : Screen
         }
     }
 
-    void setTitle(string title)
+    void setTitle(string title) @safe
     {
         this.title = title;
         if (started && !vt.setTitle.empty)
@@ -446,7 +446,7 @@ class TtyScreen : Screen
         }
     }
 
-    bool waitForEvent(Duration timeout, ref Duration resched)
+    bool waitForEvent(Duration timeout, ref Duration resched) @safe
     {
         // expire for a time when we will timeout, safeguard against obvious overflow.
         MonoTime expire = (timeout == Duration.max) ? MonoTime.max : MonoTime.currTime() + timeout;
@@ -556,7 +556,7 @@ private:
 
     class TtyEventQ : EventQ
     {
-        override void put(Event ev)
+        override void put(Event ev) @safe
         {
             super.put(ev);
             ti.wakeUp();
@@ -567,14 +567,14 @@ private:
         // when adding events that have already come from the tty.
         // It is significant that this method (indeed the entire class)
         // is private, so it should not be accessible by external consumers.
-        void opOpAssign(string op : "~")(Event rhs)
+        void opOpAssign(string op : "~")(Event rhs) nothrow @safe
         {
             super.put(rhs);
         }
 
         // Permit appending a list of events read from the parser directly, but
         // without waking up the reader.
-        void opOpAssign(string op : "~")(Event[] rhs)
+        void opOpAssign(string op : "~")(Event[] rhs) nothrow @safe
         {
             foreach (ev; rhs)
             {
@@ -602,13 +602,13 @@ private:
     string title;
     TtyEventQ evq;
 
-    void puts(string s)
+    void puts(string s) @safe
     {
         ob.write(s);
     }
 
     // flush queued output
-    void flush()
+    void flush() @safe
     {
         ti.write(ob.toString());
         ti.flush();
@@ -616,7 +616,7 @@ private:
     }
 
     // sendColors sends just the colors for a given style
-    void sendColors(Style style)
+    void sendColors(Style style) @safe
     {
         auto fg = style.fg;
         auto bg = style.bg;
@@ -691,7 +691,7 @@ private:
         }
     }
 
-    void sendAttrs(Style style)
+    void sendAttrs(Style style) @safe
     {
         auto attr = style.attr;
         if (attr & Attr.bold)
@@ -732,7 +732,7 @@ private:
         }
     }
 
-    void clearScreen()
+    void clearScreen() @safe
     {
         if (clear_)
         {
@@ -752,7 +752,7 @@ private:
         }
     }
 
-    void goTo(Coord pos)
+    void goTo(Coord pos) @safe
     {
         if (pos != pos_)
         {
@@ -762,7 +762,7 @@ private:
     }
 
     // sendCursor sends the current cursor location
-    void sendCursor()
+    void sendCursor() @safe
     {
         if (!cells.isLegal(cursorPos) || (cursorShape == Cursor.hidden))
         {
@@ -805,7 +805,7 @@ private:
     }
 
     // drawCell draws one cell.  It returns the width drawn (1 or 2).
-    int drawCell(Coord pos)
+    int drawCell(Coord pos) @safe
     {
         Cell c = cells[pos];
         auto insert = false;
@@ -875,7 +875,7 @@ private:
         return c.width;
     }
 
-    void draw()
+    void draw() @safe
     {
         puts(vt.startSyncOut);
         puts(vt.hideCursor); // hide the cursor while we draw
@@ -904,7 +904,7 @@ private:
         flush();
     }
 
-    void sendMouseEnable(MouseEnable en)
+    void sendMouseEnable(MouseEnable en) @safe
     {
         // we rely on the fact that all known implementations adhere
         // to the de-facto standard from XTerm.  This is necessary as
@@ -933,7 +933,7 @@ private:
         flush();
     }
 
-    void sendPasteEnable(bool b)
+    void sendPasteEnable(bool b) @safe
     {
         puts(b ? Vt.enablePaste : Vt.disablePaste);
         flush();
