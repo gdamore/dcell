@@ -711,7 +711,7 @@ private:
         case Attr.plainUnderline:
             puts(vt.underline);
             break;
-        case attr.doubleUnderline:
+        case Attr.doubleUnderline:
             puts(vt.underline);
             puts(vt.doubleUnder);
             break;
