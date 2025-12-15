@@ -1,5 +1,5 @@
 /**
- * TtyScreen module implements VT style terminals (ala XTerm).
+ * VtScreen module implements VT style terminals (ala XTerm).
  * These are terminals that work by sending escape sequences over
  * a single byte stream. Historically this would be a serial port,
  * but modern systems likely use SSH, or a pty (pseudo-terminal).
@@ -12,7 +12,7 @@
  *   (See accompanying file LICENSE or https://www.boost.org/LICENSE_1_0.txt)
  *   SPDX-License-Identifier: BSL-1.0
  */
-module dcell.ttyscreen;
+module dcell.vt;
 
 package:
 
@@ -38,7 +38,7 @@ import dcell.event;
 import dcell.parser;
 import dcell.tty;
 
-class TtyScreen : Screen
+class VtScreen : Screen
 {
     // Various escape escape sequences we can send.
     // Note that we have a rather broad assumption that we only support terminals

@@ -11,7 +11,7 @@
 module dcell.common;
 
 import dcell.screen;
-import dcell.ttyscreen;
+import dcell.vt;
 
 /**
  * Obtain a new screen. On POSIX this is connected to /dev/tty
@@ -19,5 +19,5 @@ import dcell.ttyscreen;
  */
 Screen newScreen()
 {
-    return new TtyScreen();
+    return new VtScreen();
 }
