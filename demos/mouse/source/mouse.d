@@ -106,7 +106,7 @@ void main()
     dstring focusFmt = "Focus: %s";
     dstring bStr = "";
     dstring kStr = "";
-    dstring pStr = "";
+    string pStr = "";
 
     s.start();
     s.showCursor(Cursor.hidden);
