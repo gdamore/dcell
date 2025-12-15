@@ -1,0 +1,12 @@
+{
+  "copyright": "Copyright 2025 Garrett D'Amore",
+  "description": "Clipboard Demo in Dcell",
+  "name": "clipboard",
+  "targetType": "executable",
+  "targetName": "clipboard",
+  "targetPath": "bin",
+  "mainSourceFile": "source/clipboard.d",
+  "dependencies": {
+    "dcell": { "path": "../.." }
+  }
+}

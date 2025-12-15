@@ -19,9 +19,10 @@ package:
 import core.atomic;
 import core.time;
 import std.algorithm : canFind;
-import std.format;
+import std.base64;
 import std.datetime;
 import std.exception;
+import std.format;
 import std.outbuffer;
 import std.process;
 import std.range;
@@ -119,6 +120,13 @@ class VtScreen : Screen
         // - win32-input-mode (uses CSI _)
         string enableCsiU = "\x1b[>4;2m" ~ "\x1b[>1u" ~ "\x1b[?9001h";
         string disableCsiU = "\x1b[?9001l" ~ "\x1b[<u" ~ "\x1b[>4;0m";
+
+        // OSC 52 is for saving to the clipboard.
+        // This string takes a base64 string and sends it to the clipboard.
+        // It will also be able to retrieve the clipboard using "?" as the
+        // sent string, when we support that.
+        string setClipboard = "\x1b]52;c;%s\x1b\\";
+
         // number of colors - again this can be overridden.
         // Typical values are 0 (monochrome), 8, 16, 256, and 1<<24.
         // There are some oddballs like xterm-88color.  The first
@@ -246,6 +254,7 @@ class VtScreen : Screen
             vt.saveTitle = null;
             vt.enableCsiU = null;
             vt.disableCsiU = null;
+            vt.setClipboard = null;
         }
     }
 
@@ -545,6 +554,24 @@ class VtScreen : Screen
     void write(dstring s) @safe
     {
         cells.write(s);
+    }
+
+    void setClipboard(const(ubyte[]) b) @safe
+    {
+        if (!vt.setClipboard.empty)
+        {
+            puts(format(vt.setClipboard, Base64.encode(b)));
+            flush();
+        }
+    }
+
+    void getClipboard() @safe
+    {
+        if (!vt.setClipboard.empty)
+        {
+            puts(format(vt.setClipboard, "?"));
+            flush();
+        }
     }
 
 private:

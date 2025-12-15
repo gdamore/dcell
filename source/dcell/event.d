@@ -58,11 +58,12 @@ struct ResizeEvent
 }
 
 /**
- * Paste start or stop.
+ * Paste start or stop. Only one of the content or binary fields will have data.
  */
 struct PasteEvent
 {
-    dstring content;
+    string content; /// string content for normal paste
+    ubyte[] binary; /// binary data via OSC 52 or similar
 }
 
 /// Focus event.

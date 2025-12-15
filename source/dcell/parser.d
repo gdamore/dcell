@@ -14,6 +14,7 @@ module dcell.parser;
 import core.time;
 import std.algorithm : max;
 import std.ascii;
+import std.base64;
 import std.conv : to;
 import std.process : environment;
 import std.string;
@@ -661,14 +662,18 @@ private:
 
     void handleOsc()
     {
-        // TODO: OSC 52 is for clipboard
-        //   	if content, ok := strings.CutPrefix(str, "52;c;"); ok {
-        // 	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
-        // 	if count, err := base64.StdEncoding.Decode(decoded, []byte(content)); err == nil {
-        // 		ip.post(NewEventClipboard(decoded[:count]))
-        // 		return
-        // 	}
-        // }
+        if (scratch.startsWith("52;c;"))
+        {
+            scratch = scratch["52;c;".length .. $];
+            try
+            {
+                auto bin = Base64.decode(scratch);
+                evs ~= newPasteEvent(bin);
+            }
+            catch (Base64Exception) // just discard the data if it was malformed
+            {
+            }
+        }
 
         // string is located in scratch.
         parseState = ParseState.ini;
@@ -819,7 +824,7 @@ private:
             {
                 if (pasting)
                 {
-                    evs ~= newPasteEvent(pasteBuf);
+                    evs ~= newPasteEvent(pasteBuf.to!string);
                     pasting = false;
                     pasteBuf = null;
                 }
@@ -1207,11 +1212,21 @@ private:
         return ev;
     }
 
-    Event newPasteEvent(dstring buffer) nothrow @safe
+    Event newPasteEvent(string buffer) nothrow @safe
     {
         Event ev = {
             type: EventType.paste, when: MonoTime.currTime(), paste: {
                 content: buffer
+            }
+        };
+        return ev;
+    }
+
+    Event newPasteEvent(ubyte[] buffer) nothrow @safe
+    {
+        Event ev = {
+            type: EventType.paste, when: MonoTime.currTime(), paste: {
+                binary: buffer
             }
         };
         return ev;

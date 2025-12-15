@@ -259,7 +259,31 @@ interface Screen
     @property Coord position() const @safe;
     @property Coord position(const(Coord)) @safe;
 
+    /**
+     * Write content to the screen.  The content will be displayed using the
+     * position and the style currently set. It will wrap at the edge of the
+     * display if it is too long.
+     */
     void write(string) @safe;
     void write(wstring) @safe;
     void write(dstring) @safe;
+
+    /**
+     * Post arbitrary data to the system clipboard.
+     * It's up to the recipient to decode the data meaningfully.
+     * Terminals may prevent this for security reasons.
+     */
+    void setClipboard(const(ubyte[])) @safe;
+
+    /**
+     * Request the clipboard contents.  It may be ignored.
+     *
+     * If the terminal is willing, it will post the clipboard contents using a
+     * `PasteEvent` with the clipboard content as the `binary`. (This may or may
+     * not be valid UTF-8. In most terminals it seems that only string data is posted,
+     * such as names of files rather than binary file content.)
+     *
+     * Terminals may prevent this for security reasons.
+     */
+    void getClipboard() @safe;
 }
