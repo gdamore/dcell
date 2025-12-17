@@ -10,6 +10,7 @@
  */
 module dcell.mouse;
 
+import std.array : Appender;
 import std.format : format;
 
 public import dcell.coord;
@@ -83,19 +84,19 @@ struct MouseEvent
 
     string toString() const pure
     {
-        string s = "";
+        Appender!string s;
 
         // Add modifiers
         if (mod & Modifiers.ctrl)
-            s ~= "Ctrl+";
+            s.put("Ctrl+");
         if (mod & Modifiers.shift)
-            s ~= "Shift+";
+            s.put("Shift+");
         if (mod & Modifiers.meta)
-            s ~= "Meta+";
+            s.put("Meta+");
         if (mod & Modifiers.alt)
-            s ~= "Alt+";
+            s.put("Alt+");
         if (mod & Modifiers.hyper)
-            s ~= "Hyper+";
+            s.put("Hyper+");
 
         // Add button names
         string[] buttons;
@@ -125,14 +126,14 @@ struct MouseEvent
             buttons ~= "WheelRight";
 
         if (buttons.length == 0)
-            s ~= "None";
+            s.put("None");
         else
         {
             import std.array : join;
-            s ~= buttons.join("+");
+            s.put(buttons.join("+"));
         }
 
-        s ~= format("@%s", pos.toString());
-        return s;
+        s.put(format("@%s", pos.toString()));
+        return s.data;
     }
 }
