@@ -10,6 +10,8 @@
  */
 module dcell.coord;
 
+import std.format : format;
+
 /** 
  * Coordinates are X, Y values.
  */
@@ -17,4 +19,9 @@ struct Coord
 {
     int x; // aka column
     int y; // aka row
+
+    string toString() const pure
+    {
+        return format("(%d, %d)", x, y);
+    }
 }

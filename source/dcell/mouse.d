@@ -10,6 +10,8 @@
  */
 module dcell.mouse;
 
+import std.format : format;
+
 public import dcell.coord;
 public import dcell.key : Modifiers;
 
@@ -78,4 +80,59 @@ struct MouseEvent
     Buttons btn; /// Buttons involved.
     Modifiers mod; /// Keyboard modifiers pressed during event.
     Coord pos; /// Coordinates of mouse.
+
+    string toString() const pure
+    {
+        string s = "";
+
+        // Add modifiers
+        if (mod & Modifiers.ctrl)
+            s ~= "Ctrl+";
+        if (mod & Modifiers.shift)
+            s ~= "Shift+";
+        if (mod & Modifiers.meta)
+            s ~= "Meta+";
+        if (mod & Modifiers.alt)
+            s ~= "Alt+";
+        if (mod & Modifiers.hyper)
+            s ~= "Hyper+";
+
+        // Add button names
+        string[] buttons;
+        if (btn & Buttons.button1)
+            buttons ~= "Button1";
+        if (btn & Buttons.button2)
+            buttons ~= "Button2";
+        if (btn & Buttons.button3)
+            buttons ~= "Button3";
+        if (btn & Buttons.button4)
+            buttons ~= "Button4";
+        if (btn & Buttons.button5)
+            buttons ~= "Button5";
+        if (btn & Buttons.button6)
+            buttons ~= "Button6";
+        if (btn & Buttons.button7)
+            buttons ~= "Button7";
+        if (btn & Buttons.button8)
+            buttons ~= "Button8";
+        if (btn & Buttons.wheelUp)
+            buttons ~= "WheelUp";
+        if (btn & Buttons.wheelDown)
+            buttons ~= "WheelDown";
+        if (btn & Buttons.wheelLeft)
+            buttons ~= "WheelLeft";
+        if (btn & Buttons.wheelRight)
+            buttons ~= "WheelRight";
+
+        if (buttons.length == 0)
+            s ~= "None";
+        else
+        {
+            import std.array : join;
+            s ~= buttons.join("+");
+        }
+
+        s ~= format("@%s", pos.toString());
+        return s;
+    }
 }
