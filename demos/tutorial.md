@@ -23,14 +23,14 @@ switch (ev.type)
 case EventType.resize:
     s.resize();
     s.sync();
-    info(i"Resized to $(ev.mouse.pos)");
+    info(i"Resized to $(s.size)");
     break;
 }
 ```
 
 ## Key events
 
-When a key is pressed, applications receive an event of type `EventType.Key`.
+When a key is pressed, applications receive an event of type `EventType.key`.
 This event describes the modifier keys pressed (if any) and the pressed key or rune.
 
 When a Esc key is pressed, an event with its `ev.key.key` set to `Key.esc` is dispatched.
@@ -42,7 +42,7 @@ switch (ev.key.key)
 {
 case Key.esc:
     {
-    		info(i"Esc key was pressed");
+    	info("Esc key was pressed");
         s.stop();
         exit(0);
     }
@@ -86,15 +86,15 @@ case EventType.mouse:
 
 Identifier | Alias           | Description
 -----------|-----------------|-----------
-Button1    | ButtonPrimary   | Left button
-Button2    | ButtonSecondary | Right button
-Button3    | ButtonMiddle    | Middle button
-Button4    |                 | Side button (thumb/next)
-Button5    |                 | Side button (thumb/prev)
-WheelUp    |                 | Scroll wheel up
-WheelDown  |                 | Scroll wheel down
-WheelLeft  |                 | Horizontal wheel left
-WheelRight |                 | Horizontal wheel right
+button1    | primary         | Left button
+button2    | secondary       | Right button
+button3    | middle          | Middle button
+button4    |                 | Side button (thumb/next)
+button5    |                 | Side button (thumb/prev)
+wheelUp    |                 | Scroll wheel up
+wheelDown  |                 | Scroll wheel down
+wheelLeft  |                 | Horizontal wheel left
+wheelRight |                 | Horizontal wheel right
 
 ## Usage
 
@@ -102,6 +102,7 @@ To create a _Dcell_ application, first initialize a screen to hold it.
 
 ```d
 auto s = newScreen();
+auto s.start();
 assert(s !is null);
 scope (exit)
 {
@@ -302,7 +303,11 @@ void main()
 
     s.start();
     s.showCursor(Cursor.hidden);
-    s.enableMouse(MouseEnable.all);
+    // Prefer this unless you really need drag:
+    s.enableMouse(); // buttons | motion
+
+    // If you need drag, explain the trade-off:
+    // s.enableMouse(MouseEnable.all); // includes drag; may impair OS copy/paste
     s.enablePaste(true);
     s.setTitle("Dcell Event Demo");
 
@@ -335,15 +340,15 @@ void main()
                     }
                     break;
                 case Key.graph:
-                    if (ev.key.ch == 'C' || ev.key.ch == 'c')
-                    {
-                        s.style = def;
-                        s.clear();
-                    }
-                    else if ((ev.key.ch == 'C' || ev.key.ch == 'c') && ev.key.mod == Modifiers.ctrl)
+                    if ((ev.key.ch == 'C' || ev.key.ch == 'c') && ev.key.mod == Modifiers.ctrl)
                     {
                         s.stop();
                         exit(0);
+                    }
+                    else if (ev.key.ch == 'C' || ev.key.ch == 'c')
+                    {
+                        s.style = def;
+                        s.clear();
                     }
                     // Ctrl-L (without other modifiers) is used to redraw (UNIX convention)
                     else if (ev.key.ch == 'l' && ev.key.mod == Modifiers.ctrl)
