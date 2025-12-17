@@ -6,7 +6,7 @@ A [terminal emulator](https://en.wikipedia.org/wiki/Terminal_emulator)
 
 _Dcell_'s interface is fairly low-level.
 While it provides a reasonably portable way of dealing with all the usual terminal
-features, it may be easier to utilize a higher level framework.
+features, it may be easier to utilize a higher-level framework.
 A number of such frameworks are listed on the _Dcell_ main [README](README.md).
 
 This tutorial provides the details of _Dcell_, and is appropriate for developers
