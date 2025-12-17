@@ -35,7 +35,7 @@ This event describes the modifier keys pressed (if any) and the pressed key or r
 
 When a Esc key is pressed, an event with its `ev.key.key` set to `Key.esc` is dispatched.
 
-When other key is pressed, it is available as the `Key.graph` of the event.
+When another key is pressed, it is available as the `Key.graph` of the event.
 
 ```d
 switch (ev.key.key)
