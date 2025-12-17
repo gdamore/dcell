@@ -102,7 +102,8 @@ To create a _Dcell_ application, first initialize a screen to hold it.
 
 ```d
 auto s = newScreen();
-auto s.start();
+s.start();
+assert(s !is null);
 assert(s !is null);
 scope (exit)
 {
