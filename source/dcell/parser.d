@@ -443,7 +443,7 @@ private:
                 case '\b', '\x7F':
                     postKey(Key.backspace, ch, Modifiers.none);
                     break;
-                case '\n', '\r':
+                case '\r':
                     // will be converted by postKey
                     postKey(Key.enter, ch, Modifiers.none);
                     break;
