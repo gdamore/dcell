@@ -34,7 +34,7 @@ jobs:
 
       - name: Build and Test
         run: |
-          dub -q test
+          dub -q test --coverage
 
       - name: Build Demos
         shell: bash
@@ -45,3 +45,8 @@ jobs:
             dub build || exit 1
             cd ../..
           done
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
