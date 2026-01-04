@@ -365,8 +365,8 @@ private:
     bool partial; // record partially parsed sequences
     MonoTime keyStart; // when the timer started
     Duration seqTime = msecs(50); // time to fully decode a partial sequence
-    bool buttonDown; // true if buttons were down
     bool pasting;
+    Buttons buttonsDown;
     dstring pasteBuf;
 
     void postKey(Key k, dchar dch, Modifiers mod) nothrow @safe
@@ -877,36 +877,9 @@ private:
         // reported as single impulses, while other button events are reported
         // as separate press & release events.
         //
-        auto btn = p0;
+        auto btn = cast(byte)(p0 & 0xff);
         auto x = p1 - 1;
         auto y = p2 - 1;
-        bool motion = (btn & 0x20) != 0;
-        bool scroll = (btn & 0x42) == 0x40;
-        btn &= ~0x20;
-        if (mode == 'm')
-        {
-            // mouse release, clear all buttons
-            btn |= 0x03;
-            btn &= ~0x40;
-            buttonDown = false;
-        }
-        else if (motion)
-        {
-            // Some broken terminals appear to send
-            // mouse button one motion events, instead of
-            // encoding 35 (no buttons) into these events.
-            // We resolve these by looking for a non-motion
-            // event first.
-            if (!buttonDown)
-            {
-                btn |= 0x03;
-                btn &= ~0x40;
-            }
-        }
-        else if (!scroll)
-        {
-            buttonDown = true;
-        }
 
         auto button = Buttons.none;
         auto mod = Modifiers.none;
@@ -915,7 +888,7 @@ private:
         // that wheel events are sometimes misdelivered as mouse button events
         // during a click-drag, so we debounce these, considering them to be
         // button press events unless we see an intervening release event.
-        final switch (btn & 0x43)
+        switch (btn & 0xC3)
         {
         case 0:
             button = Buttons.button1;
@@ -941,6 +914,20 @@ private:
         case 0x43:
             button = Buttons.wheelRight;
             break;
+        case 0x80:
+            button = Buttons.button4;
+            break;
+        case 0x81:
+            button = Buttons.button5;
+            break;
+        case 0x82:
+            button = Buttons.button6;
+            break;
+        case 0x83:
+            button = Buttons.button7;
+            break;
+        default:
+            button = Buttons.none;
         }
 
         if ((btn & 0x4) != 0)
@@ -956,6 +943,26 @@ private:
             mod |= Modifiers.ctrl;
         }
 
+        final switch (mode)
+        {
+        case 'm':
+            if ((buttonsDown & button) == 0)
+            {
+                button = Buttons.none; // spurious release
+            }
+            else
+            {
+                buttonsDown &= ~button;
+                button = buttonsDown;
+            }
+            break;
+        case 'M':
+            buttonsDown |= button;
+            button = buttonsDown;
+            // wheel buttons do not report release events
+            buttonsDown &= ~Buttons.wheels;
+            break;
+        }
         evs ~= newMouseEvent(x, y, button, mod);
     }
 
@@ -1161,54 +1168,6 @@ private:
                 mod: mod,
             }
         };
-        return ev;
-    }
-
-    // NB: it is possible for x and y to be outside the current coordinates
-    // (happens for click drag for example).  Consumer of the event should clip
-    // the coordinates as needed.
-    Event newMouseEvent(int x, int y, int btn) nothrow @safe
-    {
-        Event ev = {
-            type: EventType.mouse, when: MonoTime.currTime, mouse: {
-                pos: Coord(x, y)
-            }
-        };
-
-        // Mouse wheel has bit 6 set, no release events.  It should be noted
-        // that wheel events are sometimes misdelivered as mouse button events
-        // during a click-drag, so we debounce these, considering them to be
-        // button press events unless we see an intervening release event.
-
-        switch (btn & 0x43)
-        {
-        case 0:
-            ev.mouse.btn = Buttons.button1;
-            break;
-        case 1:
-            ev.mouse.btn = Buttons.button3;
-            break;
-        case 2:
-            ev.mouse.btn = Buttons.button2;
-            break;
-        case 3:
-            ev.mouse.btn = Buttons.none;
-            break;
-        case 0x40:
-            ev.mouse.btn = Buttons.wheelUp;
-            break;
-        case 0x41:
-            ev.mouse.btn = Buttons.wheelDown;
-            break;
-        default:
-            break;
-        }
-        if (btn & 0x4)
-            ev.mouse.mod |= Modifiers.shift;
-        if (btn & 0x8)
-            ev.mouse.mod |= Modifiers.alt;
-        if (btn & 0x10)
-            ev.mouse.mod |= Modifiers.ctrl;
         return ev;
     }
 

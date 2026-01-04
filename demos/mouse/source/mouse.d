@@ -230,10 +230,8 @@ void main()
                 }
 
                 // NB: this does is the unmasked value!
-                // It also does not support chording mouse buttons
-                switch (ev.mouse.btn)
+                if (button == Buttons.none)
                 {
-                case Buttons.none:
                     if (oldTop.x >= 0)
                     {
                         Style ns = up;
@@ -242,42 +240,47 @@ void main()
                         oldTop = Coord(-1, -1);
                         oldBot = Coord(-1, -1);
                     }
-                    break;
-                case Buttons.button1:
+                }
+                lb = '?';
+                if (button & Buttons.button1)
+                {
                     lb = '1';
                     bStr ~= " B1";
-                    break;
-                case Buttons.button2:
+                }
+                if (button & Buttons.button2)
+                {
                     lb = '2';
                     bStr ~= " B2";
-                    break;
-                case Buttons.button3:
+                }
+                if (button & Buttons.button3)
+                {
                     lb = '3';
                     bStr ~= " B3";
-                    break;
-                case Buttons.button4:
+                }
+                if (button & Buttons.button4)
+                {
                     lb = '4';
                     bStr ~= " B4";
-                    break;
-                case Buttons.button5:
+                }
+                if (button & Buttons.button5)
+                {
                     lb = '5';
                     bStr ~= " B5";
-                    break;
-                case Buttons.button6:
+                }
+                if (button & Buttons.button6)
+                {
                     lb = '6';
                     bStr ~= " B6";
-                    break;
-                case Buttons.button7:
+                }
+                if (button & Buttons.button7)
+                {
                     lb = '7';
                     bStr ~= " B7";
-                    break;
-                case Buttons.button8:
+                }
+                if (button & Buttons.button8)
+                {
                     lb = '8';
                     bStr ~= " B8";
-                    break;
-                default:
-                    lb = '?';
-                    break;
                 }
                 if (button != Buttons.none)
                     oldBot = ev.mouse.pos;
