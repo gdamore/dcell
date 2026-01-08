@@ -17,7 +17,7 @@ public import dcell.coord;
 public import dcell.key : Modifiers;
 
 /**
- * The buttons that may be clicked, etc. on a mouse.  These can be cmobined
+ * The buttons that may be clicked, etc. on a mouse.  These can be combined
  * together as a binary value to represent chording.  Scroll wheels are
  * included.
  */
@@ -44,8 +44,47 @@ enum Buttons : short
 }
 
 /**
+ * toString returns a string representation of the buttons, with
+ * multiple buttons separated by '+'.
+ */
+string toString(Buttons btn) pure
+{
+    string[] buttons;
+    if (btn & Buttons.button1)
+        buttons ~= "Button1";
+    if (btn & Buttons.button2)
+        buttons ~= "Button2";
+    if (btn & Buttons.button3)
+        buttons ~= "Button3";
+    if (btn & Buttons.button4)
+        buttons ~= "Button4";
+    if (btn & Buttons.button5)
+        buttons ~= "Button5";
+    if (btn & Buttons.button6)
+        buttons ~= "Button6";
+    if (btn & Buttons.button7)
+        buttons ~= "Button7";
+    if (btn & Buttons.button8)
+        buttons ~= "Button8";
+    if (btn & Buttons.wheelUp)
+        buttons ~= "WheelUp";
+    if (btn & Buttons.wheelDown)
+        buttons ~= "WheelDown";
+    if (btn & Buttons.wheelLeft)
+        buttons ~= "WheelLeft";
+    if (btn & Buttons.wheelRight)
+        buttons ~= "WheelRight";
+
+    if (buttons.length == 0)
+        return "None";
+
+    import std.array : join;
+    return buttons.join("+");
+}
+
+/**
  * MouseEnable are the different modes that can be enabled for
- * mouse tracking.  The flagse can be OR'd together (except disable
+ * mouse tracking.  The flags can be OR'd together (except disable
  * which should be used alone).
  */
 enum MouseEnable
@@ -99,40 +138,7 @@ struct MouseEvent
         if (mod & Modifiers.hyper)
             s.put("Hyper+");
 
-        // Add button names
-        string[] buttons;
-        if (btn & Buttons.button1)
-            buttons ~= "Button1";
-        if (btn & Buttons.button2)
-            buttons ~= "Button2";
-        if (btn & Buttons.button3)
-            buttons ~= "Button3";
-        if (btn & Buttons.button4)
-            buttons ~= "Button4";
-        if (btn & Buttons.button5)
-            buttons ~= "Button5";
-        if (btn & Buttons.button6)
-            buttons ~= "Button6";
-        if (btn & Buttons.button7)
-            buttons ~= "Button7";
-        if (btn & Buttons.button8)
-            buttons ~= "Button8";
-        if (btn & Buttons.wheelUp)
-            buttons ~= "WheelUp";
-        if (btn & Buttons.wheelDown)
-            buttons ~= "WheelDown";
-        if (btn & Buttons.wheelLeft)
-            buttons ~= "WheelLeft";
-        if (btn & Buttons.wheelRight)
-            buttons ~= "WheelRight";
-
-        if (buttons.length == 0)
-            s.put("None");
-        else
-        {
-            import std.array : join;
-            s.put(buttons.join("+"));
-        }
+        s.put(dcell.mouse.toString(btn));
 
         s.put(format("@%s", pos.toString()));
         return s.data;
