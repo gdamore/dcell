@@ -49,31 +49,84 @@ enum Buttons : short
  */
 string toString(Buttons btn) pure
 {
+    if (btn == Buttons.none)
+        return "None";
+
     string[] buttons;
-    if (btn & Buttons.button1)
+    Buttons remaining = btn;
+
+    if (remaining & Buttons.button1)
+    {
         buttons ~= "Button1";
-    if (btn & Buttons.button2)
+        remaining &= ~Buttons.button1;
+    }
+    if (remaining & Buttons.button2)
+    {
         buttons ~= "Button2";
-    if (btn & Buttons.button3)
+        remaining &= ~Buttons.button2;
+    }
+    if (remaining & Buttons.button3)
+    {
         buttons ~= "Button3";
-    if (btn & Buttons.button4)
+        remaining &= ~Buttons.button3;
+    }
+    if (remaining & Buttons.button4)
+    {
         buttons ~= "Button4";
-    if (btn & Buttons.button5)
+        remaining &= ~Buttons.button4;
+    }
+    if (remaining & Buttons.button5)
+    {
         buttons ~= "Button5";
-    if (btn & Buttons.button6)
+        remaining &= ~Buttons.button5;
+    }
+    if (remaining & Buttons.button6)
+    {
         buttons ~= "Button6";
-    if (btn & Buttons.button7)
+        remaining &= ~Buttons.button6;
+    }
+    if (remaining & Buttons.button7)
+    {
         buttons ~= "Button7";
-    if (btn & Buttons.button8)
+        remaining &= ~Buttons.button7;
+    }
+    if (remaining & Buttons.button8)
+    {
         buttons ~= "Button8";
-    if (btn & Buttons.wheelUp)
+        remaining &= ~Buttons.button8;
+    }
+
+    if ((remaining & Buttons.wheels) == Buttons.wheels && Buttons.wheels != 0)
+    {
+        buttons ~= "Wheels";
+        remaining &= ~Buttons.wheels;
+    }
+
+    if (remaining & Buttons.wheelUp)
+    {
         buttons ~= "WheelUp";
-    if (btn & Buttons.wheelDown)
+        remaining &= ~Buttons.wheelUp;
+    }
+    if (remaining & Buttons.wheelDown)
+    {
         buttons ~= "WheelDown";
-    if (btn & Buttons.wheelLeft)
+        remaining &= ~Buttons.wheelDown;
+    }
+    if (remaining & Buttons.wheelLeft)
+    {
         buttons ~= "WheelLeft";
-    if (btn & Buttons.wheelRight)
+        remaining &= ~Buttons.wheelLeft;
+    }
+    if (remaining & Buttons.wheelRight)
+    {
         buttons ~= "WheelRight";
+        remaining &= ~Buttons.wheelRight;
+    }
+
+    if (remaining != Buttons.none)
+    {
+        buttons ~= format("Buttons(%04X)", cast(short) remaining);
+    }
 
     if (buttons.length == 0)
         return "None";
@@ -81,6 +134,7 @@ string toString(Buttons btn) pure
     import std.array : join;
     return buttons.join("+");
 }
+
 
 /**
  * MouseEnable are the different modes that can be enabled for
@@ -159,5 +213,14 @@ unittest
     assert(ev.toString() == "Ctrl+Shift+WheelUp@(10, 20)");
     
     ev.btn = Buttons.wheels;
-    assert(ev.toString() == "Ctrl+Shift+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
+    assert(ev.toString() == "Ctrl+Shift+Wheels@(10, 20)");
+
+    ev.btn = cast(Buttons)(Buttons.button1 | Buttons.wheels);
+    assert(ev.toString() == "Ctrl+Shift+Button1+Wheels@(10, 20)");
+
+    // Test toString explicitly
+    assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | Buttons.button2)) == "Button1+Button2");
+    assert(dcell.mouse.toString(Buttons.wheels) == "Wheels");
+    assert(dcell.mouse.toString(cast(Buttons) 0x8000) == "Buttons(8000)");
+    assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | 0x8000)) == "Button1+Buttons(8000)");
 }
