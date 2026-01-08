@@ -16,7 +16,7 @@ import std.format : format;
 public import dcell.coord;
 public import dcell.key : Modifiers;
 
-/** 
+/**
  * The buttons that may be clicked, etc. on a mouse.  These can be cmobined
  * together as a binary value to represent chording.  Scroll wheels are
  * included.
@@ -40,6 +40,7 @@ enum Buttons : short
     primary = button1,
     secondary = button2,
     middle = button3,
+    wheels = wheelUp | wheelDown | wheelLeft | wheelRight,
 }
 
 /**

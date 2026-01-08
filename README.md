@@ -1,8 +1,7 @@
 # Dcell
 
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
-[![DMD](https://img.shields.io/github/actions/workflow/status/gdamore/dcell/dmd.yml?branch=main&logoColor=grey&logo=D&label=)](https://github.com/gdamore/dcell/actions/workflows/dmd.yml)
-[![LDC](https://img.shields.io/github/actions/workflow/status/gdamore/dcell/ldc.yml?branch=main&logoColor=grey&logo=llvm&label=)](https://github.com/gdamore/dcell/actions/workflows/ldc.yml)
+[![BUILD](https://img.shields.io/github/actions/workflow/status/gdamore/dcell/build.yml?branch=main&logoColor=grey&logo=github-actions&label=)](https://github.com/gdamore/dcell/actions/workflows/build.yml)
 
 _Dcell_ is a rewrite, or a language port, of my well known
 [Tcell](https://github.com/gdamore/tcell) (for Go) project into D.
