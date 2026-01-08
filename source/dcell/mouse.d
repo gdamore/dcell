@@ -144,3 +144,20 @@ struct MouseEvent
         return s.data;
     }
 }
+
+unittest
+{
+    MouseEvent ev;
+    ev.pos = Coord(10, 20);
+    ev.btn = cast(Buttons)(Buttons.button1 | Buttons.button2);
+    assert(ev.toString() == "Button1+Button2@(10, 20)");
+    
+    ev.mod = Modifiers.ctrl | Modifiers.shift;
+    assert(ev.toString() == "Ctrl+Shift+Button1+Button2@(10, 20)");
+    
+    ev.btn = Buttons.wheelUp;
+    assert(ev.toString() == "Ctrl+Shift+WheelUp@(10, 20)");
+    
+    ev.btn = Buttons.wheels;
+    assert(ev.toString() == "Ctrl+Shift+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
+}
