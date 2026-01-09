@@ -96,7 +96,7 @@ string toString(Buttons btn) pure
         remaining &= ~Buttons.button8;
     }
 
-    if ((remaining & Buttons.wheels) == Buttons.wheels && Buttons.wheels != 0)
+    if ((remaining & Buttons.wheels) == Buttons.wheels)
     {
         buttons ~= "Wheels";
         remaining &= ~Buttons.wheels;
