@@ -125,7 +125,7 @@ string toString(Buttons btn) pure
 
     if (remaining != Buttons.none)
     {
-        buttons ~= format("Buttons(%04X)", cast(short) remaining);
+        buttons ~= format("Buttons(%04X)", cast(ushort) remaining);
     }
 
     if (buttons.length == 0)
