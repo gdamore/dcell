@@ -171,7 +171,7 @@ enum Color : uint
 private static immutable uint[Color] rgbValues;
 private static immutable Color[uint] palValues;
 
-shared static this() @safe
+shared static this() @trusted
 {
     rgbValues[Color.black] = 0x000000;
     rgbValues[Color.maroon] = 0x800000;
