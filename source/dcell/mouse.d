@@ -200,7 +200,6 @@ struct MouseEvent
 
 unittest
 {
-
     MouseEvent evNone;
     evNone.pos = Coord(5, 10);
     evNone.btn = Buttons.none;
