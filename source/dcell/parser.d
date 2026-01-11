@@ -265,8 +265,8 @@ immutable KeyCode[int] winKeys = [
     0x03: KeyCode(Key.cancel), // vkCancel
     0x08: KeyCode(Key.backspace), // vkBackspace
     0x09: KeyCode(Key.tab), // vkTab
+    0x0c: KeyCode(Key.clear), // vClear
     0x0d: KeyCode(Key.enter), // vkReturn
-    0x12: KeyCode(Key.clear), // vClear
     0x13: KeyCode(Key.pause), // vkPause
     0x1b: KeyCode(Key.esc), // vkEscape
     0x21: KeyCode(Key.pgUp), // vkPrior
@@ -1027,7 +1027,7 @@ private:
         {
             chr = p0;
         }
-        else if (key == 0x11 || key == 0x13 || key == 0x14)
+        else if (key == 0x10 || key == 0x11 || key == 0x12 || key == 0x14)
         {
             // lone modifiers
             return;
