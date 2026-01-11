@@ -122,9 +122,6 @@ string toString(Buttons btn) pure
         buttons ~= format("Buttons(%04X)", cast(ushort) remaining);
     }
 
-    if (buttons.length == 0)
-        return "None";
-
     import std.array : join;
     return buttons.join("+");
 }
