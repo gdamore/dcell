@@ -1067,6 +1067,32 @@ private:
         }
     }
 
+    unittest
+    {
+        import core.thread;
+
+        // taken from xterm, but pared down
+        Parser p = new Parser();
+
+        // simple key down ("A")
+        assert(p.parse("\x1b[65;0;65;1;0;1_"));
+
+        auto ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.graph);
+        assert(ev[0].key.ch == 'A');
+        assert(ev[0].key.mod == Modifiers.none);
+
+        // ignore key up event
+        assert(p.parse("\x1b[65;0;65;0;0;1_"));
+        assert(p.events().length == 0);
+
+        // ignore lone modifier (ctrl)
+        assert(p.parse("\x1b[17;0;0;1;8;1_"));
+        assert(p.events().length == 0);
+    }
+
     // calculate the modifiers from the CSI modifier parameter.
     Modifiers calcModifier(int n) pure nothrow @safe @nogc
     {
@@ -1258,5 +1284,21 @@ private:
         assert(ev[0].type == EventType.key);
         assert(ev[0].key.key == Key.graph);
         assert(ev[0].key.ch == '€');
+
+        // SOS (no event)
+        assert(p.parse(['\x1b', 'X', 'p', '\x1b', '\\']));
+        assert(p.events().length == 0);
+
+        // PM (no event)
+        assert(p.parse(['\x1b', '^', 'p', '\x1b', '\\']));
+        assert(p.events().length == 0);
+
+        // PM (terminate by BEL)
+        assert(p.parse(['\x1b', '^', 'p', '\x07']));
+        assert(p.events().length == 0);
+
+        // APC (no event)
+        assert(p.parse(['\x1b', '_', 'p', '\x1b', '\\']));
+        assert(p.events().length == 0);
     }
 }
