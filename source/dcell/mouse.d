@@ -10,11 +10,14 @@
  */
 module dcell.mouse;
 
+import std.array : Appender;
+import std.format : format;
+
 public import dcell.coord;
 public import dcell.key : Modifiers;
 
 /**
- * The buttons that may be clicked, etc. on a mouse.  These can be cmobined
+ * The buttons that may be clicked, etc. on a mouse.  These can be combined
  * together as a binary value to represent chording.  Scroll wheels are
  * included.
  */
@@ -41,8 +44,100 @@ enum Buttons : short
 }
 
 /**
+ * toString returns a string representation of the buttons, with
+ * multiple buttons separated by '+'.
+ */
+string toString(Buttons btn) pure
+{
+    if (btn == Buttons.none)
+        return "None";
+
+    Appender!string s;
+    Buttons remaining = btn;
+    bool first = true;
+
+    void add(string name)
+    {
+        if (!first)
+            s.put("+");
+        s.put(name);
+        first = false;
+    }
+
+    if (remaining & Buttons.button1)
+    {
+        add("Button1");
+        remaining &= ~Buttons.button1;
+    }
+    if (remaining & Buttons.button2)
+    {
+        add("Button2");
+        remaining &= ~Buttons.button2;
+    }
+    if (remaining & Buttons.button3)
+    {
+        add("Button3");
+        remaining &= ~Buttons.button3;
+    }
+    if (remaining & Buttons.button4)
+    {
+        add("Button4");
+        remaining &= ~Buttons.button4;
+    }
+    if (remaining & Buttons.button5)
+    {
+        add("Button5");
+        remaining &= ~Buttons.button5;
+    }
+    if (remaining & Buttons.button6)
+    {
+        add("Button6");
+        remaining &= ~Buttons.button6;
+    }
+    if (remaining & Buttons.button7)
+    {
+        add("Button7");
+        remaining &= ~Buttons.button7;
+    }
+    if (remaining & Buttons.button8)
+    {
+        add("Button8");
+        remaining &= ~Buttons.button8;
+    }
+
+    if (remaining & Buttons.wheelUp)
+    {
+        add("WheelUp");
+        remaining &= ~Buttons.wheelUp;
+    }
+    if (remaining & Buttons.wheelDown)
+    {
+        add("WheelDown");
+        remaining &= ~Buttons.wheelDown;
+    }
+    if (remaining & Buttons.wheelLeft)
+    {
+        add("WheelLeft");
+        remaining &= ~Buttons.wheelLeft;
+    }
+    if (remaining & Buttons.wheelRight)
+    {
+        add("WheelRight");
+        remaining &= ~Buttons.wheelRight;
+    }
+
+    if (remaining != Buttons.none)
+    {
+        add(format("Buttons(%04X)", cast(ushort) remaining));
+    }
+
+    return s.data;
+}
+
+
+/**
  * MouseEnable are the different modes that can be enabled for
- * mouse tracking.  The flagse can be OR'd together (except disable
+ * mouse tracking.  The flags can be OR'd together (except disable
  * which should be used alone).
  */
 enum MouseEnable
@@ -79,4 +174,57 @@ struct MouseEvent
     Buttons btn; /// Buttons involved.
     Modifiers mod; /// Keyboard modifiers pressed during event.
     Coord pos; /// Coordinates of mouse.
+
+    string toString() const pure
+    {
+        Appender!string s;
+
+        // Add modifiers
+        if (mod & Modifiers.ctrl)
+            s.put("Ctrl+");
+        if (mod & Modifiers.shift)
+            s.put("Shift+");
+        if (mod & Modifiers.meta)
+            s.put("Meta+");
+        if (mod & Modifiers.alt)
+            s.put("Alt+");
+        if (mod & Modifiers.hyper)
+            s.put("Hyper+");
+
+        s.put(dcell.mouse.toString(btn));
+
+        s.put(format("@%s", pos.toString()));
+        return s.data;
+    }
+}
+
+unittest
+{
+    MouseEvent evNone;
+    evNone.pos = Coord(5, 10);
+    evNone.btn = Buttons.none;
+    assert(evNone.toString() == "None@(5, 10)");
+
+    MouseEvent ev;
+    ev.pos = Coord(10, 20);
+    ev.btn = cast(Buttons)(Buttons.button1 | Buttons.button2);
+    assert(ev.toString() == "Button1+Button2@(10, 20)");
+    
+    ev.mod = Modifiers.ctrl | Modifiers.shift;
+    assert(ev.toString() == "Ctrl+Shift+Button1+Button2@(10, 20)");
+    
+    ev.btn = Buttons.wheelUp;
+    assert(ev.toString() == "Ctrl+Shift+WheelUp@(10, 20)");
+    
+    ev.btn = Buttons.wheels;
+    assert(ev.toString() == "Ctrl+Shift+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
+
+    ev.btn = cast(Buttons)(Buttons.button1 | Buttons.wheels);
+    assert(ev.toString() == "Ctrl+Shift+Button1+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
+
+    // Test toString explicitly
+    assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | Buttons.button2)) == "Button1+Button2");
+    assert(dcell.mouse.toString(Buttons.wheels) == "WheelUp+WheelDown+WheelLeft+WheelRight");
+    assert(dcell.mouse.toString(cast(Buttons) 0x8000) == "Buttons(8000)");
+    assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | 0x8000)) == "Button1+Buttons(8000)");
 }

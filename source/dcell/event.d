@@ -11,6 +11,7 @@
 module dcell.event;
 
 import core.time;
+import std.format : format;
 import std.range;
 
 import dcell.key;
@@ -46,6 +47,29 @@ struct Event
         PasteEvent paste;
         FocusEvent focus;
     }
+
+    string toString() const
+    {
+        final switch (type)
+        {
+            case EventType.none:
+                return "Event[none]";
+            case EventType.closed:
+                return "Event[closed]";
+            case EventType.error:
+                return "Event[error]";
+            case EventType.key:
+                return format("Event[key: %s]", key.toString());
+            case EventType.mouse:
+                return format("Event[mouse: %s]", mouse.toString());
+            case EventType.paste:
+                return format("Event[paste: %s]", paste.toString());
+            case EventType.resize:
+                return format("Event[resize: %s]", resize.toString());
+            case EventType.focus:
+                return format("Event[focus: %s]", focus.toString());
+        }
+    }
 }
 
 /**
@@ -55,6 +79,10 @@ struct Event
  */
 struct ResizeEvent
 {
+    string toString() const pure
+    {
+        return "Resize";
+    }
 }
 
 /**
@@ -64,12 +92,27 @@ struct PasteEvent
 {
     string content; /// string content for normal paste
     ubyte[] binary; /// binary data via OSC 52 or similar
+
+    string toString() const pure
+    {
+        if (content.length > 0)
+            return format("Paste[%d chars]", content.length);
+        else if (binary.length > 0)
+            return format("Paste[%d bytes binary]", binary.length);
+        else
+            return "Paste[empty]";
+    }
 }
 
 /// Focus event.
 struct FocusEvent
 {
     bool focused;
+
+    string toString() const pure
+    {
+        return focused ? "Focus[gained]" : "Focus[lost]";
+    }
 }
 
 /**
