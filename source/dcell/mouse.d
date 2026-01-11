@@ -52,78 +52,86 @@ string toString(Buttons btn) pure
     if (btn == Buttons.none)
         return "None";
 
-    string[] buttons;
+    Appender!string s;
     Buttons remaining = btn;
+    bool first = true;
+
+    void add(string name)
+    {
+        if (!first)
+            s.put("+");
+        s.put(name);
+        first = false;
+    }
 
     if (remaining & Buttons.button1)
     {
-        buttons ~= "Button1";
+        add("Button1");
         remaining &= ~Buttons.button1;
     }
     if (remaining & Buttons.button2)
     {
-        buttons ~= "Button2";
+        add("Button2");
         remaining &= ~Buttons.button2;
     }
     if (remaining & Buttons.button3)
     {
-        buttons ~= "Button3";
+        add("Button3");
         remaining &= ~Buttons.button3;
     }
     if (remaining & Buttons.button4)
     {
-        buttons ~= "Button4";
+        add("Button4");
         remaining &= ~Buttons.button4;
     }
     if (remaining & Buttons.button5)
     {
-        buttons ~= "Button5";
+        add("Button5");
         remaining &= ~Buttons.button5;
     }
     if (remaining & Buttons.button6)
     {
-        buttons ~= "Button6";
+        add("Button6");
         remaining &= ~Buttons.button6;
     }
     if (remaining & Buttons.button7)
     {
-        buttons ~= "Button7";
+        add("Button7");
         remaining &= ~Buttons.button7;
     }
     if (remaining & Buttons.button8)
     {
-        buttons ~= "Button8";
+        add("Button8");
         remaining &= ~Buttons.button8;
     }
 
     if (remaining & Buttons.wheelUp)
     {
-        buttons ~= "WheelUp";
+        add("WheelUp");
         remaining &= ~Buttons.wheelUp;
     }
     if (remaining & Buttons.wheelDown)
     {
-        buttons ~= "WheelDown";
+        add("WheelDown");
         remaining &= ~Buttons.wheelDown;
     }
     if (remaining & Buttons.wheelLeft)
     {
-        buttons ~= "WheelLeft";
+        add("WheelLeft");
         remaining &= ~Buttons.wheelLeft;
     }
     if (remaining & Buttons.wheelRight)
     {
-        buttons ~= "WheelRight";
+        add("WheelRight");
         remaining &= ~Buttons.wheelRight;
     }
 
     if (remaining != Buttons.none)
     {
-        buttons ~= format("Buttons(%04X)", cast(ushort) remaining);
+        add(format("Buttons(%04X)", cast(ushort) remaining));
     }
 
-    import std.array : join;
-    return buttons.join("+");
+    return s.data;
 }
 
 
@@ -192,6 +200,12 @@ struct MouseEvent
 
 unittest
 {
+
+    MouseEvent evNone;
+    evNone.pos = Coord(5, 10);
+    evNone.btn = Buttons.none;
+    assert(evNone.toString() == "None@(5, 10)");
+
     MouseEvent ev;
     ev.pos = Coord(10, 20);
     ev.btn = cast(Buttons)(Buttons.button1 | Buttons.button2);
