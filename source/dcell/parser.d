@@ -1027,7 +1027,7 @@ private:
         {
             chr = p0;
         }
-        else if (key == 0x10 || key == 0x11 || key == 0x12 || key == 0x14)
+        else if (p0 == 0x10 || p0 == 0x11 || p0 == 0x12 || p0 == 0x14)
         {
             // lone modifiers
             return;
