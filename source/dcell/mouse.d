@@ -207,14 +207,14 @@ unittest
     assert(ev.toString() == "Ctrl+Shift+WheelUp@(10, 20)");
     
     ev.btn = Buttons.wheels;
-    assert(ev.toString() == "Ctrl+Shift+Wheels@(10, 20)");
+    assert(ev.toString() == "Ctrl+Shift+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
 
     ev.btn = cast(Buttons)(Buttons.button1 | Buttons.wheels);
-    assert(ev.toString() == "Ctrl+Shift+Button1+Wheels@(10, 20)");
+    assert(ev.toString() == "Ctrl+Shift+Button1+WheelUp+WheelDown+WheelLeft+WheelRight@(10, 20)");
 
     // Test toString explicitly
     assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | Buttons.button2)) == "Button1+Button2");
-    assert(dcell.mouse.toString(Buttons.wheels) == "Wheels");
+    assert(dcell.mouse.toString(Buttons.wheels) == "WheelUp+WheelDown+WheelLeft+WheelRight");
     assert(dcell.mouse.toString(cast(Buttons) 0x8000) == "Buttons(8000)");
     assert(dcell.mouse.toString(cast(Buttons)(Buttons.button1 | 0x8000)) == "Button1+Buttons(8000)");
 }
