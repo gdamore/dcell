@@ -400,7 +400,7 @@ private:
                 {
                     parseState = ParseState.ini;
                     size_t index = 0;
-q                    try
+                    try
                     {
                         dchar dch = decode(cast(const(char)[]) accum, index);
                         postKey(Key.graph, dch, Modifiers.none);
