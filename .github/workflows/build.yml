@@ -46,6 +46,10 @@ jobs:
             cd ../..
           done
 
+      - name: Convert code coverage
+        run: |
+          dub run --root tools/lst2codecov
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:

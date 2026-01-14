@@ -1,0 +1,9 @@
+{
+  "copyright": "Copyright 2026 Garrett D'Amore",
+  "description": "Convert DMD .lst files to CodeCov JSON",
+  "name": "lst2codecov",
+  "targetType": "executable",
+  "targetName": "lst2codecov",
+  "targetPath": "bin",
+  "mainSourceFile": "source/lst2codecov.d"
+}
