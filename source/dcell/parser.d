@@ -368,11 +368,29 @@ private:
     bool pasting;
     Buttons buttonsDown;
     dstring pasteBuf;
+    bool pasteCR;
 
     void postKey(Key k, dchar dch, Modifiers mod) nothrow @safe
     {
         if (pasting)
         {
+            // When pasting we capture printable characters into pasteBuf.
+            // We also preserve line breaks by treating Enter and CR/LF as a newline.
+            // Note that some terminals paste using LF, while keypresses often arrive as CR.
+            // Normalize all line breaks to '\n'.
+            if (k == Key.enter || dch == '\r' || dch == '\n')
+            {
+                // Avoid double newlines for CRLF.
+                if (dch == '\n' && pasteCR)
+                {
+                    pasteCR = false;
+                    return;
+                }
+                pasteBuf ~= '\n';
+                pasteCR = (dch == '\r');
+                return;
+            }
+            pasteCR = false;
             if (dch != 0)
             {
                 pasteBuf ~= dch;
@@ -453,6 +471,15 @@ private:
                     // will be converted by postKey
                     postKey(Key.enter, ch, Modifiers.none);
                     break;
+                case '\n':
+                    // Preserve LF newlines during bracketed paste. Otherwise, keep legacy
+                    // behavior which treats this as Ctrl-J.
+                    if (pasting)
+                    {
+                        postKey(Key.enter, ch, Modifiers.none);
+                        break;
+                    }
+                    goto default;
                 default:
                     // simple runes
                     if (ch >= ' ')
@@ -825,6 +852,7 @@ private:
             {
                 pasting = true;
                 pasteBuf = null;
+                pasteCR = false;
             }
             else if (p0 == 201)
             {
@@ -833,6 +861,7 @@ private:
                     evs ~= newPasteEvent(pasteBuf.to!string);
                     pasting = false;
                     pasteBuf = null;
+                    pasteCR = false;
                 }
             }
 
@@ -1271,6 +1300,24 @@ private:
         assert(ev.length == 1);
         assert(ev[0].type == EventType.paste);
         assert(ev[0].paste.content == "A");
+
+        // multi-line paste (LF newlines)
+        assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
+        assert(p.parse("A\nB"));
+        assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.paste);
+        assert(ev[0].paste.content == "A\nB");
+
+        // multi-line paste (CR newlines) - normalize to LF
+        assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
+        assert(p.parse("A\rB"));
+        assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.paste);
+        assert(ev[0].paste.content == "A\nB");
 
         // mouse events
         assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
