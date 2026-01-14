@@ -1319,6 +1319,24 @@ private:
         assert(ev[0].type == EventType.paste);
         assert(ev[0].paste.content == "A\nB");
 
+        // multi-line paste (CRLF newlines) - normalize and de-duplicate
+        assert(p.parse(['\x1b', '[', '2', '0', '0', '~']));
+        assert(p.parse("A\r\nB"));
+        assert(p.parse(['\x1b', '[', '2', '0', '1', '~']));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.paste);
+        assert(ev[0].paste.content == "A\nB");
+
+        // LF newlines outside paste should keep legacy Ctrl-J behavior
+        assert(p.parse("\n"));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].type == EventType.key);
+        assert(ev[0].key.key == Key.graph);
+        assert(ev[0].key.ch == 'j');
+        assert(ev[0].key.mod == Modifiers.ctrl);
+
         // mouse events
         assert(p.parse(['\x1b', '[', '<', '3', ';', '2', ';', '3', 'M']));
         ev = p.events();
