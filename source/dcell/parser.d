@@ -400,9 +400,15 @@ private:
                 {
                     parseState = ParseState.ini;
                     size_t index = 0;
-                    dchar dch = decode(cast(string) accum, index);
+q                    try
+                    {
+                        dchar dch = decode(cast(const(char)[]) accum, index);
+                        postKey(Key.graph, dch, Modifiers.none);
+                    }
+                    catch (UTFException)
+                    {
+                    }
                     accum = null;
-                    postKey(Key.graph, dch, Modifiers.none);
                 }
                 break;
             case ParseState.ini:
@@ -1282,6 +1288,10 @@ private:
         assert(ev[0].type == EventType.key);
         assert(ev[0].key.key == Key.graph);
         assert(ev[0].key.ch == '€');
+
+        // invalid unicode - should not crash
+        assert(p.parse("\xE2  "));
+        assert(p.events().length == 0);
 
         // SOS (no event)
         assert(p.parse(['\x1b', 'X', 'p', '\x1b', '\\']));
