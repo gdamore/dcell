@@ -1289,9 +1289,18 @@ private:
         assert(ev[0].key.key == Key.graph);
         assert(ev[0].key.ch == '€');
 
-        // invalid unicode - should not crash
-        assert(p.parse("\xE2  "));
-        assert(p.events().length == 0);
+        // invalid unicode - should not crash, and should preserve subsequent valid input
+        assert(p.parse("\xE2  A"));
+        ev = p.events();
+        assert(ev.length == 1);
+        assert(ev[0].key.ch == 'A');
+
+        // valid multi-byte followed by valid input
+        assert(p.parse("\xE2\x82\xacB"));
+        ev = p.events();
+        assert(ev.length == 2);
+        assert(ev[0].key.ch == '€');
+        assert(ev[1].key.ch == 'B');
 
         // SOS (no event)
         assert(p.parse(['\x1b', 'X', 'p', '\x1b', '\\']));
